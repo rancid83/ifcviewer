@@ -1,198 +1,326 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %></title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-
-    h1 {
-      margin-bottom: 20px;
-      color: #333;
-    }
-
-    h2 {
-      margin-top: 20px;
-      margin-bottom: 10px;
-      color: #555;
-      font-size: 1.2em;
-    }
-
-    #ifc-upload {
-      margin-bottom: 20px;
-      padding: 10px;
-      border: 2px dashed #ccc;
-      border-radius: 5px;
-      background-color: white;
-      cursor: pointer;
-    }
-
-    #viewer-container {
-      width: 100%;
-      height: 600px;
-      border: 2px solid #ddd;
-      border-radius: 5px;
-      background-color: #1a1a1a;
-      margin-bottom: 20px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    #viewer-container canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-
-    #controls {
-      background-color: white;
-      padding: 20px;
-      border-radius: 5px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .control-group {
-      margin-bottom: 15px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .control-group:last-child {
-      border-bottom: none;
-    }
-
-    label {
-      display: inline-block;
-      margin-right: 10px;
-      font-weight: 500;
-      color: #666;
-      min-width: 80px;
-    }
-
-    input[type="color"] {
-      width: 60px;
-      height: 35px;
-      border: 1px solid #ddd;
-      border-radius: 3px;
-      cursor: pointer;
-      vertical-align: middle;
-    }
-
-    input[type="number"] {
-      width: 100px;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 3px;
-      margin-right: 10px;
-    }
-
-    button {
-      padding: 8px 16px;
-      margin-right: 10px;
-      border: none;
-      border-radius: 3px;
-      background-color: #007bff;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background-color 0.2s;
-    }
-
-    button:hover {
-      background-color: #0056b3;
-    }
-
-    button:active {
-      background-color: #004085;
-    }
-
-    #reset-color,
-    #reset-position {
-      background-color: #6c757d;
-    }
-
-    #reset-color:hover,
-    #reset-position:hover {
-      background-color: #5a6268;
-    }
-
-    #selected-element-id {
-      background-color: white;
-      padding: 15px;
-      border-radius: 5px;
-      font-size: 18px;
-      font-weight: 600;
-      color: #007bff;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    #element-properties {
-      background-color: #282c34;
-      color: #abb2bf;
-      padding: 20px;
-      border-radius: 5px;
-      overflow-x: auto;
-      font-size: 14px;
-      line-height: 1.6;
-      max-height: 400px;
-      overflow-y: auto;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    #element-properties:empty::before {
-      content: '없음';
-      color: #888;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        h2 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #555;
+            font-size: 1.2em;
+        }
+        
+        #ifc-upload {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            background-color: white;
+            cursor: pointer;
+        }
+        
+        #viewer-container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            background-color: #1a1a1a;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #viewer-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #controls {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .control-group:last-child {
+            border-bottom: none;
+        }
+        
+        label {
+            display: inline-block;
+            margin-right: 10px;
+            font-weight: 500;
+            color: #666;
+            min-width: 80px;
+        }
+        
+        input[type="color"] {
+            width: 60px;
+            height: 35px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        
+        input[type="number"] {
+            width: 100px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 3px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:active {
+            background-color: #004085;
+        }
+        
+        #reset-color,
+        #reset-position {
+            background-color: #6c757d;
+        }
+        
+        #reset-color:hover,
+        #reset-position:hover {
+            background-color: #5a6268;
+        }
+        
+        #selected-element-id {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #007bff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #element-properties {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #element-properties:empty::before {
+            content: '없음';
+            color: #888;
+        }
+        
+        #info-panel {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #info-panel h2,
+        #info-panel h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        #info-panel p {
+            margin: 8px 0;
+            color: #666;
+        }
+        
+        #info-panel strong {
+            color: #333;
+            min-width: 100px;
+            display: inline-block;
+        }
+        
+        #drag-info {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        #property-editor {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .property-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+        }
+        
+        .property-item label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .property-item input,
+        .property-item textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        
+        .property-item textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+        
+        #save-properties {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        #save-properties:hover {
+            background-color: #218838;
+        }
+    </style>
 </head>
+
 <body>
-  <h1><%= title %></h1>
-  
-  <input type="file" id="ifc-upload" accept=".ifc">
-  
-  <div id="viewer-container"></div>
-  
-  <div id="controls">
-    <div class="control-group">
-      <label for="color-picker">색상 변경:</label>
-      <input type="color" id="color-picker" value="#ff0000">
-      <button id="apply-color">적용</button>
-      <button id="reset-color">초기화</button>
-    </div>
-    
-    <div class="control-group">
-      <label for="pos-x">위치 변경:</label>
-      <label for="pos-x">X:</label>
-      <input type="number" id="pos-x" step="0.1" value="0">
-      <label for="pos-y">Y:</label>
-      <input type="number" id="pos-y" step="0.1" value="0">
-      <label for="pos-z">Z:</label>
-      <input type="number" id="pos-z" step="0.1" value="0">
-      <button id="apply-position">적용</button>
-      <button id="reset-position">초기화</button>
-    </div>
-  </div>
-  
-  <h2>선택된 요소 ID:</h2>
-  <p id="selected-element-id">없음</p>
-  
-  <h2>선택된 요소 속성:</h2>
-  <pre id="element-properties">없음</pre>
+    <h1>
+        <%= title %>
+    </h1>
 
-  <script type="module" src="/js/viewer.js"></script>
-  <script type="module" src="/js/ui.js"></script>
+    <input type="file" id="ifc-upload" accept=".ifc">
+
+    <div id="viewer-container"></div>
+
+    <div id="controls">
+        <div class="control-group">
+            <label for="color-picker">색상 변경:</label>
+            <input type="color" id="color-picker" value="#ff0000">
+            <button id="apply-color">적용</button>
+            <button id="reset-color">초기화</button>
+        </div>
+
+        <div class="control-group">
+            <label for="pos-x">위치 변경:</label>
+            <label for="pos-x">X:</label>
+            <input type="number" id="pos-x" step="0.1" value="0">
+            <label for="pos-y">Y:</label>
+            <input type="number" id="pos-y" step="0.1" value="0">
+            <label for="pos-z">Z:</label>
+            <input type="number" id="pos-z" step="0.1" value="0">
+            <button id="apply-position">적용</button>
+            <button id="reset-position">초기화</button>
+        </div>
+    </div>
+
+    <div id="model-info-panel" style="background-color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h2>모델 정보</h2>
+        <div id="model-info">
+            <p><strong>파일명:</strong> <span id="model-file-name">-</span></p>
+            <p><strong>ModelID:</strong> <span id="model-id">-</span></p>
+            <p><strong>모델 중심:</strong> <span id="model-center">X: -, Y: -, Z: -</span></p>
+            <p><strong>모델 크기:</strong> <span id="model-size">X: -, Y: -, Z: -</span></p>
+            <p><strong>로드 상태:</strong> <span id="model-load-status">대기 중</span></p>
+        </div>
+    </div>
+
+    <div id="info-panel">
+        <h2>요소 정보</h2>
+        <div id="selected-element-id">선택된 요소: 없음</div>
+        
+        <h3>기본 정보</h3>
+        <div id="element-basic-info">
+            <p><strong>ExpressID:</strong> <span id="info-express-id">-</span></p>
+            <p><strong>ModelID:</strong> <span id="info-model-id">-</span></p>
+            <p><strong>위치:</strong> <span id="info-position">X: -, Y: -, Z: -</span></p>
+            <p><strong>회전:</strong> <span id="info-rotation">X: -, Y: -, Z: -</span></p>
+            <p><strong>크기:</strong> <span id="info-scale">X: -, Y: -, Z: -</span></p>
+        </div>
+
+        <h3>드래그 정보</h3>
+        <div id="drag-info">
+            <p><strong>상태:</strong> <span id="drag-status">대기 중</span></p>
+            <p><strong>시작 위치:</strong> <span id="drag-start-pos">-</span></p>
+            <p><strong>현재 위치:</strong> <span id="drag-current-pos">-</span></p>
+            <p><strong>이동 거리:</strong> <span id="drag-distance">-</span></p>
+        </div>
+    </div>
+
+    <h2>선택된 요소 속성 (JSON):</h2>
+    <pre id="element-properties">없음</pre>
+
+    <h2>속성 변수 편집</h2>
+    <div id="property-editor">
+        <div id="editable-properties"></div>
+        <button id="save-properties" style="display:none;">변경사항 저장</button>
+    </div>
+
+    <script async src="https://unpkg.com/es-module-shims@1.8.2/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/": "https://unpkg.com/three@0.160.0/", "web-ifc": "/js/web-ifc-api.js" } }
+    </script>
+    <script type="module" src="/js/viewer.js"></script>
+    <script type="module" src="/js/ui.js"></script>
 </body>
-</html>
 
+</html>

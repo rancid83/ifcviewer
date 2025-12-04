@@ -18,7 +18,7 @@ app.use('/files', express.static(path.join(__dirname)));
 app.get('/', (req, res) => {
   res.render('index', {
     title: 'IFC 뷰어',
-    ifcFileName: 'KIT-Simple-Road-Test-Web-IFC4x3_RC2.ifc'
+    ifcFileName: 'tessellated-item.ifc'
   });
 });
 
