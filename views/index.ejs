@@ -48,6 +48,32 @@
             border-radius: 5px;
             background-color: #1a1a1a;
             margin-bottom: 20px;
+        }
+        /* 시뮬레이션 모드 스타일 */
+        
+        .simulation-mode .hidden-in-simulation {
+            display: none !important;
+        }
+        
+        .simulation-mode #viewer-container {
+            height: calc(100vh - 200px);
+            margin-bottom: 10px;
+        }
+        
+        .simulation-mode #simulation-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            margin: 0;
+            border-radius: 0;
+        }
+        
+        .simulation-mode body {
+            padding-bottom: 200px;
             position: relative;
             overflow: hidden;
         }
@@ -240,40 +266,160 @@
         #save-properties:hover {
             background-color: #218838;
         }
+        /* 시뮬레이션 모드 스타일 */
+        
+        .simulation-mode .hidden-in-simulation {
+            display: none !important;
+        }
+        
+        .simulation-mode #viewer-container {
+            height: calc(100vh - 200px) !important;
+            margin-bottom: 10px;
+            border: 3px solid #007bff;
+        }
+        
+        .simulation-mode #simulation-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            margin: 0;
+            border-radius: 0;
+            padding: 15px 20px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        
+        .simulation-mode body {
+            padding-bottom: 180px;
+        }
+        
+        .simulation-mode h1 {
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
+        .simulation-mode #sim-control-compact {
+            display: block !important;
+        }
+        /* 시뮬레이션 모드 토글 버튼 */
+        
+        #simulation-mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 2000;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        #simulation-mode-toggle:hover {
+            background-color: #0056b3;
+        }
+        
+        .simulation-mode #simulation-mode-toggle {
+            background-color: #28a745;
+        }
+        
+        .simulation-mode #simulation-mode-toggle:hover {
+            background-color: #218838;
+        }
     </style>
 </head>
 
 <body>
+    <button id="simulation-mode-toggle" title="시뮬레이션 모드 전환">시뮬레이션 모드</button>
+
     <h1>
         <%= title %>
     </h1>
 
-    <input type="file" id="ifc-upload" accept=".ifc">
+    <input type="file" id="ifc-upload" accept=".ifc" class="hidden-in-simulation">
 
     <div id="viewer-container"></div>
 
-    <div id="controls">
+
+    <div id="simulation-controls" style="background-color: white; padding: 20px; border-radius: 5px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div class="hidden-in-simulation">
+            <h2>시뮬레이션 컨트롤</h2>
+            <div style="margin-bottom: 15px;">
+                <label for="sim-data-input" style="display: block; margin-bottom: 5px; font-weight: bold;">시뮬레이션 데이터 입력:</label>
+                <textarea id="sim-data-input" rows="10" style="width: 100%; padding: 10px; font-family: monospace; font-size: 12px;" placeholder='[
+  {"time": 0, "elementId": 123, "position": {"x": 0, "y": 0, "z": 0}, "color": "#ffffff"},
+  {"time": 1.0, "elementId": 123, "position": {"x": 1, "y": 0, "z": 0}, "color": "#ff0000"},
+  {"time": 2.0, "elementId": 123, "position": {"x": 2, "y": 0, "z": 0}, "color": "#00ff00"}
+]'></textarea>
+                <button id="load-sim-data" style="margin-top: 10px; padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">데이터 로드</button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
+                <button id="sim-play-btn" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">▶ 재생</button>
+                <button id="sim-pause-btn" style="padding: 10px 20px; background-color: #ffc107; color: black; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;" disabled>⏸ 일시정지</button>
+                <button id="sim-stop-btn" style="padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;" disabled>⏹ 정지</button>
+                <div style="margin-left: auto; font-weight: bold; color: #007bff; font-size: 14px;">
+                    <span id="sim-time-display">0.00s (프레임: 0/0)</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label for="sim-time-slider" style="display: block; margin-bottom: 5px; font-size: 13px;">
+                    <strong>시간:</strong>
+                </label>
+                <input type="range" id="sim-time-slider" min="0" max="0" value="0" step="1" style="width: 100%;" disabled>
+            </div>
+
+            <div>
+                <label for="sim-speed-slider" style="display: block; margin-bottom: 5px; font-size: 13px;">
+                    <strong>재생 속도:</strong> <span id="sim-speed-display">1.0x</span>
+                </label>
+                <input type="range" id="sim-speed-slider" min="0.1" max="5.0" value="1.0" step="0.1" style="width: 100%;">
+            </div>
+        </div>
+    </div>
+
+    <div id="controls" class="hidden-in-simulation" style="display: none;">
         <div class="control-group">
-            <label for="color-picker">색상 변경:</label>
+            <h3 style="margin-top: 0; color: #333;">색상 변경</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                <strong>사용법:</strong> 3D 뷰어에서 요소를 클릭하여 선택한 후, 색상을 선택하고 적용 버튼을 클릭하세요.
+            </p>
+            <p id="color-status" style="font-size: 11px; color: #dc3545; margin-bottom: 5px; font-weight: bold;">
+                ⚠ 요소를 먼저 선택해주세요
+            </p>
+            <label for="color-picker">색상:</label>
             <input type="color" id="color-picker" value="#ff0000">
             <button id="apply-color">적용</button>
             <button id="reset-color">초기화</button>
         </div>
 
         <div class="control-group">
-            <label for="pos-x">위치 변경:</label>
+            <h3 style="margin-top: 0; color: #333;">위치 변경</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                방법 1: 좌표를 입력하고 적용 버튼 클릭<br> 방법 2: 요소를 선택한 후 마우스로 드래그
+            </p>
             <label for="pos-x">X:</label>
-            <input type="number" id="pos-x" step="0.1" value="0">
+            <input type="number" id="pos-x" step="0.1" value="0" placeholder="X 좌표">
             <label for="pos-y">Y:</label>
-            <input type="number" id="pos-y" step="0.1" value="0">
+            <input type="number" id="pos-y" step="0.1" value="0" placeholder="Y 좌표">
             <label for="pos-z">Z:</label>
-            <input type="number" id="pos-z" step="0.1" value="0">
+            <input type="number" id="pos-z" step="0.1" value="0" placeholder="Z 좌표">
             <button id="apply-position">적용</button>
             <button id="reset-position">초기화</button>
         </div>
     </div>
 
-    <div id="model-info-panel" style="background-color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <div id="model-info-panel" class="hidden-in-simulation" style="background-color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <h2>모델 정보</h2>
         <div id="model-info">
             <p><strong>파일명:</strong> <span id="model-file-name">-</span></p>
@@ -284,10 +430,10 @@
         </div>
     </div>
 
-    <div id="info-panel">
+    <div id="info-panel" class="hidden-in-simulation">
         <h2>요소 정보</h2>
         <div id="selected-element-id">선택된 요소: 없음</div>
-        
+
         <h3>기본 정보</h3>
         <div id="element-basic-info">
             <p><strong>ExpressID:</strong> <span id="info-express-id">-</span></p>
@@ -306,21 +452,31 @@
         </div>
     </div>
 
-    <h2>선택된 요소 속성 (JSON):</h2>
-    <pre id="element-properties">없음</pre>
+    <h2 class="hidden-in-simulation">선택된 요소 속성 (JSON):</h2>
+    <pre id="element-properties" class="hidden-in-simulation">없음</pre>
 
-    <h2>속성 변수 편집</h2>
-    <div id="property-editor">
+    <h2 class="hidden-in-simulation">속성 변수 편집</h2>
+    <div id="property-editor" class="hidden-in-simulation">
         <div id="editable-properties"></div>
         <button id="save-properties" style="display:none;">변경사항 저장</button>
     </div>
+
+
 
     <script async src="https://unpkg.com/es-module-shims@1.8.2/dist/es-module-shims.js"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/": "https://unpkg.com/three@0.160.0/", "web-ifc": "/js/web-ifc-api.js" } }
     </script>
     <script type="module" src="/js/viewer.js"></script>
+    <script type="module" src="/js/simulation.js"></script>
     <script type="module" src="/js/ui.js"></script>
+</body>
+
+</html>
+</script>
+<script type="module" src="/js/viewer.js"></script>
+<script type="module" src="/js/simulation.js"></script>
+<script type="module" src="/js/ui.js"></script>
 </body>
 
 </html>
