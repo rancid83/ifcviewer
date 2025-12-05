@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 // 로컬에 설치된 web-ifc-three 사용
 import { IFCLoader } from '/js/IFCLoader.js';
 
@@ -19,6 +20,18 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(width, height);
 renderer.setPixelRatio(window.devicePixelRatio);
 container.appendChild(renderer.domElement);
+
+// OrbitControls 설정 (카메라 회전/줌/패닝)
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; // 부드러운 감속 효과
+controls.dampingFactor = 0.05;
+controls.enablePan = true; // 패닝 활성화 (우클릭 드래그 또는 Ctrl+좌클릭 드래그)
+controls.enableZoom = true; // 줌 활성화 (마우스 휠)
+controls.enableRotate = true; // 회전 활성화 (좌클릭 드래그)
+controls.screenSpacePanning = false; // 화면 공간 패닝 비활성화
+controls.minDistance = 1; // 최소 줌 거리
+controls.maxDistance = 500; // 최대 줌 거리
+controls.target.set(0, 0, 0); // 초기 타겟 설정
 
 // 조명 추가
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -59,10 +72,14 @@ let mouseDownPosition = new THREE.Vector2();
 function onMouseClick(event) {
     console.log('=== 클릭 이벤트 발생 ===');
     console.log('isDragging:', isDragging);
+    
+    // 요소 선택을 위해 OrbitControls 비활성화
+    controls.enabled = false;
 
     // 드래그 중이면 클릭 이벤트 무시
     if (isDragging) {
         console.log('드래그 중이므로 클릭 무시');
+        controls.enabled = true;
         return;
     }
 
@@ -80,6 +97,8 @@ function onMouseClick(event) {
     // 클릭 판단: 300ms 이내이고 15px 이내 이동이면 클릭으로 간주
     if (clickDuration > 300 || clickDistance > 15) {
         console.log('드래그로 간주하여 클릭 무시 (지속시간:', clickDuration, 'ms, 이동거리:', clickDistance.toFixed(2), 'px)');
+        // 드래그로 간주하지만 OrbitControls는 다시 활성화
+        controls.enabled = true;
         return; // 드래그로 간주
     }
 
@@ -195,6 +214,11 @@ function onMouseClick(event) {
         console.log('레이캐스터 원점:', raycaster.ray.origin);
     clearSelection();
   }
+  
+  // 클릭 처리 완료 후 OrbitControls 다시 활성화
+  setTimeout(() => {
+      controls.enabled = true;
+  }, 100);
 }
 
 // 요소 선택
@@ -461,7 +485,7 @@ function savePropertyChanges(modelID, expressID) {
         .catch((error) => {
             console.error('속성 업데이트 실패:', error);
             alert('속성 업데이트에 실패했습니다: ' + error.message);
-        });
+    });
 }
 
 // 선택 해제
@@ -557,6 +581,10 @@ function loadIFCModel(url, fileName = 'IFC 파일') {
           center.z + cameraZ * 0.7
         );
         camera.lookAt(center);
+        
+            // OrbitControls 타겟을 모델 중심으로 설정
+            controls.target.copy(center);
+            controls.update();
         
         // 로드 완료 메시지
         document.getElementById('selected-element-id').textContent = 
@@ -681,7 +709,7 @@ export function applyColor(color) {
             setTimeout(() => {
                 statusMsg.textContent = originalText;
             }, 2000);
-        }
+    }
   } catch (error) {
     console.error('색상 적용 실패:', error);
     alert('색상 적용에 실패했습니다: ' + error.message);
@@ -1040,6 +1068,9 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
   
   renderer.setSize(width, height);
+  
+  // OrbitControls도 업데이트
+  controls.handleResize();
 }
 
 // 마우스 다운 이벤트 (드래그 시작)
@@ -1048,6 +1079,11 @@ function onMouseDown(event) {
     const rect = renderer.domElement.getBoundingClientRect();
     mouseDownPosition.set(event.clientX - rect.left, event.clientY - rect.top);
     mouseDownTime = Date.now();
+    
+    // 요소가 선택되어 있고 우클릭이 아닐 때만 OrbitControls 비활성화
+    if (selectedMesh && event.button !== 2) {
+        controls.enabled = false;
+    }
 
     if (!selectedMesh) {
         console.log('마우스 다운 - 선택된 메시 없음');
@@ -1064,6 +1100,7 @@ function onMouseDown(event) {
     dragPlane.setFromNormalAndCoplanarPoint(normal, selectedMesh.position);
 
     isDragging = false; // 아직 드래그가 아닐 수 있음
+    
     console.log('=== 마우스 다운 ===');
     console.log('선택된 메시 위치:', dragStartPosition);
     console.log('마우스 위치:', dragStart.x, dragStart.y);
@@ -1178,6 +1215,9 @@ function onMouseUp(event) {
         if (posYInput) posYInput.value = selectedMesh.position.y.toFixed(2);
         if (posZInput) posZInput.value = selectedMesh.position.z.toFixed(2);
     }
+    
+    // OrbitControls 다시 활성화 (드래그 종료 시)
+    controls.enabled = true;
     isDragging = false;
 }
 
@@ -1191,6 +1231,10 @@ window.addEventListener('resize', onWindowResize);
 // 애니메이션 루프
 function animate() {
   requestAnimationFrame(animate);
+  
+  // OrbitControls 업데이트 (부드러운 감속 효과를 위해 필요)
+  controls.update();
+  
   renderer.render(scene, camera);
 }
 
