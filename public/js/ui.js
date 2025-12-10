@@ -1,9 +1,9 @@
 import { loadIFC, loadIFCFromURL, applyColor, resetColor, applyPosition, resetPosition } from '/js/viewer.js';
-import { 
-    initSimulationController, 
-    loadSimulationData, 
-    playSimulation, 
-    pauseSimulation, 
+import {
+    initSimulationController,
+    loadSimulationData,
+    playSimulation,
+    pauseSimulation,
     stopSimulation,
     toggleSimulationMode
 } from '/js/simulation.js';
@@ -11,8 +11,8 @@ import {
 // 페이지 로드 시 자동으로 IFC 파일 로드
 window.addEventListener('DOMContentLoaded', () => {
     // IFC 파일 URL
-    const ifcFileUrl = '/files/tessellated-item.ifc';
-    const ifcFileName = 'tessellated-item.ifc';
+    const ifcFileUrl = '/files/T-LAB_1126.ifc';
+    const ifcFileName = 'T-LAB_1126.ifc';
 
     // URL에서 직접 로드 (더 효율적)
     console.log('IFC 파일 자동 로드 시작:', ifcFileUrl);

@@ -1,6 +1,6 @@
-import { 
-    applyPositionToElement, 
-    applyColorToElement, 
+import {
+    applyPositionToElement,
+    applyColorToElement,
     setElementVisibility,
     applyRotationToElement,
     applyScaleToElement,
@@ -19,7 +19,7 @@ class SimulationController {
         this.lastUpdateTime = 0;
         this.currentTime = 0; // 현재 시뮬레이션 시간
         this.modelID = null;
-        
+
         // UI 요소들
         this.playButton = null;
         this.pauseButton = null;
@@ -27,7 +27,7 @@ class SimulationController {
         this.speedSlider = null;
         this.timeSlider = null;
         this.timeDisplay = null;
-        
+
         this.onFrameChangeCallbacks = []; // 프레임 변경 콜백
     }
 
@@ -36,7 +36,7 @@ class SimulationController {
         if (Array.isArray(data)) {
             this.frames = data;
             console.log(`시뮬레이션 데이터 로드 완료: ${this.frames.length}개 프레임`);
-            
+
             // ModelID 자동 감지 (0도 유효한 ModelID이므로 명시적 체크)
             if (this.frames.length > 0 && this.frames[0].modelID !== undefined && this.frames[0].modelID !== null) {
                 this.modelID = this.frames[0].modelID;
@@ -49,10 +49,10 @@ class SimulationController {
                     console.warn('ModelID를 찾을 수 없습니다. IFC 파일이 로드되면 자동으로 감지됩니다.');
                 }
             }
-            
+
             // UI 초기화
             this.initUI();
-            
+
             return true;
         } else {
             console.error('시뮬레이션 데이터 형식이 올바르지 않습니다.');
@@ -104,13 +104,13 @@ class SimulationController {
         if (!frame) return;
 
         const { elementId, position, color, rotation, scale, visible, modelID } = frame;
-        
+
         // ModelID 결정: 프레임의 modelID > 컨트롤러의 modelID > 현재 로드된 모델
         // ModelID는 0일 수 있으므로 null/undefined 체크만 수행
         let targetModelID = (modelID !== undefined && modelID !== null) ? modelID : this.modelID;
-        
+
         console.log('프레임 적용 시작 - 프레임의 modelID:', modelID, '컨트롤러의 this.modelID:', this.modelID, 'targetModelID:', targetModelID);
-        
+
         // ModelID가 없으면 현재 로드된 모델에서 가져오기 (0도 유효한 ModelID)
         if (targetModelID === null || targetModelID === undefined) {
             console.log('ModelID가 없어서 현재 모델에서 찾는 중...');
@@ -127,7 +127,7 @@ class SimulationController {
             console.warn('ModelID를 찾을 수 없습니다. IFC 파일이 로드되었는지 확인하세요. this.modelID:', this.modelID);
             return;
         }
-        
+
         console.log('프레임 적용 - ModelID:', targetModelID, 'ExpressID:', elementId);
 
         // 위치 변경
@@ -168,11 +168,11 @@ class SimulationController {
 
         this.currentFrameIndex = frameIndex;
         const frame = this.frames[frameIndex];
-        
+
         if (frame) {
             this.currentTime = frame.time || frameIndex;
             this.applyFrame(frame);
-            
+
             // UI 업데이트
             if (this.timeSlider) {
                 this.timeSlider.value = frameIndex;
@@ -184,7 +184,7 @@ class SimulationController {
     // 재생 시작
     play() {
         if (this.isPlaying) return;
-        
+
         if (this.frames.length === 0) {
             console.warn('시뮬레이션 데이터가 없습니다.');
             return;
@@ -240,7 +240,7 @@ class SimulationController {
         if (this.playButton) this.playButton.disabled = false;
         if (this.pauseButton) this.pauseButton.disabled = false;
         if (this.stopButton) this.stopButton.disabled = true;
-        
+
         // 시뮬레이션 모드 유지 (정지해도 모드는 유지)
     }
 
@@ -413,4 +413,3 @@ export function toggleSimulationMode() {
     const controller = getSimulationController();
     controller.toggleSimulationMode();
 }
-
