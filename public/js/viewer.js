@@ -1110,10 +1110,10 @@ async function generateModelSummary(modelID, fileName) {
         try {
             const fileNameHeader = await ifcLoader.ifcManager.properties.getHeaderLine(modelID, 1);
             summary.fileInfo = {
-                fileName: fileNameHeader ? fileNameHeader.value : fileName,
-                timeStamp: fileNameHeader ? .value ? .timeStamp || '',
-                author: fileNameHeader ? .value ? .author || '',
-                organization: fileNameHeader ? .value ? .organization || '',
+                fileName: fileNameHeader && fileNameHeader.value ? fileNameHeader.value : fileName,
+                timeStamp: (fileNameHeader && fileNameHeader.value && fileNameHeader.value.timeStamp) || '',
+                author: (fileNameHeader && fileNameHeader.value && fileNameHeader.value.author) || '',
+                organization: (fileNameHeader && fileNameHeader.value && fileNameHeader.value.organization) || '',
             };
         } catch (error) {
             console.warn('파일 헤더 정보 가져오기 실패:', error);
