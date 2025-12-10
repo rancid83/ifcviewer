@@ -1418,12 +1418,18 @@ function setupViewerControls() {
         });
     }
 
-    // 왼쪽 회전
+    // 왼쪽 회전 (스피어 좌표계 사용)
     const rotateLeftBtn = document.getElementById('rotate-left-btn');
     if (rotateLeftBtn) {
         rotateLeftBtn.addEventListener('click', () => {
-            const angle = Math.PI / 12; // 15도
-            controls.rotateLeft(angle);
+            const spherical = new THREE.Spherical();
+            spherical.setFromVector3(
+                camera.position.clone().sub(controls.target)
+            );
+            spherical.theta -= Math.PI / 12; // 15도 왼쪽 회전
+            camera.position.setFromSpherical(spherical).add(controls.target);
+            camera.lookAt(controls.target);
+            controls.update();
         });
     }
 
@@ -1431,8 +1437,14 @@ function setupViewerControls() {
     const rotateRightBtn = document.getElementById('rotate-right-btn');
     if (rotateRightBtn) {
         rotateRightBtn.addEventListener('click', () => {
-            const angle = -Math.PI / 12; // -15도
-            controls.rotateLeft(angle);
+            const spherical = new THREE.Spherical();
+            spherical.setFromVector3(
+                camera.position.clone().sub(controls.target)
+            );
+            spherical.theta += Math.PI / 12; // 15도 오른쪽 회전
+            camera.position.setFromSpherical(spherical).add(controls.target);
+            camera.lookAt(controls.target);
+            controls.update();
         });
     }
 
@@ -1440,8 +1452,16 @@ function setupViewerControls() {
     const rotateUpBtn = document.getElementById('rotate-up-btn');
     if (rotateUpBtn) {
         rotateUpBtn.addEventListener('click', () => {
-            const angle = Math.PI / 12; // 15도
-            controls.rotateUp(angle);
+            const spherical = new THREE.Spherical();
+            spherical.setFromVector3(
+                camera.position.clone().sub(controls.target)
+            );
+            spherical.phi -= Math.PI / 12; // 15도 위로 회전
+            // phi의 최소값 제한 (0에 가까워지면 뒤집힘 방지)
+            spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+            camera.position.setFromSpherical(spherical).add(controls.target);
+            camera.lookAt(controls.target);
+            controls.update();
         });
     }
 
@@ -1449,8 +1469,16 @@ function setupViewerControls() {
     const rotateDownBtn = document.getElementById('rotate-down-btn');
     if (rotateDownBtn) {
         rotateDownBtn.addEventListener('click', () => {
-            const angle = -Math.PI / 12; // -15도
-            controls.rotateUp(angle);
+            const spherical = new THREE.Spherical();
+            spherical.setFromVector3(
+                camera.position.clone().sub(controls.target)
+            );
+            spherical.phi += Math.PI / 12; // 15도 아래로 회전
+            // phi의 최소값 제한 (0에 가까워지면 뒤집힘 방지)
+            spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+            camera.position.setFromSpherical(spherical).add(controls.target);
+            camera.lookAt(controls.target);
+            controls.update();
         });
     }
 
