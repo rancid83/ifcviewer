@@ -5,7 +5,7 @@ import { IFCLoader } from '/js/IFCLoader.js';
 
 // Three.js 장면 설정
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a1a);
+scene.background = new THREE.Color(0xffffff);
 
 // 카메라 설정
 const container = document.getElementById('viewer-container');
@@ -72,7 +72,7 @@ let mouseDownPosition = new THREE.Vector2();
 function onMouseClick(event) {
     console.log('=== 클릭 이벤트 발생 ===');
     console.log('isDragging:', isDragging);
-    
+
     // 요소 선택을 위해 OrbitControls 비활성화
     controls.enabled = false;
 
@@ -104,49 +104,49 @@ function onMouseClick(event) {
 
     console.log('클릭으로 인정됨');
 
-  const rect = renderer.domElement.getBoundingClientRect();
-  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     console.log('마우스 정규화 좌표:', mouse.x, mouse.y);
 
-  raycaster.setFromCamera(mouse, camera);
-  
-  // 모든 메시를 검사
-  const meshes = [];
-  scene.traverse((child) => {
-    if (child.isMesh) {
-      meshes.push(child);
-    }
-  });
+    raycaster.setFromCamera(mouse, camera);
+
+    // 모든 메시를 검사
+    const meshes = [];
+    scene.traverse((child) => {
+        if (child.isMesh) {
+            meshes.push(child);
+        }
+    });
 
     console.log('검사할 메시 개수:', meshes.length);
-  
-  const intersects = raycaster.intersectObjects(meshes, true);
+
+    const intersects = raycaster.intersectObjects(meshes, true);
 
     console.log('교차된 객체 개수:', intersects.length);
 
-  if (intersects.length > 0) {
-    const intersect = intersects[0];
-    const object = intersect.object;
+    if (intersects.length > 0) {
+        const intersect = intersects[0];
+        const object = intersect.object;
 
         console.log('클릭된 객체:', object);
         console.log('modelID:', object.modelID);
         console.log('faceIndex:', intersect.faceIndex);
-    
-    // IFC 모델인지 확인
-    if (object.modelID !== undefined) {
+
+        // IFC 모델인지 확인
+        if (object.modelID !== undefined) {
             try {
-      const modelID = object.modelID;
-      const expressID = ifcLoader.ifcManager.getExpressId(
-        object.geometry,
-        intersect.faceIndex
-      );
-      
+                const modelID = object.modelID;
+                const expressID = ifcLoader.ifcManager.getExpressId(
+                    object.geometry,
+                    intersect.faceIndex
+                );
+
                 console.log('선택된 ExpressID:', expressID);
 
                 if (expressID !== undefined && expressID !== null) {
-      selectElement(modelID, expressID, object);
+                    selectElement(modelID, expressID, object);
                 } else {
                     console.warn('ExpressID를 가져올 수 없습니다.');
                     // ExpressID가 없어도 메시 자체는 선택 가능하도록
@@ -205,20 +205,20 @@ function onMouseClick(event) {
             if (!found) {
                 console.warn('요소를 선택할 수 없습니다. IFC 모델을 찾을 수 없습니다.');
             }
-    }
-  } else {
-    // 아무것도 선택되지 않음
+        }
+    } else {
+        // 아무것도 선택되지 않음
         console.log('아무것도 선택되지 않았습니다.');
         console.log('메시 개수:', meshes.length);
         console.log('레이캐스터 방향:', raycaster.ray.direction);
         console.log('레이캐스터 원점:', raycaster.ray.origin);
-    clearSelection();
-  }
-  
-  // 클릭 처리 완료 후 OrbitControls 다시 활성화
-  setTimeout(() => {
-      controls.enabled = true;
-  }, 100);
+        clearSelection();
+    }
+
+    // 클릭 처리 완료 후 OrbitControls 다시 활성화
+    setTimeout(() => {
+        controls.enabled = true;
+    }, 100);
 }
 
 // 요소 선택
@@ -228,21 +228,21 @@ function selectElement(modelID, expressID, mesh) {
     console.log('expressID:', expressID);
     console.log('mesh:', mesh);
 
-  // 이전 선택 해제
-  clearSelection();
-  
-  selectedElement = { modelID, expressID };
-  selectedMesh = mesh;
-  
+    // 이전 선택 해제
+    clearSelection();
+
+    selectedElement = { modelID, expressID };
+    selectedMesh = mesh;
+
     console.log('selectedElement 설정 완료:', selectedElement);
     console.log('selectedMesh 설정 완료:', selectedMesh);
 
     // 원본 재질 저장 (안전하게 처리)
-  if (mesh.material) {
+    if (mesh.material) {
         if (Array.isArray(mesh.material)) {
             originalMaterial = mesh.material.map(mat => mat.clone ? mat.clone() : mat);
         } else if (mesh.material.clone && typeof mesh.material.clone === 'function') {
-    originalMaterial = mesh.material.clone();
+            originalMaterial = mesh.material.clone();
         } else {
             originalMaterial = mesh.material;
         }
@@ -323,26 +323,26 @@ function selectElement(modelID, expressID, mesh) {
     console.log('요소 선택 완료 - selectedElement:', selectedElement);
     console.log('요소 선택 완료 - selectedMesh:', selectedMesh);
     console.log('웹페이지 업데이트 완료');
-  
-  // 속성 조회
-  ifcLoader.ifcManager.getItemProperties(modelID, expressID)
-    .then((properties) => {
-      // 모든 속성 변수를 JSON으로 표시
-      const propertiesText = JSON.stringify(properties, null, 2);
-      document.getElementById('element-properties').textContent = propertiesText;
+
+    // 속성 조회
+    ifcLoader.ifcManager.getItemProperties(modelID, expressID)
+        .then((properties) => {
+            // 모든 속성 변수를 JSON으로 표시
+            const propertiesText = JSON.stringify(properties, null, 2);
+            document.getElementById('element-properties').textContent = propertiesText;
 
             // 편집 가능한 속성 UI 생성
             createPropertyEditor(properties, modelID, expressID);
-      
-      // 콘솔에도 출력하여 디버깅 가능하도록
-      console.log('선택된 요소 속성:', properties);
+
+            // 콘솔에도 출력하여 디버깅 가능하도록
+            console.log('선택된 요소 속성:', properties);
             console.log('==================');
-    })
-    .catch((error) => {
-      console.error('속성 조회 실패:', error);
-      document.getElementById('element-properties').textContent = 
-        `오류: ${error.message}`;
-    });
+        })
+        .catch((error) => {
+            console.error('속성 조회 실패:', error);
+            document.getElementById('element-properties').textContent =
+                `오류: ${error.message}`;
+        });
 }
 
 // 모델 정보를 웹페이지에 업데이트
@@ -485,16 +485,16 @@ function savePropertyChanges(modelID, expressID) {
         .catch((error) => {
             console.error('속성 업데이트 실패:', error);
             alert('속성 업데이트에 실패했습니다: ' + error.message);
-    });
+        });
 }
 
 // 선택 해제
 function clearSelection() {
-  if (selectedMesh && originalMaterial) {
+    if (selectedMesh && originalMaterial) {
         if (Array.isArray(originalMaterial)) {
             selectedMesh.material = originalMaterial.map(mat => mat.clone ? mat.clone() : mat);
         } else {
-    selectedMesh.material = originalMaterial;
+            selectedMesh.material = originalMaterial;
         }
     }
 
@@ -502,15 +502,15 @@ function clearSelection() {
     if (highlightMesh) {
         scene.remove(highlightMesh);
         highlightMesh = null;
-  }
-  
-  selectedElement = null;
-  selectedMesh = null;
-  originalMaterial = null;
+    }
+
+    selectedElement = null;
+    selectedMesh = null;
+    originalMaterial = null;
     isDragging = false;
-  
+
     document.getElementById('selected-element-id').textContent = '선택된 요소: 없음';
-  document.getElementById('element-properties').textContent = '없음';
+    document.getElementById('element-properties').textContent = '없음';
     document.getElementById('info-express-id').textContent = '-';
     document.getElementById('info-model-id').textContent = '-';
     document.getElementById('info-position').textContent = 'X: -, Y: -, Z: -';
@@ -530,16 +530,16 @@ function clearSelection() {
 
 // IFC 모델 로드 공통 함수
 function loadIFCModel(url, fileName = 'IFC 파일') {
-  // 기존 모델 제거
-  scene.children.forEach((child) => {
-    if (child.modelID !== undefined) {
-      scene.remove(child);
-      ifcLoader.ifcManager.close(child.modelID);
-    }
-  });
-  
-  clearSelection();
-  
+    // 기존 모델 제거
+    scene.children.forEach((child) => {
+        if (child.modelID !== undefined) {
+            scene.remove(child);
+            ifcLoader.ifcManager.close(child.modelID);
+        }
+    });
+
+    clearSelection();
+
     // 모델 로드 시작 상태 표시
     const statusEl = document.getElementById('model-load-status');
     if (statusEl) statusEl.textContent = '로딩 중...';
@@ -547,55 +547,60 @@ function loadIFCModel(url, fileName = 'IFC 파일') {
     ifcLoader.load(
         url,
         // onLoad 콜백
-        (ifcModel) => {
-        scene.add(ifcModel);
-        
-        const modelID = ifcModel.modelID;
+        async(ifcModel) => {
+            scene.add(ifcModel);
+
+            const modelID = ifcModel.modelID;
 
             // IFC 모델 캐시에 저장 (시뮬레이션용)
             ifcModels.set(modelID, ifcModel);
 
             console.log('IFC 파일 로드 완료:', fileName);
-        console.log('ModelID:', modelID);
-        
-        // 모델을 중앙에 배치하기 위해 바운딩 박스 계산
-        const box = new THREE.Box3().setFromObject(ifcModel);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
-        
-        console.log('모델 중심:', center);
-        console.log('모델 크기:', size);
+            console.log('ModelID:', modelID);
+
+            // 모델을 중앙에 배치하기 위해 바운딩 박스 계산
+            const box = new THREE.Box3().setFromObject(ifcModel);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+
+            console.log('모델 중심:', center);
+            console.log('모델 크기:', size);
 
             // 웹페이지에 모델 정보 표시
             updateModelInfo(fileName, modelID, center, size);
-        
-        // 카메라 위치 조정
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const fov = camera.fov * (Math.PI / 180);
-        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-        cameraZ *= 1.5; // 여유 공간 추가
-        
-        camera.position.set(
-          center.x + cameraZ * 0.7,
-          center.y + cameraZ * 0.7,
-          center.z + cameraZ * 0.7
-        );
-        camera.lookAt(center);
-        
+
+            // IFC 데이터 요약 생성 및 표시 (비동기 처리)
+            setTimeout(() => {
+                generateModelSummary(modelID, fileName);
+            }, 500);
+
+            // 카메라 위치 조정
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+            cameraZ *= 1.5; // 여유 공간 추가
+
+            camera.position.set(
+                center.x + cameraZ * 0.7,
+                center.y + cameraZ * 0.7,
+                center.z + cameraZ * 0.7
+            );
+            camera.lookAt(center);
+
             // OrbitControls 타겟을 모델 중심으로 설정
             controls.target.copy(center);
             controls.update();
-        
-        // 로드 완료 메시지
-        document.getElementById('selected-element-id').textContent = 
-          `IFC 파일 로드 완료 - 요소를 클릭하여 속성을 확인하세요`;
-            
+
+            // 로드 완료 메시지
+            document.getElementById('selected-element-id').textContent =
+                `IFC 파일 로드 완료 - 요소를 클릭하여 속성을 확인하세요`;
+
             // 시뮬레이션 컨트롤러에 ModelID 알림
             if (window.simulationController) {
                 window.simulationController.modelID = modelID;
                 console.log('시뮬레이션 컨트롤러에 ModelID 설정:', modelID);
             }
-            
+
             // 시뮬레이션 데이터 기본값 자동 생성
             generateDefaultSimulationData(modelID);
         },
@@ -613,8 +618,8 @@ function loadIFCModel(url, fileName = 'IFC 파일') {
         },
         // onError 콜백
         (error) => {
-        console.error('IFC 파일 로드 실패:', error);
-        alert('IFC 파일 로드에 실패했습니다: ' + (error.message || error));
+            console.error('IFC 파일 로드 실패:', error);
+            alert('IFC 파일 로드에 실패했습니다: ' + (error.message || error));
         }
     );
 }
@@ -640,27 +645,27 @@ export function loadIFC(file) {
 
             // Blob URL 정리 (로드 완료 후)
             setTimeout(() => {
-        URL.revokeObjectURL(url);
+                URL.revokeObjectURL(url);
             }, 1000);
-    } catch (error) {
-      console.error('IFC 파일 읽기 실패:', error);
-      alert('IFC 파일 읽기에 실패했습니다: ' + error.message);
-    }
-  };
-  
-  reader.readAsArrayBuffer(file);
+        } catch (error) {
+            console.error('IFC 파일 읽기 실패:', error);
+            alert('IFC 파일 읽기에 실패했습니다: ' + error.message);
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
 }
 
 // 색상 적용
 export function applyColor(color) {
     console.log('색상 적용 시도 - selectedElement:', selectedElement, 'selectedMesh:', selectedMesh);
 
-  if (!selectedElement || !selectedMesh) {
+    if (!selectedElement || !selectedMesh) {
         alert('먼저 요소를 선택해주세요.\n3D 뷰어에서 요소를 클릭하여 선택하세요.');
-    return;
-  }
-  
-  const { modelID, expressID } = selectedElement;
+        return;
+    }
+
+    const { modelID, expressID } = selectedElement;
 
     // ExpressID가 -1인 경우 (임시 선택) 처리
     if (expressID === -1) {
@@ -677,26 +682,26 @@ export function applyColor(color) {
             return;
         }
     }
-  
-  try {
-    // 서브셋 생성하여 색상 변경
-    ifcLoader.ifcManager.createSubset({
-      modelID,
-      ids: [expressID],
-      material: new THREE.MeshLambertMaterial({ 
-        color: color,
-        transparent: false
-      }),
-      scene,
-      removePrevious: true
-    });
-    
-    // 선택된 메시의 재질도 업데이트
-    if (selectedMesh) {
-      selectedMesh.material = new THREE.MeshLambertMaterial({ 
-        color: color 
-      });
-    }
+
+    try {
+        // 서브셋 생성하여 색상 변경
+        ifcLoader.ifcManager.createSubset({
+            modelID,
+            ids: [expressID],
+            material: new THREE.MeshLambertMaterial({
+                color: color,
+                transparent: false
+            }),
+            scene,
+            removePrevious: true
+        });
+
+        // 선택된 메시의 재질도 업데이트
+        if (selectedMesh) {
+            selectedMesh.material = new THREE.MeshLambertMaterial({
+                color: color
+            });
+        }
 
         console.log('색상 변경 완료:', color);
         console.log('ExpressID:', expressID);
@@ -709,48 +714,48 @@ export function applyColor(color) {
             setTimeout(() => {
                 statusMsg.textContent = originalText;
             }, 2000);
+        }
+    } catch (error) {
+        console.error('색상 적용 실패:', error);
+        alert('색상 적용에 실패했습니다: ' + error.message);
     }
-  } catch (error) {
-    console.error('색상 적용 실패:', error);
-    alert('색상 적용에 실패했습니다: ' + error.message);
-  }
 }
 
 // 색상 초기화
 export function resetColor() {
-  if (!selectedElement || !selectedMesh) {
-    alert('먼저 요소를 선택해주세요.');
-    return;
-  }
-  
-  const { modelID, expressID } = selectedElement;
-  
-  try {
-    // 서브셋 제거
-    ifcLoader.ifcManager.removeSubset(modelID, [expressID], scene);
-    
-    // 원본 재질 복원
-    if (originalMaterial) {
-      selectedMesh.material = originalMaterial;
+    if (!selectedElement || !selectedMesh) {
+        alert('먼저 요소를 선택해주세요.');
+        return;
     }
-  } catch (error) {
-    console.error('색상 초기화 실패:', error);
-    alert('색상 초기화에 실패했습니다: ' + error.message);
-  }
+
+    const { modelID, expressID } = selectedElement;
+
+    try {
+        // 서브셋 제거
+        ifcLoader.ifcManager.removeSubset(modelID, [expressID], scene);
+
+        // 원본 재질 복원
+        if (originalMaterial) {
+            selectedMesh.material = originalMaterial;
+        }
+    } catch (error) {
+        console.error('색상 초기화 실패:', error);
+        alert('색상 초기화에 실패했습니다: ' + error.message);
+    }
 }
 
 // 위치 적용
 export function applyPosition(x, y, z) {
     console.log('위치 적용 시도 - selectedElement:', selectedElement, 'selectedMesh:', selectedMesh);
 
-  if (!selectedElement || !selectedMesh) {
+    if (!selectedElement || !selectedMesh) {
         alert('먼저 요소를 선택해주세요.\n3D 뷰어에서 요소를 클릭하여 선택하세요.');
-    return;
-  }
-  
-  try {
-    // 선택된 메시의 위치 변경
-    selectedMesh.position.set(x, y, z);
+        return;
+    }
+
+    try {
+        // 선택된 메시의 위치 변경
+        selectedMesh.position.set(x, y, z);
 
         // 하이라이트 메시 위치도 업데이트
         if (highlightMesh) {
@@ -774,30 +779,30 @@ export function applyPosition(x, y, z) {
                 statusMsg.textContent = originalText;
             }, 2000);
         }
-  } catch (error) {
-    console.error('위치 적용 실패:', error);
-    alert('위치 적용에 실패했습니다: ' + error.message);
-  }
+    } catch (error) {
+        console.error('위치 적용 실패:', error);
+        alert('위치 적용에 실패했습니다: ' + error.message);
+    }
 }
 
 // 위치 초기화
 export function resetPosition() {
-  if (!selectedElement || !selectedMesh) {
-    alert('먼저 요소를 선택해주세요.');
-    return;
-  }
-  
-  try {
-    // 위치를 원래대로 복원
-    selectedMesh.position.set(0, 0, 0);
+    if (!selectedElement || !selectedMesh) {
+        alert('먼저 요소를 선택해주세요.');
+        return;
+    }
+
+    try {
+        // 위치를 원래대로 복원
+        selectedMesh.position.set(0, 0, 0);
         // 웹페이지 정보 업데이트
         if (selectedElement) {
             updateElementInfo(selectedElement.modelID, selectedElement.expressID, selectedMesh);
         }
-  } catch (error) {
-    console.error('위치 초기화 실패:', error);
-    alert('위치 초기화에 실패했습니다: ' + error.message);
-  }
+    } catch (error) {
+        console.error('위치 초기화 실패:', error);
+        alert('위치 초기화에 실패했습니다: ' + error.message);
+    }
 }
 
 // ==================== 시뮬레이터 데이터 연동 기능 ====================
@@ -954,7 +959,7 @@ export function getCurrentModelID() {
             }
         }
     }
-    
+
     // 씬에서 찾기
     let foundModelID = null;
     scene.traverse((child) => {
@@ -964,23 +969,23 @@ export function getCurrentModelID() {
             console.log('씬에서 ModelID 발견:', foundModelID);
         }
     });
-    
+
     if (!foundModelID) {
         console.warn('ModelID를 찾을 수 없습니다. IFC 모델이 로드되었는지 확인하세요.');
     }
-    
+
     return foundModelID;
 }
 
 // 기본 시뮬레이션 데이터 자동 생성
 function generateDefaultSimulationData(modelID) {
     // IFC 파일에서 요소 찾기 시도
-    setTimeout(async () => {
+    setTimeout(async() => {
         try {
             // 씬에서 첫 번째 요소 찾기
             let firstElementId = null;
             let firstPosition = { x: 1, y: 0, z: 0 }; // 기본값
-            
+
             const ifcModel = ifcModels.get(modelID);
             if (ifcModel) {
                 ifcModel.traverse((child) => {
@@ -1001,15 +1006,14 @@ function generateDefaultSimulationData(modelID) {
                     }
                 });
             }
-            
+
             // ExpressID를 찾지 못한 경우 기본값 사용 (tessellated-item.ifc 기준)
             if (!firstElementId) {
                 firstElementId = 1000; // tessellated-item.ifc의 ExpressID
             }
-            
+
             // 기본 시뮬레이션 데이터 생성
-            const defaultData = [
-                {
+            const defaultData = [{
                     time: 0,
                     elementId: firstElementId,
                     position: { x: firstPosition.x, y: firstPosition.y, z: firstPosition.z },
@@ -1046,7 +1050,7 @@ function generateDefaultSimulationData(modelID) {
                     color: "#ffffff"
                 }
             ];
-            
+
             // 텍스트 영역에 자동 입력
             const simDataInput = document.getElementById('sim-data-input');
             if (simDataInput) {
@@ -1059,18 +1063,162 @@ function generateDefaultSimulationData(modelID) {
     }, 1000); // 모델 로드 후 1초 대기
 }
 
+// IFC 모델 데이터 요약 생성
+async function generateModelSummary(modelID, fileName) {
+    try {
+        console.log('IFC 모델 요약 생성 시작...');
+
+        const summary = {
+            fileName: fileName,
+            modelID: modelID,
+            spatialStructure: null,
+            elementCounts: {},
+            fileInfo: {}
+        };
+
+        // 1. 공간 구조 가져오기 (Project -> Site -> Building -> Storeys)
+        try {
+            summary.spatialStructure = await ifcLoader.ifcManager.getSpatialStructure(modelID, true);
+            console.log('공간 구조:', summary.spatialStructure);
+        } catch (error) {
+            console.warn('공간 구조 가져오기 실패:', error);
+        }
+
+        // 2. 주요 요소 타입별 개수 계산
+        const elementTypes = [
+            { name: '벽 (Walls)', type: 'IFCWALLSTANDARDCASE' },
+            { name: '문 (Doors)', type: 'IFCDOORSTANDARDCASE' },
+            { name: '창문 (Windows)', type: 'IFCWINDOWSTANDARDCASE' },
+            { name: '슬래브 (Slabs)', type: 'IFCSLABSTANDARDCASE' },
+            { name: '기둥 (Columns)', type: 'IFCCOLUMNSTANDARDCASE' },
+            { name: '보 (Beams)', type: 'IFCBEAMSTANDARDCASE' },
+            { name: '개구부 (Openings)', type: 'IFCOPENINGELEMENT' },
+            { name: '공간 (Spaces)', type: 'IFCSPACE' },
+        ];
+
+        for (const elemType of elementTypes) {
+            try {
+                const items = await ifcLoader.ifcManager.byType(modelID, elemType.type);
+                summary.elementCounts[elemType.name] = items ? items.length : 0;
+            } catch (error) {
+                console.warn(`${elemType.name} 개수 가져오기 실패:`, error);
+                summary.elementCounts[elemType.name] = 0;
+            }
+        }
+
+        // 3. 파일 헤더 정보 가져오기
+        try {
+            const fileNameHeader = await ifcLoader.ifcManager.properties.getHeaderLine(modelID, 1);
+            summary.fileInfo = {
+                fileName: fileNameHeader ? fileNameHeader.value : fileName,
+                timeStamp: fileNameHeader ? .value ? .timeStamp || '',
+                author: fileNameHeader ? .value ? .author || '',
+                organization: fileNameHeader ? .value ? .organization || '',
+            };
+        } catch (error) {
+            console.warn('파일 헤더 정보 가져오기 실패:', error);
+        }
+
+        // 4. 총 요소 개수 계산
+        const totalElements = Object.values(summary.elementCounts).reduce((sum, count) => sum + count, 0);
+        summary.totalElements = totalElements;
+
+        console.log('모델 요약:', summary);
+
+        // 5. 웹페이지에 요약 표시
+        displayModelSummary(summary);
+
+    } catch (error) {
+        console.error('모델 요약 생성 실패:', error);
+    }
+}
+
+// 모델 요약을 웹페이지에 표시
+function displayModelSummary(summary) {
+    const summaryPanel = document.getElementById('model-summary-panel');
+    if (!summaryPanel) {
+        console.warn('model-summary-panel 요소를 찾을 수 없습니다.');
+        return;
+    }
+
+    let html = '<h2>📊 IFC 모델 데이터 요약</h2>';
+
+    // 파일 정보
+    html += '<div class="summary-section">';
+    html += '<h3>📁 파일 정보</h3>';
+    html += `<p><strong>파일명:</strong> ${summary.fileName}</p>`;
+    html += `<p><strong>ModelID:</strong> ${summary.modelID}</p>`;
+    if (summary.fileInfo.timeStamp) {
+        html += `<p><strong>생성 시간:</strong> ${summary.fileInfo.timeStamp}</p>`;
+    }
+    html += '</div>';
+
+    // 공간 구조
+    if (summary.spatialStructure) {
+        html += '<div class="summary-section">';
+        html += '<h3>🏢 공간 구조</h3>';
+
+        const project = summary.spatialStructure;
+        if (project) {
+            html += `<p><strong>프로젝트:</strong> ${project.Name || project.type || 'N/A'}</p>`;
+
+            if (project.children && project.children.length > 0) {
+                project.children.forEach((site, siteIdx) => {
+                    html += `<p style="margin-left: 20px;"><strong>Site ${siteIdx + 1}:</strong> ${site.Name || site.type || 'N/A'}</p>`;
+
+                    if (site.children && site.children.length > 0) {
+                        site.children.forEach((building, bldIdx) => {
+                            html += `<p style="margin-left: 40px;"><strong>Building ${bldIdx + 1}:</strong> ${building.Name || building.type || 'N/A'}</p>`;
+
+                            if (building.children && building.children.length > 0) {
+                                building.children.forEach((storey, storeyIdx) => {
+                                    html += `<p style="margin-left: 60px;">└ <strong>Storey ${storeyIdx + 1}:</strong> ${storey.Name || storey.type || 'N/A'}</p>`;
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        html += '</div>';
+    }
+
+    // 요소 개수 통계
+    html += '<div class="summary-section">';
+    html += '<h3>📈 요소 통계</h3>';
+    html += `<p><strong>총 요소 개수:</strong> <span style="color: #007bff; font-weight: bold; font-size: 1.2em;">${summary.totalElements}</span></p>`;
+    html += '<table class="summary-table">';
+    html += '<thead><tr><th>요소 유형</th><th>개수</th></tr></thead>';
+    html += '<tbody>';
+
+    Object.entries(summary.elementCounts)
+        .sort((a, b) => b[1] - a[1]) // 개수 순으로 정렬
+        .forEach(([name, count]) => {
+            if (count > 0) {
+                html += `<tr><td>${name}</td><td style="text-align: right; font-weight: bold;">${count}</td></tr>`;
+            }
+        });
+
+    html += '</tbody></table>';
+    html += '</div>';
+
+    summaryPanel.innerHTML = html;
+    summaryPanel.style.display = 'block';
+}
+
 // 윈도우 리사이즈 처리
 function onWindowResize() {
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-  
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
-  
-  renderer.setSize(width, height);
-  
-  // OrbitControls도 업데이트
-  controls.handleResize();
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(width, height);
+
+    // OrbitControls도 업데이트
+    controls.handleResize();
 }
 
 // 마우스 다운 이벤트 (드래그 시작)
@@ -1079,7 +1227,7 @@ function onMouseDown(event) {
     const rect = renderer.domElement.getBoundingClientRect();
     mouseDownPosition.set(event.clientX - rect.left, event.clientY - rect.top);
     mouseDownTime = Date.now();
-    
+
     // 요소가 선택되어 있고 우클릭이 아닐 때만 OrbitControls 비활성화
     if (selectedMesh && event.button !== 2) {
         controls.enabled = false;
@@ -1100,7 +1248,7 @@ function onMouseDown(event) {
     dragPlane.setFromNormalAndCoplanarPoint(normal, selectedMesh.position);
 
     isDragging = false; // 아직 드래그가 아닐 수 있음
-    
+
     console.log('=== 마우스 다운 ===');
     console.log('선택된 메시 위치:', dragStartPosition);
     console.log('마우스 위치:', dragStart.x, dragStart.y);
@@ -1215,7 +1363,7 @@ function onMouseUp(event) {
         if (posYInput) posYInput.value = selectedMesh.position.y.toFixed(2);
         if (posZInput) posZInput.value = selectedMesh.position.z.toFixed(2);
     }
-    
+
     // OrbitControls 다시 활성화 (드래그 종료 시)
     controls.enabled = true;
     isDragging = false;
@@ -1230,12 +1378,12 @@ window.addEventListener('resize', onWindowResize);
 
 // 애니메이션 루프
 function animate() {
-  requestAnimationFrame(animate);
-  
-  // OrbitControls 업데이트 (부드러운 감속 효과를 위해 필요)
-  controls.update();
-  
-  renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+
+    // OrbitControls 업데이트 (부드러운 감속 효과를 위해 필요)
+    controls.update();
+
+    renderer.render(scene, camera);
 }
 
 animate();

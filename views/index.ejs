@@ -46,7 +46,7 @@
             height: 600px;
             border: 2px solid #ddd;
             border-radius: 5px;
-            background-color: #1a1a1a;
+            background-color: #ffffff;
             margin-bottom: 20px;
         }
         /* 시뮬레이션 모드 스타일 */
@@ -333,6 +333,58 @@
         .simulation-mode #simulation-mode-toggle:hover {
             background-color: #218838;
         }
+        /* 모델 요약 패널 스타일 */
+        
+        #model-summary-panel {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        
+        .summary-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .summary-section:last-child {
+            border-bottom: none;
+        }
+        
+        .summary-section h3 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+        
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .summary-table thead {
+            background-color: #f8f9fa;
+        }
+        
+        .summary-table th,
+        .summary-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .summary-table th {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .summary-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
     </style>
 </head>
 
@@ -430,6 +482,10 @@
         </div>
     </div>
 
+    <div id="model-summary-panel" class="hidden-in-simulation">
+        <!-- 요약 정보가 여기에 동적으로 표시됩니다 -->
+    </div>
+
     <div id="info-panel" class="hidden-in-simulation">
         <h2>요소 정보</h2>
         <div id="selected-element-id">선택된 요소: 없음</div>
@@ -470,13 +526,6 @@
     <script type="module" src="/js/viewer.js"></script>
     <script type="module" src="/js/simulation.js"></script>
     <script type="module" src="/js/ui.js"></script>
-</body>
-
-</html>
-</script>
-<script type="module" src="/js/viewer.js"></script>
-<script type="module" src="/js/simulation.js"></script>
-<script type="module" src="/js/ui.js"></script>
 </body>
 
 </html>
