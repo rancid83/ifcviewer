@@ -1387,3 +1387,110 @@ function animate() {
 }
 
 animate();
+
+// 뷰어 컨트롤 버튼 이벤트 핸들러
+function setupViewerControls() {
+    // 확대
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', () => {
+            const distance = camera.position.distanceTo(controls.target);
+            const newDistance = distance * 0.8; // 20% 확대
+            const direction = new THREE.Vector3()
+                .subVectors(camera.position, controls.target)
+                .normalize();
+            camera.position.copy(controls.target).add(direction.multiplyScalar(newDistance));
+            controls.update();
+        });
+    }
+
+    // 축소
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', () => {
+            const distance = camera.position.distanceTo(controls.target);
+            const newDistance = distance * 1.25; // 25% 축소
+            const direction = new THREE.Vector3()
+                .subVectors(camera.position, controls.target)
+                .normalize();
+            camera.position.copy(controls.target).add(direction.multiplyScalar(newDistance));
+            controls.update();
+        });
+    }
+
+    // 왼쪽 회전
+    const rotateLeftBtn = document.getElementById('rotate-left-btn');
+    if (rotateLeftBtn) {
+        rotateLeftBtn.addEventListener('click', () => {
+            const angle = Math.PI / 12; // 15도
+            controls.rotateLeft(angle);
+        });
+    }
+
+    // 오른쪽 회전
+    const rotateRightBtn = document.getElementById('rotate-right-btn');
+    if (rotateRightBtn) {
+        rotateRightBtn.addEventListener('click', () => {
+            const angle = -Math.PI / 12; // -15도
+            controls.rotateLeft(angle);
+        });
+    }
+
+    // 위로 회전
+    const rotateUpBtn = document.getElementById('rotate-up-btn');
+    if (rotateUpBtn) {
+        rotateUpBtn.addEventListener('click', () => {
+            const angle = Math.PI / 12; // 15도
+            controls.rotateUp(angle);
+        });
+    }
+
+    // 아래로 회전
+    const rotateDownBtn = document.getElementById('rotate-down-btn');
+    if (rotateDownBtn) {
+        rotateDownBtn.addEventListener('click', () => {
+            const angle = -Math.PI / 12; // -15도
+            controls.rotateUp(angle);
+        });
+    }
+
+    // 뷰 리셋
+    const resetViewBtn = document.getElementById('reset-view-btn');
+    if (resetViewBtn) {
+        resetViewBtn.addEventListener('click', () => {
+            // 모델이 로드되어 있으면 모델 중심으로, 없으면 기본 위치로
+            const ifcModel = scene.children.find(child => child.modelID !== undefined);
+
+            if (ifcModel) {
+                const box = new THREE.Box3().setFromObject(ifcModel);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                cameraZ *= 1.5;
+
+                camera.position.set(
+                    center.x + cameraZ * 0.7,
+                    center.y + cameraZ * 0.7,
+                    center.z + cameraZ * 0.7
+                );
+                controls.target.copy(center);
+            } else {
+                // 기본 위치
+                camera.position.set(10, 10, 10);
+                controls.target.set(0, 0, 0);
+            }
+
+            controls.update();
+        });
+    }
+}
+
+// 페이지 로드 시 컨트롤 설정
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupViewerControls);
+} else {
+    setupViewerControls();
+}

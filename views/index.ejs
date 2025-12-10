@@ -48,6 +48,8 @@
             border-radius: 5px;
             background-color: #ffffff;
             margin-bottom: 20px;
+            position: relative;
+            /* 버튼 위치 기준 */
         }
         /* 시뮬레이션 모드 스타일 */
         
@@ -385,6 +387,76 @@
         .summary-table tbody tr:hover {
             background-color: #f8f9fa;
         }
+        /* 뷰어 컨트롤 버튼 스타일 */
+        
+        .viewer-control-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            color: #333;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            padding: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .viewer-control-btn:hover {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+            transform: scale(1.05);
+        }
+        
+        .viewer-control-btn:active {
+            transform: scale(0.95);
+            background-color: #0056b3;
+        }
+        
+        .viewer-control-btn-reset {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #dc3545;
+            border-radius: 4px;
+            background-color: white;
+            color: #dc3545;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            padding: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .viewer-control-btn-reset:hover {
+            background-color: #dc3545;
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        .viewer-control-btn-reset:active {
+            transform: scale(0.95);
+            background-color: #c82333;
+        }
+        
+        #viewer-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+        }
     </style>
 </head>
 
@@ -397,7 +469,29 @@
 
     <input type="file" id="ifc-upload" accept=".ifc" class="hidden-in-simulation">
 
-    <div id="viewer-container"></div>
+    <div id="viewer-container">
+        <!-- 뷰어 컨트롤 버튼 (오른쪽 하단) -->
+        <div id="viewer-controls">
+            <!-- 확대/축소 -->
+            <div style="display: flex; flex-direction: column; gap: 4px; background-color: rgba(255, 255, 255, 0.9); border-radius: 6px; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                <button id="zoom-in-btn" class="viewer-control-btn" title="확대">+</button>
+                <button id="zoom-out-btn" class="viewer-control-btn" title="축소">−</button>
+            </div>
+
+            <!-- 회전 -->
+            <div style="display: flex; flex-direction: column; gap: 4px; background-color: rgba(255, 255, 255, 0.9); border-radius: 6px; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                <button id="rotate-up-btn" class="viewer-control-btn" title="위로 회전">↑</button>
+                <div style="display: flex; gap: 4px;">
+                    <button id="rotate-left-btn" class="viewer-control-btn" title="왼쪽 회전">←</button>
+                    <button id="rotate-right-btn" class="viewer-control-btn" title="오른쪽 회전">→</button>
+                </div>
+                <button id="rotate-down-btn" class="viewer-control-btn" title="아래로 회전">↓</button>
+            </div>
+
+            <!-- 리셋 -->
+            <button id="reset-view-btn" class="viewer-control-btn-reset" title="뷰 리셋">⟲</button>
+        </div>
+    </div>
 
 
     <div id="simulation-controls" style="background-color: white; padding: 20px; border-radius: 5px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
