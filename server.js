@@ -22,6 +22,13 @@ app.get('/', (req, res) => {
   });
 });
 
+// 색상 변경 뷰어 라우트
+app.get('/color-viewer', (req, res) => {
+  res.render('color-viewer', {
+    title: 'IFC 색상 변경 뷰어'
+  });
+});
+
 // 서버 시작
 app.listen(PORT, () => {
   console.log(`서버가 http://localhost:${PORT} 에서 실행 중입니다.`);

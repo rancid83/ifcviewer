@@ -457,6 +457,100 @@
             gap: 8px;
             z-index: 1000;
         }
+        /* 요소 목록 스타일 */
+        
+        .element-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        
+        .element-item:hover {
+            background-color: #e9ecef;
+        }
+        
+        .element-item.selected {
+            background-color: #d4edda;
+            border-color: #28a745;
+        }
+        
+        .element-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .element-info strong {
+            display: block;
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .element-info span {
+            display: block;
+            color: #666;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        
+        .element-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 15px;
+        }
+        
+        .element-color-picker {
+            width: 50px;
+            height: 35px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .element-apply-btn {
+            padding: 6px 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .element-apply-btn:hover {
+            background-color: #218838;
+        }
+        
+        .element-reset-btn {
+            padding: 6px 12px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .element-reset-btn:hover {
+            background-color: #5a6268;
+        }
+        
+        .elements-stats {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e7f3ff;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #004085;
+        }
     </style>
 </head>
 
@@ -509,6 +603,12 @@
         </div>
 
         <div style="margin-bottom: 15px;">
+            <button id="auto-color-apply-btn" style="padding: 10px 20px; background-color: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 10px;">
+                🎨 자동 색상 적용 (1898, 1926)
+            </button>
+        </div>
+
+        <div style="margin-bottom: 15px;">
             <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
                 <button id="sim-play-btn" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;">▶ 재생</button>
                 <button id="sim-pause-btn" style="padding: 10px 20px; background-color: #ffc107; color: black; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold;" disabled>⏸ 일시정지</button>
@@ -543,8 +643,21 @@
             <p id="color-status" style="font-size: 11px; color: #dc3545; margin-bottom: 5px; font-weight: bold;">
                 ⚠ 요소를 먼저 선택해주세요
             </p>
+            <p id="color-mode-status" style="font-size: 11px; color: #666; margin-bottom: 10px;">
+                색상 변경 모드 비활성화
+            </p>
+            <div style="margin-bottom: 10px;">
+                <button id="toggle-color-mode" style="padding: 8px 16px; background-color: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 14px;">
+                    색상 변경 모드: OFF
+                </button>
+            </div>
             <label for="color-picker">색상:</label>
             <input type="color" id="color-picker" value="#ff0000">
+            <div style="margin-top: 10px; margin-bottom: 10px;">
+                <label for="opacity-slider">투명도:</label>
+                <input type="range" id="opacity-slider" min="0" max="100" value="100" step="1" style="width: 200px; margin-left: 10px; vertical-align: middle;">
+                <span id="opacity-value" style="margin-left: 10px; font-weight: bold; min-width: 50px; display: inline-block;">100%</span>
+            </div>
             <button id="apply-color">적용</button>
             <button id="reset-color">초기화</button>
         </div>
@@ -563,6 +676,19 @@
             <button id="apply-position">적용</button>
             <button id="reset-position">초기화</button>
         </div>
+
+        <div class="control-group">
+            <h3 style="margin-top: 0; color: #333;">요소 삭제</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                <strong>주의:</strong> 삭제된 요소는 숨겨지며, 복원할 수 있습니다.
+            </p>
+            <button id="delete-element" style="background-color: #dc3545; color: white; padding: 8px 16px; border: none; border-radius: 3px; cursor: pointer; font-size: 14px;">
+                선택 요소 삭제
+            </button>
+            <button id="restore-deleted" style="background-color: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 3px; cursor: pointer; font-size: 14px; margin-left: 10px;">
+                모든 삭제 요소 복원
+            </button>
+        </div>
     </div>
 
     <div id="model-info-panel" class="hidden-in-simulation" style="background-color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -578,6 +704,51 @@
 
     <div id="model-summary-panel" class="hidden-in-simulation">
         <!-- 요약 정보가 여기에 동적으로 표시됩니다 -->
+    </div>
+
+    <!-- 모든 요소 색상 변경 패널 -->
+    <div id="all-elements-panel" class="hidden-in-simulation" style="background-color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none;">
+        <h2>🎨 모든 요소 색상 변경</h2>
+        <div style="margin-bottom: 15px;">
+            <button id="load-all-elements-btn" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                요소 목록 로드
+            </button>
+            <button id="reset-all-colors-btn" style="padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 10px;">
+                모든 색상 초기화
+            </button>
+            <span id="elements-loading-status" style="margin-left: 15px; color: #666;"></span>
+        </div>
+
+        <!-- 필터 및 검색 -->
+        <div style="margin-bottom: 15px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                <div>
+                    <label for="element-type-filter" style="display: block; margin-bottom: 5px; font-weight: bold;">요소 타입 필터:</label>
+                    <select id="element-type-filter" style="padding: 8px; border: 1px solid #ddd; border-radius: 3px; min-width: 200px;">
+                        <option value="all">모든 타입</option>
+                        <option value="IFCWALLSTANDARDCASE">벽 (Walls)</option>
+                        <option value="IFCDOORSTANDARDCASE">문 (Doors)</option>
+                        <option value="IFCWINDOWSTANDARDCASE">창문 (Windows)</option>
+                        <option value="IFCSLABSTANDARDCASE">슬래브 (Slabs)</option>
+                        <option value="IFCCOLUMNSTANDARDCASE">기둥 (Columns)</option>
+                        <option value="IFCBEAMSTANDARDCASE">보 (Beams)</option>
+                        <option value="IFCOPENINGELEMENT">개구부 (Openings)</option>
+                        <option value="IFCSPACE">공간 (Spaces)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="element-search" style="display: block; margin-bottom: 5px; font-weight: bold;">검색 (ExpressID):</label>
+                    <input type="text" id="element-search" placeholder="ExpressID 입력..." style="padding: 8px; border: 1px solid #ddd; border-radius: 3px; min-width: 200px;">
+                </div>
+            </div>
+        </div>
+
+        <!-- 요소 목록 -->
+        <div id="elements-list-container" style="max-height: 600px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px;">
+            <p style="text-align: center; color: #999; padding: 20px;">
+                '요소 목록 로드' 버튼을 클릭하여 모든 요소를 불러오세요.
+            </p>
+        </div>
     </div>
 
     <div id="info-panel" class="hidden-in-simulation">

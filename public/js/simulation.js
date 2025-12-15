@@ -103,7 +103,7 @@ class SimulationController {
     applyFrame(frame) {
         if (!frame) return;
 
-        const { elementId, position, color, rotation, scale, visible, modelID } = frame;
+        const { elementId, position, color, rotation, scale, visible, modelID, opacity } = frame;
 
         // ModelID 결정: 프레임의 modelID > 컨트롤러의 modelID > 현재 로드된 모델
         // ModelID는 0일 수 있으므로 null/undefined 체크만 수행
@@ -135,9 +135,10 @@ class SimulationController {
             applyPositionToElement(targetModelID, elementId, position.x, position.y, position.z);
         }
 
-        // 색상 변경
+        // 색상 변경 (투명도 지원)
         if (color) {
-            applyColorToElement(targetModelID, elementId, color);
+            const opacityValue = opacity !== undefined ? opacity : 1.0;
+            applyColorToElement(targetModelID, elementId, color, opacityValue);
         }
 
         // 회전 변경
@@ -185,6 +186,9 @@ class SimulationController {
     play() {
         if (this.isPlaying) return;
 
+        // 재생 시작 시 자동 색상 적용 (ExpressID 1898, 1926)
+        this.applyAutoColorOnPlay();
+
         if (this.frames.length === 0) {
             console.warn('시뮬레이션 데이터가 없습니다.');
             return;
@@ -204,6 +208,31 @@ class SimulationController {
 
         // 애니메이션 루프 시작
         this.animate();
+    }
+
+    // 재생 시 자동 색상 적용
+    applyAutoColorOnPlay() {
+        const targetModelID = this.modelID !== null && this.modelID !== undefined ? this.modelID : getCurrentModelID();
+
+        if (targetModelID === null || targetModelID === undefined) {
+            console.warn('ModelID를 찾을 수 없어 자동 색상 적용을 건너뜁니다.');
+            return;
+        }
+
+        // ExpressID 1898과 1926에 색상 적용
+        const targetElements = [
+            { expressID: 1898, color: '#a28181', opacity: 0.26 },
+            { expressID: 1926, color: '#a28181', opacity: 0.26 }
+        ];
+
+        targetElements.forEach(({ expressID, color, opacity }) => {
+            try {
+                applyColorToElement(targetModelID, expressID, color, opacity);
+                console.log(`재생 시 자동 색상 적용 - 요소 ${expressID}: ${color} (투명도: ${opacity * 100}%)`);
+            } catch (error) {
+                console.error(`요소 ${expressID} 색상 적용 실패:`, error);
+            }
+        });
     }
 
     // 일시정지

@@ -56,6 +56,9 @@ let selectedMesh = null;
 let originalMaterial = null;
 let highlightMesh = null; // 하이라이트용 메시
 
+// 색상 변경 모드
+let colorChangeMode = false;
+
 // IFC 모델 캐시 (ExpressID로 빠르게 찾기 위해)
 let ifcModels = new Map(); // modelID -> IFCModel
 
@@ -324,12 +327,32 @@ function selectElement(modelID, expressID, mesh) {
     console.log('요소 선택 완료 - selectedMesh:', selectedMesh);
     console.log('웹페이지 업데이트 완료');
 
+    // 색상 변경 모드일 때 자동으로 색상 적용
+    if (colorChangeMode && expressID !== -1 && expressID !== null && expressID !== undefined) {
+        const colorPicker = document.getElementById('color-picker');
+        const opacitySlider = document.getElementById('opacity-slider');
+
+        if (colorPicker) {
+            const color = colorPicker.value;
+            const opacity = opacitySlider ? parseFloat(opacitySlider.value) / 100 : 1.0;
+
+            // 약간의 지연 후 색상 적용 (선택 피드백 후)
+            setTimeout(() => {
+                applyColorToElement(modelID, expressID, color, opacity);
+                console.log(`색상 변경 모드: 요소 ${expressID}에 색상 ${color} 적용 (투명도: ${opacity})`);
+            }, 100);
+        }
+    }
+
     // 속성 조회
     ifcLoader.ifcManager.getItemProperties(modelID, expressID)
         .then((properties) => {
             // 모든 속성 변수를 JSON으로 표시
             const propertiesText = JSON.stringify(properties, null, 2);
-            document.getElementById('element-properties').textContent = propertiesText;
+            const propsEl = document.getElementById('element-properties');
+            if (propsEl) {
+                propsEl.textContent = propertiesText;
+            }
 
             // 편집 가능한 속성 UI 생성
             createPropertyEditor(properties, modelID, expressID);
@@ -340,8 +363,10 @@ function selectElement(modelID, expressID, mesh) {
         })
         .catch((error) => {
             console.error('속성 조회 실패:', error);
-            document.getElementById('element-properties').textContent =
-                `오류: ${error.message}`;
+            const propsEl = document.getElementById('element-properties');
+            if (propsEl) {
+                propsEl.textContent = `오류: ${error.message}`;
+            }
         });
 }
 
@@ -657,7 +682,7 @@ export function loadIFC(file) {
 }
 
 // 색상 적용
-export function applyColor(color) {
+export function applyColor(color, opacity = 1.0) {
     console.log('색상 적용 시도 - selectedElement:', selectedElement, 'selectedMesh:', selectedMesh);
 
     if (!selectedElement || !selectedMesh) {
@@ -671,10 +696,13 @@ export function applyColor(color) {
     if (expressID === -1) {
         console.warn('ExpressID가 없어 메시에 직접 색상 적용');
         try {
+            const isTransparent = opacity < 1.0;
             selectedMesh.material = new THREE.MeshLambertMaterial({
-                color: color
+                color: color,
+                transparent: isTransparent,
+                opacity: opacity
             });
-            console.log('색상 변경 완료 (직접 적용):', color);
+            console.log('색상 변경 완료 (직접 적용):', color, '투명도:', opacity);
             return;
         } catch (error) {
             console.error('색상 적용 실패:', error);
@@ -684,13 +712,17 @@ export function applyColor(color) {
     }
 
     try {
+        // 투명도가 1.0 미만이면 transparent 활성화
+        const isTransparent = opacity < 1.0;
+
         // 서브셋 생성하여 색상 변경
         ifcLoader.ifcManager.createSubset({
             modelID,
             ids: [expressID],
             material: new THREE.MeshLambertMaterial({
                 color: color,
-                transparent: false
+                transparent: isTransparent,
+                opacity: opacity
             }),
             scene,
             removePrevious: true
@@ -699,18 +731,20 @@ export function applyColor(color) {
         // 선택된 메시의 재질도 업데이트
         if (selectedMesh) {
             selectedMesh.material = new THREE.MeshLambertMaterial({
-                color: color
+                color: color,
+                transparent: isTransparent,
+                opacity: opacity
             });
         }
 
-        console.log('색상 변경 완료:', color);
+        console.log('색상 변경 완료:', color, '투명도:', opacity);
         console.log('ExpressID:', expressID);
 
         // 성공 메시지 표시
         const statusMsg = document.getElementById('selected-element-id');
         if (statusMsg) {
             const originalText = statusMsg.textContent;
-            statusMsg.textContent = `색상 변경 완료: ${color}`;
+            statusMsg.textContent = `색상 변경 완료: ${color} (투명도: ${(opacity * 100).toFixed(0)}%)`;
             setTimeout(() => {
                 statusMsg.textContent = originalText;
             }, 2000);
@@ -879,25 +913,52 @@ export function applyPositionToElement(modelID, expressID, x, y, z) {
 }
 
 // ExpressID로 직접 색상 적용 (시뮬레이션용)
-export function applyColorToElement(modelID, expressID, color) {
+export function applyColorToElement(modelID, expressID, color, opacity = 1.0) {
     try {
+        const isTransparent = opacity < 1.0;
+
         ifcLoader.ifcManager.createSubset({
             modelID,
             ids: [expressID],
             material: new THREE.MeshLambertMaterial({
                 color: color,
-                transparent: false
+                transparent: isTransparent,
+                opacity: opacity
             }),
             scene,
             removePrevious: true
         });
-        console.log(`색상 적용 완료 - ExpressID: ${expressID}, 색상: ${color}`);
+        console.log(`색상 적용 완료 - ExpressID: ${expressID}, 색상: ${color}, 투명도: ${opacity}`);
         return true;
     } catch (error) {
         console.error('색상 적용 실패:', error);
         return false;
     }
 }
+
+// 색상 변경 모드 토글
+export function toggleColorChangeMode() {
+    colorChangeMode = !colorChangeMode;
+    const statusEl = document.getElementById('color-mode-status');
+    if (statusEl) {
+        if (colorChangeMode) {
+            statusEl.textContent = '✓ 색상 변경 모드 활성화 - 요소를 클릭하면 색상이 변경됩니다';
+            statusEl.style.color = '#28a745';
+        } else {
+            statusEl.textContent = '색상 변경 모드 비활성화';
+            statusEl.style.color = '#666';
+        }
+    }
+    return colorChangeMode;
+}
+
+// 색상 변경 모드 상태 가져오기
+export function getColorChangeMode() {
+    return colorChangeMode;
+}
+
+// 삭제된 요소 추적 (복원을 위해)
+let deletedElements = new Map(); // modelID -> Set of expressIDs
 
 // ExpressID로 요소 가시성 제어 (시뮬레이션용)
 export function setElementVisibility(modelID, expressID, visible) {
@@ -913,6 +974,120 @@ export function setElementVisibility(modelID, expressID, visible) {
         console.error('가시성 변경 실패:', error);
         return false;
     }
+}
+
+// 선택된 요소 삭제
+export function deleteSelectedElement() {
+    if (!selectedElement || !selectedMesh) {
+        alert('먼저 요소를 선택해주세요.');
+        return false;
+    }
+
+    const { modelID, expressID } = selectedElement;
+
+    try {
+        // 가시성을 false로 설정하여 숨기기
+        const success = setElementVisibility(modelID, expressID, false);
+
+        if (success) {
+            // 삭제된 요소 목록에 추가
+            if (!deletedElements.has(modelID)) {
+                deletedElements.set(modelID, new Set());
+            }
+            deletedElements.get(modelID).add(expressID);
+
+            console.log(`요소 삭제 완료 - ExpressID: ${expressID}`);
+
+            // 선택 해제
+            clearSelection();
+
+            // 상태 업데이트
+            const statusMsg = document.getElementById('selected-element-id');
+            if (statusMsg) {
+                statusMsg.textContent = `요소 ${expressID} 삭제 완료`;
+                statusMsg.style.color = '#dc3545';
+            }
+
+            return true;
+        } else {
+            alert('요소 삭제에 실패했습니다.');
+            return false;
+        }
+    } catch (error) {
+        console.error('요소 삭제 실패:', error);
+        alert('요소 삭제에 실패했습니다: ' + error.message);
+        return false;
+    }
+}
+
+// ExpressID로 직접 요소 삭제
+export function deleteElement(modelID, expressID) {
+    try {
+        const success = setElementVisibility(modelID, expressID, false);
+
+        if (success) {
+            // 삭제된 요소 목록에 추가
+            if (!deletedElements.has(modelID)) {
+                deletedElements.set(modelID, new Set());
+            }
+            deletedElements.get(modelID).add(expressID);
+
+            console.log(`요소 삭제 완료 - ExpressID: ${expressID}`);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('요소 삭제 실패:', error);
+        return false;
+    }
+}
+
+// 삭제된 요소 복원
+export function restoreDeletedElement(modelID, expressID) {
+    try {
+        const success = setElementVisibility(modelID, expressID, true);
+
+        if (success) {
+            // 삭제된 요소 목록에서 제거
+            if (deletedElements.has(modelID)) {
+                deletedElements.get(modelID).delete(expressID);
+            }
+
+            console.log(`요소 복원 완료 - ExpressID: ${expressID}`);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('요소 복원 실패:', error);
+        return false;
+    }
+}
+
+// 모든 삭제된 요소 복원
+export function restoreAllDeletedElements(modelID) {
+    if (!deletedElements.has(modelID)) {
+        return 0;
+    }
+
+    const deletedSet = deletedElements.get(modelID);
+    let restoredCount = 0;
+
+    deletedSet.forEach(expressID => {
+        if (restoreDeletedElement(modelID, expressID)) {
+            restoredCount++;
+        }
+    });
+
+    console.log(`총 ${restoredCount}개 요소 복원 완료`);
+    return restoredCount;
+}
+
+// 삭제된 요소 목록 가져오기
+export function getDeletedElements(modelID) {
+    if (!deletedElements.has(modelID)) {
+        return [];
+    }
+    return Array.from(deletedElements.get(modelID));
 }
 
 // ExpressID로 회전 적용 (시뮬레이션용)
@@ -975,6 +1150,260 @@ export function getCurrentModelID() {
     }
 
     return foundModelID;
+}
+
+// 모든 요소 목록을 가져와서 표시
+export async function loadAllElementsList(modelID) {
+    const container = document.getElementById('elements-list-container');
+    const statusEl = document.getElementById('elements-loading-status');
+
+    if (!container || !modelID) {
+        console.error('요소 목록 컨테이너를 찾을 수 없거나 ModelID가 없습니다.');
+        return;
+    }
+
+    container.innerHTML = '<p style="text-align: center; padding: 20px;">로딩 중...</p>';
+    if (statusEl) statusEl.textContent = '로딩 중...';
+
+    try {
+        // 주요 요소 타입들
+        const elementTypes = [
+            { name: '벽', type: 'IFCWALLSTANDARDCASE' },
+            { name: '문', type: 'IFCDOORSTANDARDCASE' },
+            { name: '창문', type: 'IFCWINDOWSTANDARDCASE' },
+            { name: '슬래브', type: 'IFCSLABSTANDARDCASE' },
+            { name: '기둥', type: 'IFCCOLUMNSTANDARDCASE' },
+            { name: '보', type: 'IFCBEAMSTANDARDCASE' },
+            { name: '개구부', type: 'IFCOPENINGELEMENT' },
+            { name: '공간', type: 'IFCSPACE' },
+        ];
+
+        const allElements = [];
+
+        // 각 타입별로 요소 가져오기
+        for (const elemType of elementTypes) {
+            try {
+                const items = await ifcLoader.ifcManager.byType(modelID, elemType.type);
+                if (items && items.length > 0) {
+                    // ExpressID만 필요한 경우
+                    for (const expressID of items) {
+                        try {
+                            // 속성 가져오기 (이름 등)
+                            const props = await ifcLoader.ifcManager.getItemProperties(modelID, expressID);
+                            allElements.push({
+                                expressID: expressID,
+                                type: elemType.type,
+                                typeName: elemType.name,
+                                name: props.Name || props.GlobalId || `ExpressID: ${expressID}`,
+                                description: props.Description || '',
+                                objectType: props.ObjectType || ''
+                            });
+                        } catch (error) {
+                            // 속성 가져오기 실패해도 ExpressID만으로 추가
+                            allElements.push({
+                                expressID: expressID,
+                                type: elemType.type,
+                                typeName: elemType.name,
+                                name: `ExpressID: ${expressID}`,
+                                description: '',
+                                objectType: ''
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn(`${elemType.name} 가져오기 실패:`, error);
+            }
+        }
+
+        // 요소 목록 표시
+        displayElementsList(allElements, modelID);
+
+        if (statusEl) {
+            statusEl.textContent = `총 ${allElements.length}개 요소 로드 완료`;
+            statusEl.style.color = '#28a745';
+        }
+
+        // 필터 및 검색 이벤트 리스너 설정
+        setupElementFilters(allElements, modelID);
+
+    } catch (error) {
+        console.error('요소 목록 로드 실패:', error);
+        container.innerHTML = `<p style="color: #dc3545; text-align: center; padding: 20px;">오류: ${error.message}</p>`;
+        if (statusEl) {
+            statusEl.textContent = '로드 실패';
+            statusEl.style.color = '#dc3545';
+        }
+    }
+}
+
+// 요소 목록을 화면에 표시
+function displayElementsList(elements, modelID) {
+    const container = document.getElementById('elements-list-container');
+    if (!container) return;
+
+    if (elements.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">요소가 없습니다.</p>';
+        return;
+    }
+
+    // 통계 표시
+    const stats = document.createElement('div');
+    stats.className = 'elements-stats';
+    stats.innerHTML = `<strong>총 ${elements.length}개 요소</strong> | 타입별: ${getElementTypeStats(elements)}`;
+    container.innerHTML = '';
+    container.appendChild(stats);
+
+    // 요소 목록 생성
+    const listDiv = document.createElement('div');
+    listDiv.id = 'elements-list';
+
+    elements.forEach((element, index) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'element-item';
+        itemDiv.dataset.expressId = element.expressID;
+        itemDiv.dataset.type = element.type;
+
+        itemDiv.innerHTML = `
+            <div class="element-info">
+                <strong>${element.name}</strong>
+                <span>타입: ${element.typeName} (${element.type})</span>
+                <span style="color: #999; font-size: 11px;">ExpressID: ${element.expressID}</span>
+            </div>
+            <div class="element-controls">
+                <input type="color" class="element-color-picker" value="#ffffff" data-express-id="${element.expressID}">
+                <button class="element-apply-btn" data-express-id="${element.expressID}">적용</button>
+                <button class="element-reset-btn" data-express-id="${element.expressID}">초기화</button>
+            </div>
+        `;
+
+        // 색상 적용 버튼 이벤트
+        const applyBtn = itemDiv.querySelector('.element-apply-btn');
+        applyBtn.addEventListener('click', () => {
+            const colorPicker = itemDiv.querySelector('.element-color-picker');
+            const color = colorPicker.value;
+            // 기본 투명도 1.0 (불투명) 사용
+            applyColorToElement(modelID, element.expressID, color, 1.0);
+
+            // 피드백
+            const originalText = applyBtn.textContent;
+            applyBtn.textContent = '✓ 완료';
+            applyBtn.style.backgroundColor = '#28a745';
+            setTimeout(() => {
+                applyBtn.textContent = originalText;
+                applyBtn.style.backgroundColor = '#28a745';
+            }, 1000);
+        });
+
+        // 색상 초기화 버튼 이벤트
+        const resetBtn = itemDiv.querySelector('.element-reset-btn');
+        resetBtn.addEventListener('click', () => {
+            resetElementColor(modelID, element.expressID);
+
+            // 피드백
+            const originalText = resetBtn.textContent;
+            resetBtn.textContent = '✓ 초기화';
+            setTimeout(() => {
+                resetBtn.textContent = originalText;
+            }, 1000);
+        });
+
+        // 클릭 시 선택 효과
+        itemDiv.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                // 3D 뷰어에서 해당 요소로 포커스 (선택적)
+                document.querySelectorAll('.element-item').forEach(el => el.classList.remove('selected'));
+                itemDiv.classList.add('selected');
+            }
+        });
+
+        listDiv.appendChild(itemDiv);
+    });
+
+    container.appendChild(listDiv);
+}
+
+// 타입별 통계 문자열 생성
+function getElementTypeStats(elements) {
+    const stats = {};
+    elements.forEach(el => {
+        stats[el.typeName] = (stats[el.typeName] || 0) + 1;
+    });
+    return Object.entries(stats).map(([name, count]) => `${name}: ${count}`).join(', ');
+}
+
+// 필터 및 검색 설정
+let allElementsCache = []; // 필터링을 위한 캐시
+function setupElementFilters(elements, modelID) {
+    allElementsCache = elements; // 캐시에 저장
+
+    const typeFilter = document.getElementById('element-type-filter');
+    const searchInput = document.getElementById('element-search');
+
+    const filterElements = () => {
+        const selectedType = typeFilter.value;
+        const searchTerm = searchInput.value.trim().toLowerCase();
+
+        const filtered = allElementsCache.filter(el => {
+            const typeMatch = selectedType === 'all' || el.type === selectedType;
+            const searchMatch = !searchTerm ||
+                el.expressID.toString().includes(searchTerm) ||
+                el.name.toLowerCase().includes(searchTerm);
+            return typeMatch && searchMatch;
+        });
+
+        displayElementsList(filtered, modelID);
+    };
+
+    if (typeFilter) {
+        typeFilter.addEventListener('change', filterElements);
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', filterElements);
+    }
+}
+
+// 요소 색상 초기화
+function resetElementColor(modelID, expressID) {
+    try {
+        ifcLoader.ifcManager.removeSubset(modelID, [expressID], scene);
+        console.log(`요소 ${expressID} 색상 초기화 완료`);
+    } catch (error) {
+        console.error('색상 초기화 실패:', error);
+    }
+}
+
+// 모든 색상 초기화
+export function resetAllElementColors(modelID) {
+    try {
+        // 모든 서브셋 제거를 위해 씬을 순회하면서 서브셋 찾기
+        const subsets = [];
+        scene.traverse((child) => {
+            if (child.userData && child.userData.subset) {
+                subsets.push(child);
+            }
+        });
+
+        // 각 서브셋 제거
+        subsets.forEach(subset => {
+            scene.remove(subset);
+            if (subset.geometry) subset.geometry.dispose();
+            if (subset.material) {
+                if (Array.isArray(subset.material)) {
+                    subset.material.forEach(mat => mat.dispose());
+                } else {
+                    subset.material.dispose();
+                }
+            }
+        });
+
+        console.log(`모든 색상 초기화 완료 (${subsets.length}개 서브셋 제거)`);
+        return true;
+    } catch (error) {
+        console.error('모든 색상 초기화 실패:', error);
+        return false;
+    }
 }
 
 // 기본 시뮬레이션 데이터 자동 생성

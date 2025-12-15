@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IFC 색상 변경 뷰어</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            background-color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 1.5em;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .color-picker-wrapper label {
+            font-weight: bold;
+            color: #666;
+        }
+        
+        input[type="color"] {
+            width: 60px;
+            height: 40px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        
+        .mode-toggle {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        .mode-toggle.active {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .mode-toggle.inactive {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        #viewer-container {
+            width: 100%;
+            height: calc(100vh - 80px);
+            background-color: #1a1a1a;
+        }
+        
+        #viewer-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            font-size: 14px;
+            z-index: 1000;
+        }
+        
+        .status-bar strong {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 IFC 색상 변경 뷰어</h1>
+        <div class="controls">
+            <div class="color-picker-wrapper">
+                <label>색상:</label>
+                <input type="color" id="color-picker" value="#ff0000">
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label>투명도:</label>
+                <input type="range" id="opacity-slider" min="0" max="100" value="100" step="1" style="width: 100px;">
+                <span id="opacity-value" style="min-width: 40px; font-weight: bold;">100%</span>
+            </div>
+            <button id="color-mode-toggle" class="mode-toggle inactive">색상 변경 모드: OFF</button>
+            <button id="reset-selected-color" class="btn-secondary">선택 색상 초기화</button>
+            <button id="reset-all-colors" class="btn-danger">모든 색상 초기화</button>
+            <button id="delete-element" class="btn-danger">선택 요소 삭제</button>
+            <button id="restore-deleted" class="btn-success">삭제 요소 복원</button>
+        </div>
+    </div>
+    
+    <!-- 자동 시뮬레이션 색상 적용 섹션 -->
+    <div style="background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; margin-bottom: 10px; color: #333;">🎬 자동 시뮬레이션 색상 적용</h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="font-weight: bold;">왼쪽 벽 색상:</label>
+                <input type="color" id="left-wall-color" value="#a28181" style="width: 50px; height: 35px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="font-weight: bold;">오른쪽 벽 색상:</label>
+                <input type="color" id="right-wall-color" value="#81a2a2" style="width: 50px; height: 35px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="font-weight: bold;">투명도:</label>
+                <input type="range" id="auto-opacity-slider" min="0" max="100" value="26" step="1" style="width: 100px;">
+                <span id="auto-opacity-value" style="min-width: 40px; font-weight: bold;">26%</span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button id="auto-apply-left-right-colors" class="btn-primary" style="padding: 10px 20px;">
+                🎨 왼쪽/오른쪽 벽 자동 색상 적용
+            </button>
+            <button id="auto-apply-simulation-colors" class="btn-success" style="padding: 10px 20px;">
+                🎬 시뮬레이션 색상 적용 (1898, 1926)
+            </button>
+        </div>
+    </div>
+    
+    <!-- 색상 진하기 시뮬레이션 섹션 -->
+    <div style="background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; margin-bottom: 10px; color: #333;">🎬 색상 진하기 시뮬레이션</h3>
+        
+        <!-- 시작/끝 색상 설정 -->
+        <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="font-weight: bold;">시작 색상 (밝음):</label>
+                <input type="color" id="sim-start-color" value="#a28181" style="width: 50px; height: 35px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="font-weight: bold;">끝 색상 (어두움):</label>
+                <input type="color" id="sim-end-color" value="#5a4a4a" style="width: 50px; height: 35px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="font-weight: bold;">투명도:</label>
+                <input type="range" id="sim-opacity-slider" min="0" max="100" value="26" step="1" style="width: 100px;">
+                <span id="sim-opacity-value" style="min-width: 40px; font-weight: bold;">26%</span>
+            </div>
+        </div>
+        
+        <!-- 시뮬레이션 컨트롤 -->
+        <div style="margin-bottom: 15px;">
+            <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center; flex-wrap: wrap;">
+                <button id="sim-play-btn" style="padding: 8px 16px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">▶ 재생</button>
+                <button id="sim-pause-btn" style="padding: 8px 16px; background-color: #ffc107; color: black; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;" disabled>⏸ 일시정지</button>
+                <button id="sim-stop-btn" style="padding: 8px 16px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;" disabled>⏹ 정지</button>
+                <div style="margin-left: auto; font-weight: bold; color: #007bff;">
+                    <span id="sim-frame-display">프레임: 1/10</span>
+                </div>
+            </div>
+            
+            <!-- 프레임 슬라이더 -->
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">
+                    프레임: <span id="sim-current-frame">1</span> / 10
+                </label>
+                <input type="range" id="sim-frame-slider" min="0" max="9" value="0" step="1" style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-top: 5px;">
+                    <span>밝음 (0%)</span>
+                    <span>어두움 (100%)</span>
+                </div>
+            </div>
+            
+            <!-- 현재 프레임 정보 표시 -->
+            <div id="sim-frame-info" style="background-color: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 13px;">
+                <div style="margin-bottom: 5px;"><strong>왼쪽 벽:</strong> <span id="sim-left-color-display" style="color: #a28181; font-weight: bold;">#a28181</span></div>
+                <div style="margin-bottom: 5px;"><strong>오른쪽 벽:</strong> <span id="sim-right-color-display" style="color: #a28181; font-weight: bold;">#a28181</span></div>
+                <div><strong>진하기:</strong> <span id="sim-intensity-display" style="font-weight: bold;">0%</span></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="viewer-container"></div>
+    
+    <div class="status-bar">
+        <strong>사용법:</strong> 
+        <span id="status-text">색상 변경 모드를 활성화한 후, 3D 뷰어에서 요소를 클릭하면 색상이 변경됩니다.</span>
+    </div>
+
+    <script async src="https://unpkg.com/es-module-shims@1.8.2/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/": "https://unpkg.com/three@0.160.0/", "web-ifc": "/js/web-ifc-api.js" } }
+    </script>
+    <script type="module" src="/js/color-viewer.js"></script>
+</body>
+</html>
+
