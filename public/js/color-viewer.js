@@ -54,31 +54,31 @@ let ifcModel = null;
 
 // IFC 모델 로드
 async function loadIFCModel() {
-    const url = '/files/T-LAB_1126.ifc';
-    const fileName = 'T-LAB_1126.ifc';
-    
+    const url = '/files/T-LAB_1126_re.ifc';
+    const fileName = 'T-LAB_1126_re.ifc';
+
     updateStatus('IFC 파일 로딩 중...');
-    
+
     ifcLoader.load(
         url,
-        async (loadedModel) => {
+        async(loadedModel) => {
             scene.add(loadedModel);
             const modelID = loadedModel.modelID;
-            
+
             // 전역 변수에 저장
             currentModelID = modelID;
             ifcModel = loadedModel;
-            
+
             // 모델을 중앙에 배치
             const box = new THREE.Box3().setFromObject(loadedModel);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
-            
+
             const maxDim = Math.max(size.x, size.y, size.z);
             const fov = camera.fov * (Math.PI / 180);
             let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
             cameraZ *= 1.5;
-            
+
             camera.position.set(
                 center.x + cameraZ * 0.7,
                 center.y + cameraZ * 0.7,
@@ -87,7 +87,7 @@ async function loadIFCModel() {
             camera.lookAt(center);
             controls.target.copy(center);
             controls.update();
-            
+
             updateStatus(`IFC 파일 로드 완료: ${fileName} (ModelID: ${modelID})`);
         },
         undefined,
@@ -103,22 +103,22 @@ function onMouseClick(event) {
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
+
     raycaster.setFromCamera(mouse, camera);
-    
+
     const meshes = [];
     scene.traverse((child) => {
         if (child.isMesh) {
             meshes.push(child);
         }
     });
-    
+
     const intersects = raycaster.intersectObjects(meshes, true);
-    
+
     if (intersects.length > 0) {
         const intersect = intersects[0];
         const object = intersect.object;
-        
+
         if (object.modelID !== undefined) {
             try {
                 const modelID = object.modelID;
@@ -126,10 +126,10 @@ function onMouseClick(event) {
                     object.geometry,
                     intersect.faceIndex
                 );
-                
+
                 if (expressID !== undefined && expressID !== null) {
                     selectElement(modelID, expressID, object);
-                    
+
                     // 색상 변경 모드일 때 자동으로 색상 적용
                     if (colorChangeMode) {
                         const color = document.getElementById('color-picker').value;
@@ -170,7 +170,7 @@ function clearSelection() {
 function applyColorToElement(modelID, expressID, color, opacity = 1.0) {
     try {
         const isTransparent = opacity < 1.0;
-        
+
         ifcLoader.ifcManager.createSubset({
             modelID,
             ids: [expressID],
@@ -207,7 +207,7 @@ function resetAllColors() {
             subsets.push(child);
         }
     });
-    
+
     subsets.forEach(subset => {
         scene.remove(subset);
         if (subset.geometry) subset.geometry.dispose();
@@ -219,7 +219,7 @@ function resetAllColors() {
             }
         }
     });
-    
+
     updateStatus(`모든 색상 초기화 완료 (${subsets.length}개 서브셋 제거)`);
 }
 
@@ -231,18 +231,18 @@ function findMeshByExpressID(modelID, expressID) {
             ifcModel = child;
         }
     });
-    
+
     if (!ifcModel) {
         console.warn(`ModelID ${modelID}를 찾을 수 없습니다.`);
         return null;
     }
-    
+
     // geometry의 expressID 속성에서 찾기
     let foundMesh = null;
-    
+
     ifcModel.traverse((child) => {
         if (foundMesh) return; // 이미 찾았으면 중단
-        
+
         if (child.isMesh && child.geometry) {
             const attributes = child.geometry.attributes;
             const idAttr = attributes && attributes.expressID;
@@ -255,7 +255,7 @@ function findMeshByExpressID(modelID, expressID) {
                     }
                 }
             }
-            
+
             // 또는 geometry.groups에서 찾기
             if (!foundMesh && child.geometry.groups) {
                 for (let group of child.geometry.groups) {
@@ -264,7 +264,7 @@ function findMeshByExpressID(modelID, expressID) {
             }
         }
     });
-    
+
     return foundMesh;
 }
 
@@ -274,9 +274,9 @@ function deleteSelectedElement() {
         updateStatus('먼저 요소를 선택해주세요', true);
         return;
     }
-    
+
     const { modelID, expressID } = selectedElement;
-    
+
     try {
         const mesh = findMeshByExpressID(modelID, expressID);
         if (mesh) {
@@ -299,24 +299,24 @@ function restoreAllDeletedElements() {
         updateStatus('복원할 삭제된 요소가 없습니다');
         return;
     }
-    
+
     let restoredCount = 0;
     let ifcModel = null;
-    
+
     // IFC 모델 찾기
     scene.traverse((child) => {
         if (child.modelID !== undefined && child.modelID !== null) {
             ifcModel = child;
         }
     });
-    
+
     if (!ifcModel) {
         updateStatus('IFC 모델을 찾을 수 없습니다', true);
         return;
     }
-    
+
     const modelID = ifcModel.modelID;
-    
+
     deletedElements.forEach(expressID => {
         try {
             const mesh = findMeshByExpressID(modelID, expressID);
@@ -328,7 +328,7 @@ function restoreAllDeletedElements() {
             console.error(`요소 ${expressID} 복원 실패:`, error);
         }
     });
-    
+
     deletedElements.clear();
     updateStatus(`${restoredCount}개 요소 복원 완료`);
 }
@@ -400,7 +400,7 @@ document.getElementById('restore-deleted').addEventListener('click', () => {
         alert('복원할 삭제된 요소가 없습니다.');
         return;
     }
-    
+
     if (confirm(`삭제된 ${deletedElements.size}개 요소를 모두 복원하시겠습니까?`)) {
         restoreAllDeletedElements();
     }
@@ -423,31 +423,31 @@ async function applyLeftRightWallColors() {
         updateStatus('먼저 IFC 파일을 로드해주세요', true);
         return;
     }
-    
+
     const leftColor = document.getElementById('left-wall-color').value;
     const rightColor = document.getElementById('right-wall-color').value;
     const opacity = autoOpacitySlider ? parseFloat(autoOpacitySlider.value) / 100 : 0.26;
-    
+
     updateStatus('벽 정보 분석 중...');
-    
+
     try {
         // 모든 벽 가져오기
         const walls = await ifcLoader.ifcManager.byType(currentModelID, 'IFCWALLSTANDARDCASE');
-        
+
         if (!walls || walls.length === 0) {
             updateStatus('벽을 찾을 수 없습니다', true);
             return;
         }
-        
+
         // 각 벽의 위치 정보 가져오기
         const wallPositions = [];
         for (const expressID of walls) {
             try {
                 const props = await ifcLoader.ifcManager.getItemProperties(currentModelID, expressID);
-                
+
                 // ObjectPlacement에서 위치 추출 시도
                 let position = { x: 0, y: 0, z: 0 };
-                
+
                 // 메시에서 위치 가져오기
                 const mesh = findMeshByExpressID(currentModelID, expressID);
                 if (mesh) {
@@ -457,7 +457,7 @@ async function applyLeftRightWallColors() {
                         z: mesh.position.z
                     };
                 }
-                
+
                 wallPositions.push({
                     expressID: expressID,
                     position: position,
@@ -472,15 +472,15 @@ async function applyLeftRightWallColors() {
                 });
             }
         }
-        
+
         // X 좌표 기준으로 정렬
         wallPositions.sort((a, b) => a.position.x - b.position.x);
-        
+
         // 중간값을 기준으로 왼쪽/오른쪽 구분
         const midIndex = Math.floor(wallPositions.length / 2);
         const leftWalls = wallPositions.slice(0, midIndex);
         const rightWalls = wallPositions.slice(midIndex);
-        
+
         // 왼쪽 벽에 색상 적용
         let leftCount = 0;
         for (const wall of leftWalls) {
@@ -491,7 +491,7 @@ async function applyLeftRightWallColors() {
                 console.error(`왼쪽 벽 ${wall.expressID} 색상 적용 실패:`, error);
             }
         }
-        
+
         // 오른쪽 벽에 색상 적용
         let rightCount = 0;
         for (const wall of rightWalls) {
@@ -502,46 +502,61 @@ async function applyLeftRightWallColors() {
                 console.error(`오른쪽 벽 ${wall.expressID} 색상 적용 실패:`, error);
             }
         }
-        
+
         updateStatus(`왼쪽 벽 ${leftCount}개, 오른쪽 벽 ${rightCount}개에 색상 적용 완료`);
         console.log(`왼쪽 벽: ${leftColor} (${leftCount}개), 오른쪽 벽: ${rightColor} (${rightCount}개)`);
-        
+
     } catch (error) {
         console.error('벽 색상 적용 실패:', error);
         updateStatus('벽 색상 적용 실패: ' + error.message, true);
     }
 }
 
-// 시뮬레이션 색상 적용 함수 (ExpressID 1898, 1926)
+// 시뮬레이션 색상 적용 함수 (지정된 왼쪽/오른쪽 벽)
 function applySimulationColors() {
     if (!currentModelID && currentModelID !== 0) {
         updateStatus('먼저 IFC 파일을 로드해주세요', true);
         return;
     }
-    
+
     const leftColor = document.getElementById('left-wall-color').value;
     const rightColor = document.getElementById('right-wall-color').value;
     const opacity = autoOpacitySlider ? parseFloat(autoOpacitySlider.value) / 100 : 0.26;
-    
-    // ExpressID 1898과 1926에 색상 적용
-    const targetElements = [
-        { expressID: 1898, color: leftColor, opacity: opacity },
-        { expressID: 1926, color: rightColor, opacity: opacity }
-    ];
-    
-    let successCount = 0;
-    targetElements.forEach(({ expressID, color, opacity }) => {
+
+    // 왼쪽 벽 ExpressID 목록
+    const leftWallIDs = [346, 1997, 404, 381];
+
+    // 오른쪽 벽 ExpressID 목록
+    const rightWallIDs = [450, 2025, 427, 473];
+
+    let leftSuccessCount = 0;
+    let rightSuccessCount = 0;
+
+    // 왼쪽 벽에 색상 적용
+    leftWallIDs.forEach(expressID => {
         try {
-            applyColorToElement(currentModelID, expressID, color, opacity);
-            successCount++;
-            console.log(`✓ 요소 ${expressID} 색상 적용 완료: ${color} (투명도: ${opacity * 100}%)`);
+            applyColorToElement(currentModelID, expressID, leftColor, opacity);
+            leftSuccessCount++;
+            console.log(`✓ 왼쪽 벽 ${expressID} 색상 적용 완료: ${leftColor} (투명도: ${opacity * 100}%)`);
         } catch (error) {
-            console.error(`✗ 요소 ${expressID} 색상 적용 실패:`, error);
+            console.error(`✗ 왼쪽 벽 ${expressID} 색상 적용 실패:`, error);
         }
     });
-    
-    if (successCount > 0) {
-        updateStatus(`시뮬레이션 색상 적용 완료: 요소 1898(${leftColor}), 1926(${rightColor})`);
+
+    // 오른쪽 벽에 색상 적용
+    rightWallIDs.forEach(expressID => {
+        try {
+            applyColorToElement(currentModelID, expressID, rightColor, opacity);
+            rightSuccessCount++;
+            console.log(`✓ 오른쪽 벽 ${expressID} 색상 적용 완료: ${rightColor} (투명도: ${opacity * 100}%)`);
+        } catch (error) {
+            console.error(`✗ 오른쪽 벽 ${expressID} 색상 적용 실패:`, error);
+        }
+    });
+
+    const totalCount = leftSuccessCount + rightSuccessCount;
+    if (totalCount > 0) {
+        updateStatus(`시뮬레이션 색상 적용 완료: 왼쪽 벽 ${leftSuccessCount}개(${leftColor}), 오른쪽 벽 ${rightSuccessCount}개(${rightColor})`);
     } else {
         updateStatus('색상 적용에 실패했습니다. ExpressID를 확인해주세요', true);
     }
@@ -575,19 +590,19 @@ function interpolateColor(color1, color2, t) {
     // t는 0.0 ~ 1.0 사이의 값
     const hex1 = color1.replace('#', '');
     const hex2 = color2.replace('#', '');
-    
+
     const r1 = parseInt(hex1.substr(0, 2), 16);
     const g1 = parseInt(hex1.substr(2, 2), 16);
     const b1 = parseInt(hex1.substr(4, 2), 16);
-    
+
     const r2 = parseInt(hex2.substr(0, 2), 16);
     const g2 = parseInt(hex2.substr(2, 2), 16);
     const b2 = parseInt(hex2.substr(4, 2), 16);
-    
+
     const r = Math.round(r1 + (r2 - r1) * t);
     const g = Math.round(g1 + (g2 - g1) * t);
     const b = Math.round(b1 + (b2 - b1) * t);
-    
+
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
@@ -596,22 +611,33 @@ function generateSimulationFrames() {
     const startColor = document.getElementById('sim-start-color').value;
     const endColor = document.getElementById('sim-end-color').value;
     const opacity = parseFloat(document.getElementById('sim-opacity-slider').value) / 100;
-    
+
+    // 열 수신 비율 가져오기 (기본값: 왼쪽 120%, 오른쪽 80%)
+    const leftHeatRatio = parseFloat(document.getElementById('left-heat-ratio') ? .value || 120) / 100;
+    const rightHeatRatio = parseFloat(document.getElementById('right-heat-ratio') ? .value || 80) / 100;
+
     const frames = [];
     for (let i = 0; i < simulationState.totalFrames; i++) {
-        const t = i / (simulationState.totalFrames - 1); // 0.0 ~ 1.0
-        const leftColor = interpolateColor(startColor, endColor, t);
-        const rightColor = interpolateColor(startColor, endColor, t);
-        
+        const baseT = i / (simulationState.totalFrames - 1); // 0.0 ~ 1.0
+
+        // 왼쪽 벽: 더 많은 열을 받아서 더 빠르게 진해짐 (비율 적용)
+        const leftT = Math.min(1.0, baseT * leftHeatRatio);
+        const leftColor = interpolateColor(startColor, endColor, leftT);
+
+        // 오른쪽 벽: 덜 열을 받아서 더 느리게 진해짐 (비율 적용)
+        const rightT = Math.min(1.0, baseT * rightHeatRatio);
+        const rightColor = interpolateColor(startColor, endColor, rightT);
+
         frames.push({
             frame: i,
             leftColor: leftColor,
             rightColor: rightColor,
-            opacity: opacity,
-            intensity: Math.round(t * 100) // 진하기 정도 (0~100%)
+            leftIntensity: Math.round(leftT * 100), // 왼쪽 벽 진하기 (0~100%)
+            rightIntensity: Math.round(rightT * 100), // 오른쪽 벽 진하기 (0~100%)
+            opacity: opacity
         });
     }
-    
+
     simulationState.frames = frames;
     return frames;
 }
@@ -622,27 +648,37 @@ function applySimulationFrame(frameIndex) {
         updateStatus('먼저 IFC 파일을 로드해주세요', true);
         return;
     }
-    
+
     if (frameIndex < 0 || frameIndex >= simulationState.frames.length) {
         return;
     }
-    
+
     const frame = simulationState.frames[frameIndex];
-    
-    // ExpressID 1898 (왼쪽 벽)에 색상 적용
-    try {
-        applyColorToElement(currentModelID, 1898, frame.leftColor, frame.opacity);
-    } catch (error) {
-        console.error(`왼쪽 벽 색상 적용 실패:`, error);
-    }
-    
-    // ExpressID 1926 (오른쪽 벽)에 색상 적용
-    try {
-        applyColorToElement(currentModelID, 1926, frame.rightColor, frame.opacity);
-    } catch (error) {
-        console.error(`오른쪽 벽 색상 적용 실패:`, error);
-    }
-    
+
+    // 왼쪽 벽 ExpressID 목록
+    const leftWallIDs = [346, 1997, 404, 381];
+
+    // 오른쪽 벽 ExpressID 목록
+    const rightWallIDs = [450, 2025, 427, 473];
+
+    // 왼쪽 벽들에 색상 적용
+    leftWallIDs.forEach(expressID => {
+        try {
+            applyColorToElement(currentModelID, expressID, frame.leftColor, frame.opacity);
+        } catch (error) {
+            console.error(`왼쪽 벽 ${expressID} 색상 적용 실패:`, error);
+        }
+    });
+
+    // 오른쪽 벽들에 색상 적용
+    rightWallIDs.forEach(expressID => {
+        try {
+            applyColorToElement(currentModelID, expressID, frame.rightColor, frame.opacity);
+        } catch (error) {
+            console.error(`오른쪽 벽 ${expressID} 색상 적용 실패:`, error);
+        }
+    });
+
     // UI 업데이트
     updateSimulationFrameDisplay(frameIndex);
 }
@@ -652,25 +688,26 @@ function updateSimulationFrameDisplay(frameIndex) {
     if (frameIndex < 0 || frameIndex >= simulationState.frames.length) {
         return;
     }
-    
+
     const frame = simulationState.frames[frameIndex];
-    
+
     // 프레임 번호 표시
     document.getElementById('sim-current-frame').textContent = frameIndex + 1;
     document.getElementById('sim-frame-display').textContent = `프레임: ${frameIndex + 1}/${simulationState.totalFrames}`;
-    
+
     // 색상 정보 표시
     const leftColorDisplay = document.getElementById('sim-left-color-display');
     leftColorDisplay.textContent = frame.leftColor;
     leftColorDisplay.style.color = frame.leftColor;
-    
+
     const rightColorDisplay = document.getElementById('sim-right-color-display');
     rightColorDisplay.textContent = frame.rightColor;
     rightColorDisplay.style.color = frame.rightColor;
-    
-    // 진하기 표시
-    document.getElementById('sim-intensity-display').textContent = `${frame.intensity}%`;
-    
+
+    // 진하기 표시 (왼쪽/오른쪽 각각)
+    const intensityDisplay = document.getElementById('sim-intensity-display');
+    intensityDisplay.innerHTML = `왼쪽: <span style="color: ${frame.leftColor}; font-weight: bold;">${frame.leftIntensity}%</span> / 오른쪽: <span style="color: ${frame.rightColor}; font-weight: bold;">${frame.rightIntensity}%</span>`;
+
     // 슬라이더 업데이트 (재생 중이 아닐 때만)
     if (!simulationState.isPlaying) {
         const slider = document.getElementById('sim-frame-slider');
@@ -683,22 +720,22 @@ function updateSimulationFrameDisplay(frameIndex) {
 // 시뮬레이션 재생
 function playSimulation() {
     if (simulationState.isPlaying) return;
-    
+
     // 프레임 데이터 생성
     if (simulationState.frames.length === 0) {
         generateSimulationFrames();
     }
-    
+
     simulationState.isPlaying = true;
     simulationState.isPaused = false;
     simulationState.lastFrameTime = performance.now();
-    
+
     // UI 업데이트
     document.getElementById('sim-play-btn').disabled = true;
     document.getElementById('sim-pause-btn').disabled = false;
     document.getElementById('sim-stop-btn').disabled = false;
     document.getElementById('sim-frame-slider').disabled = true;
-    
+
     // 애니메이션 시작
     animateSimulation();
 }
@@ -708,22 +745,22 @@ const frameInterval = 1000; // 1초마다 프레임 변경 (1000ms)
 
 function animateSimulation() {
     if (!simulationState.isPlaying) return;
-    
+
     const now = performance.now();
-    
+
     if (now - simulationState.lastFrameTime >= frameInterval / simulationState.playbackSpeed) {
         simulationState.currentFrame++;
-        
+
         if (simulationState.currentFrame >= simulationState.totalFrames) {
             // 마지막 프레임 도달 시 정지
             stopSimulation();
             return;
         }
-        
+
         applySimulationFrame(simulationState.currentFrame);
         simulationState.lastFrameTime = now;
     }
-    
+
     simulationState.animationId = requestAnimationFrame(animateSimulation);
 }
 
@@ -731,12 +768,12 @@ function animateSimulation() {
 function pauseSimulation() {
     simulationState.isPlaying = false;
     simulationState.isPaused = true;
-    
+
     if (simulationState.animationId) {
         cancelAnimationFrame(simulationState.animationId);
         simulationState.animationId = null;
     }
-    
+
     // UI 업데이트
     document.getElementById('sim-play-btn').disabled = false;
     document.getElementById('sim-pause-btn').disabled = true;
@@ -748,17 +785,17 @@ function stopSimulation() {
     simulationState.isPlaying = false;
     simulationState.isPaused = false;
     simulationState.currentFrame = 0;
-    
+
     if (simulationState.animationId) {
         cancelAnimationFrame(simulationState.animationId);
         simulationState.animationId = null;
     }
-    
+
     // 첫 프레임으로 이동
     if (simulationState.frames.length > 0) {
         applySimulationFrame(0);
     }
-    
+
     // UI 업데이트
     document.getElementById('sim-play-btn').disabled = false;
     document.getElementById('sim-pause-btn').disabled = false;
@@ -783,7 +820,39 @@ function initSimulationControls() {
             }
         });
     }
-    
+
+    // 왼쪽 벽 열 수신 비율 슬라이더
+    const leftHeatRatioSlider = document.getElementById('left-heat-ratio');
+    const leftHeatRatioValue = document.getElementById('left-heat-ratio-value');
+    if (leftHeatRatioSlider && leftHeatRatioValue) {
+        leftHeatRatioSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            leftHeatRatioValue.textContent = `${value}%`;
+            // 프레임 데이터 재생성
+            generateSimulationFrames();
+            // 재생 중이 아니면 현재 프레임 다시 적용
+            if (!simulationState.isPlaying) {
+                applySimulationFrame(simulationState.currentFrame);
+            }
+        });
+    }
+
+    // 오른쪽 벽 열 수신 비율 슬라이더
+    const rightHeatRatioSlider = document.getElementById('right-heat-ratio');
+    const rightHeatRatioValue = document.getElementById('right-heat-ratio-value');
+    if (rightHeatRatioSlider && rightHeatRatioValue) {
+        rightHeatRatioSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            rightHeatRatioValue.textContent = `${value}%`;
+            // 프레임 데이터 재생성
+            generateSimulationFrames();
+            // 재생 중이 아니면 현재 프레임 다시 적용
+            if (!simulationState.isPlaying) {
+                applySimulationFrame(simulationState.currentFrame);
+            }
+        });
+    }
+
     // 시작 색상 변경 시 프레임 데이터 재생성
     const simStartColor = document.getElementById('sim-start-color');
     if (simStartColor) {
@@ -794,7 +863,7 @@ function initSimulationControls() {
             }
         });
     }
-    
+
     // 끝 색상 변경 시 프레임 데이터 재생성
     const simEndColor = document.getElementById('sim-end-color');
     if (simEndColor) {
@@ -805,7 +874,7 @@ function initSimulationControls() {
             }
         });
     }
-    
+
     // 프레임 슬라이더
     const frameSlider = document.getElementById('sim-frame-slider');
     if (frameSlider) {
@@ -817,23 +886,23 @@ function initSimulationControls() {
             }
         });
     }
-    
+
     // 재생/일시정지/정지 버튼
     const simPlayBtn = document.getElementById('sim-play-btn');
     if (simPlayBtn) {
         simPlayBtn.addEventListener('click', playSimulation);
     }
-    
+
     const simPauseBtn = document.getElementById('sim-pause-btn');
     if (simPauseBtn) {
         simPauseBtn.addEventListener('click', pauseSimulation);
     }
-    
+
     const simStopBtn = document.getElementById('sim-stop-btn');
     if (simStopBtn) {
         simStopBtn.addEventListener('click', stopSimulation);
     }
-    
+
     // 초기 프레임 데이터 생성
     generateSimulationFrames();
     applySimulationFrame(0);
@@ -867,4 +936,3 @@ setTimeout(() => {
         initSimulationControls();
     }
 }, 500);
-

@@ -1,0 +1,23 @@
+{
+  "sheets": {
+    "Case1+_Summer": "case1-plus-summer",
+    "Case1+_Winter": "case1-plus-winter",
+    "Case1_Summer": "case1-summer",
+    "Case1_Winter": "case1-winter",
+    "Case2+_Summer": "case2-plus-summer",
+    "Case2+_Winter": "case2-plus-winter",
+    "Case2_Summer": "case2-summer",
+    "Case2_Winter": "case2-winter",
+    "Case3+_Summer": "case3-plus-summer",
+    "Case3+_Winter": "case3-plus-winter",
+    "Case3_Summer": "case3-summer",
+    "Case3_Winter": "case3-winter",
+    "Case4+_Summer": "case4-plus-summer",
+    "Case4+_Winter": "case4-plus-winter",
+    "Case4_Summer": "case4-summer",
+    "Case4_Winter": "case4-winter",
+    "Ref_Summer": "ref-summer",
+    "Ref_Winter": "ref-winter"
+  },
+  "total_sheets": 18
+}

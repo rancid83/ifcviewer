@@ -11,8 +11,8 @@ import {
 // 페이지 로드 시 자동으로 IFC 파일 로드
 window.addEventListener('DOMContentLoaded', () => {
     // IFC 파일 URL
-    const ifcFileUrl = '/files/T-LAB_1126.ifc';
-    const ifcFileName = 'T-LAB_1126.ifc';
+    const ifcFileUrl = '/files/T-LAB_1126_re.ifc';
+    const ifcFileName = 'T-LAB_1126_re.ifc';
 
     // URL에서 직접 로드 (더 효율적)
     console.log('IFC 파일 자동 로드 시작:', ifcFileUrl);

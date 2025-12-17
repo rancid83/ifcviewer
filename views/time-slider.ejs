@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+
+    <!-- jQuery & jQuery UI -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f0f2f5;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #ffffff;
+            color: #2c3e50;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            border-bottom: 2px solid #e8ecef;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 95px);
+            gap: 15px;
+            padding: 15px;
+        }
+        
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-left {
+            flex: 1;
+            min-width: 500px;
+        }
+        
+        .panel-right {
+            flex: 1;
+            min-width: 500px;
+        }
+        
+        .panel-header {
+            background-color: #1e3a8a;
+            color: #ffffff;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: 700;
+            border-bottom: 2px solid #1e40af;
+        }
+        
+        .panel-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-dark {
+            background-color: #34495e;
+            color: white;
+        }
+        
+        .btn-dark:hover {
+            background-color: #2c3e50;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        /* IFC 뷰어 섹션 */
+        
+        .viewer-section {
+            margin-bottom: 20px;
+        }
+        
+        #viewer-container {
+            width: 100%;
+            height: 400px;
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            border: 2px solid #bdc3c7;
+            margin-top: 15px;
+            position: relative;
+        }
+        
+        #viewer-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+        /* 시간별 사용량 보기 섹션 */
+        
+        .time-usage-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .time-usage-section h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .slider-info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .slider-info-card {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 3px solid #3b82f6;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .slider-info-label {
+            font-size: 10px;
+            color: #6c757d;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .slider-info-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #3b82f6;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .slider-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        #time-slider {
+            margin: 15px 0;
+        }
+        
+        .ui-slider-horizontal {
+            height: 10px !important;
+            border-radius: 5px;
+            background: #e0e4e8;
+            border: none;
+        }
+        
+        .ui-slider-handle {
+            width: 20px !important;
+            height: 20px !important;
+            border-radius: 50% !important;
+            background: #3b82f6 !important;
+            border: 3px solid white !important;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4) !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            cursor: pointer !important;
+            outline: none !important;
+        }
+        
+        .ui-slider-range {
+            background: #3b82f6;
+            border-radius: 5px;
+        }
+        
+        .slider-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn-sm {
+            padding: 8px 14px;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-control {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-control:hover {
+            background-color: #5a6268;
+        }
+        
+        .btn-play {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .btn-play:hover {
+            background-color: #2563eb;
+        }
+        
+        .jump-input {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            width: 120px;
+        }
+        
+        .jump-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        #data-chart {
+            width: 100%;
+            height: 180px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            margin-top: 15px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            color: #6c757d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .stat-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        /* Controller 다이어그램 섹션 */
+        
+        .controller-section {
+            margin-bottom: 20px;
+        }
+        
+        .controller-diagram {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            margin-top: 15px;
+            height: 300px;
+            overflow: auto;
+        }
+        
+        .diagram-title {
+            text-align: center;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .info-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            line-height: 1.6;
+        }
+        
+        .info-section h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 15px;
+        }
+        
+        .info-section ul {
+            list-style: none;
+            padding-left: 0;
+            font-size: 13px;
+        }
+        
+        .info-section li {
+            margin-bottom: 5px;
+            color: #374151;
+        }
+        
+        .info-section strong {
+            color: #1e40af;
+        }
+        
+        .info-section code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            color: #dc2626;
+        }
+        /* 반응형 */
+        
+        @media (max-width: 1200px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .panel-left,
+            .panel-right {
+                min-width: 100%;
+            }
+            #viewer-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>
+            <%= title %>
+        </h1>
+    </div>
+
+    <div class="main-container">
+        <!-- 좌측 패널: 분석 결과 보기 -->
+        <div class="panel panel-left">
+            <div class="panel-header">
+                분석 결과 보기
+            </div>
+            <div class="panel-content">
+                <!-- IFC 파일 불러오기 -->
+                <div class="viewer-section">
+                    <button class="btn btn-dark" id="load-ifc-btn">
+                        📂 파일 불러오기 (IFC)
+                    </button>
+                    <input type="file" id="ifc-file-input" accept=".ifc" style="display: none;">
+
+                    <!-- IFC 뷰어 -->
+                    <div id="viewer-container">
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #95a5a6;">
+                            <p style="font-size: 16px; font-weight: 600;">IFC 파일을 불러오면 여기에 3D 모델이 표시됩니다</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 시간별 사용량 보기 (고급 슬라이더) -->
+                <div class="time-usage-section">
+                    <h3>⏰ 시간별 사용량 보기 (0~8000 step 0.1)</h3>
+
+                    <!-- 슬라이더 정보 -->
+                    <div class="slider-info-grid">
+                        <div class="slider-info-card">
+                            <div class="slider-info-label">Current Step</div>
+                            <div class="slider-info-value" id="step-display">0.0</div>
+                        </div>
+                        <div class="slider-info-card">
+                            <div class="slider-info-label">Index</div>
+                            <div class="slider-info-value" id="index-display">0</div>
+                        </div>
+                        <div class="slider-info-card">
+                            <div class="slider-info-label">Value</div>
+                            <div class="slider-info-value" id="value-display">--</div>
+                        </div>
+                        <div class="slider-info-card">
+                            <div class="slider-info-label">Cache</div>
+                            <div class="slider-info-value" id="cache-display">0</div>
+                        </div>
+                    </div>
+
+                    <!-- 슬라이더 -->
+                    <div class="slider-container">
+                        <div id="time-slider"></div>
+                    </div>
+
+                    <!-- 컨트롤 버튼 -->
+                    <div class="slider-controls">
+                        <button class="btn-sm btn-control" id="btn-prev">◀ -1</button>
+                        <button class="btn-sm btn-play" id="btn-play">▶ Play</button>
+                        <button class="btn-sm btn-control" id="btn-next">+1 ▶</button>
+                        <input type="number" class="jump-input" id="jump-input" placeholder="예: 1234.5" step="0.1" min="0" max="8000">
+                        <button class="btn-sm btn-play" id="btn-jump">Jump</button>
+                        <button class="btn-sm btn-control" id="btn-reset">Reset</button>
+                    </div>
+
+                    <!-- 데이터 차트 -->
+                    <canvas id="data-chart"></canvas>
+
+                    <!-- 통계 -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Min Value</div>
+                            <div class="stat-value" id="stat-min">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Max Value</div>
+                            <div class="stat-value" id="stat-max">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Value</div>
+                            <div class="stat-value" id="stat-avg">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측 패널: 분석 설정 하기 -->
+        <div class="panel panel-right">
+            <div class="panel-header">
+                분석 설정 하기
+            </div>
+            <div class="panel-content">
+                <!-- 분석 하기 버튼 -->
+                <div style="margin-bottom: 20px; text-align: right;">
+                    <button class="btn btn-dark" id="analyze-btn">
+                        🔬 분석 하기 (에너지 사용량)
+                    </button>
+                </div>
+
+                <!-- Controller 다이어그램 -->
+                <div class="controller-section">
+                    <div class="controller-diagram">
+                        <div class="diagram-title">시뮬레이션 플로우</div>
+                        <div style="padding: 20px; text-align: center; color: #6c757d;">
+                            <p style="margin-bottom: 15px;">데이터 처리 흐름도</p>
+                            <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                                <div style="padding: 10px 20px; background: #dbeafe; border-radius: 6px; border: 2px solid #3b82f6; color: #1e40af; font-weight: 600;">
+                                    Time Step (0.1 단위)
+                                </div>
+                                <div style="font-size: 20px; color: #3b82f6;">↓</div>
+                                <div style="padding: 10px 20px; background: white; border-radius: 6px; border: 2px solid #d1d5db; font-weight: 600;">
+                                    Chunk Loading (500개 단위)
+                                </div>
+                                <div style="font-size: 20px; color: #3b82f6;">↓</div>
+                                <div style="padding: 10px 20px; background: white; border-radius: 6px; border: 2px solid #d1d5db; font-weight: 600;">
+                                    Cache & Prefetch
+                                </div>
+                                <div style="font-size: 20px; color: #3b82f6;">↓</div>
+                                <div style="padding: 10px 20px; background: #dbeafe; border-radius: 6px; border: 2px solid #3b82f6; color: #1e40af; font-weight: 600;">
+                                    Visualization
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 구현 정보 -->
+                <div class="info-section">
+                    <h3>✅ 구현 완료 사항</h3>
+                    <ul>
+                        <li>✓ jQuery UI Slider: <strong>0 ~ 8000</strong>, step <strong>0.1</strong></li>
+                        <li>✓ 총 <strong>80,001개</strong> 포인트 처리</li>
+                        <li>✓ <strong>Chunk 기반 데이터 로딩</strong> (500개 단위) + 캐시</li>
+                        <li>✓ <strong>Prefetch</strong> 전략으로 부드러운 탐색</li>
+                        <li>✓ <code>slide</code> vs <code>change</code> 이벤트 분리</li>
+                        <li>✓ 부동소수점 오차 보정</li>
+                        <li>✓ Canvas 기반 실시간 차트</li>
+                    </ul>
+
+                    <h3 style="margin-top: 15px;">📝 핵심 최적화</h3>
+                    <ul>
+                        <li><strong>정수 인덱스 운영:</strong> step 0.1 = index 0~80000</li>
+                        <li><strong>DOM 눈금 생략:</strong> 브라우저 프리징 방지</li>
+                        <li><strong>이벤트 핸들링:</strong> slide(표시) vs change(처리)</li>
+                        <li><strong>데이터 로딩:</strong> API chunk + prefetch</li>
+                        <li><strong>재생 기능:</strong> setInterval 기반, 배속 조절 가능</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAX_STEP = 8000;
+        const MAX_INDEX = 80000;
+        const CHUNK_SIZE = 500; // chunk당 500개 인덱스
+
+        let currentIndex = 0;
+        let playTimer = null;
+        const cache = new Map();
+
+        // DOM 요소
+        const $stepDisplay = $('#step-display');
+        const $indexDisplay = $('#index-display');
+        const $valueDisplay = $('#value-display');
+        const $cacheDisplay = $('#cache-display');
+
+        // 인덱스 ↔ Step 변환
+        function stepToIndex(step) {
+            return Math.max(0, Math.min(MAX_INDEX, Math.round(step * 10)));
+        }
+
+        function indexToStep(index) {
+            return (index / 10).toFixed(1);
+        }
+
+        // API에서 chunk 데이터 가져오기
+        async function fetchChunk(index) {
+            const chunkStart = Math.floor(index / CHUNK_SIZE) * CHUNK_SIZE;
+            const chunkEnd = Math.min(MAX_INDEX, chunkStart + CHUNK_SIZE - 1);
+
+            // 이미 캐시되어 있으면 스킵
+            if (cache.has(`chunk_${chunkStart}`)) return;
+
+            try {
+                const res = await fetch(`/api/timeseries?from=${chunkStart}&to=${chunkEnd}`);
+                const json = await res.json();
+
+                // chunk marker
+                cache.set(`chunk_${chunkStart}`, true);
+
+                // 데이터 캐싱
+                json.data.forEach(item => {
+                    cache.set(item.index, item);
+                });
+
+                updateCacheDisplay();
+            } catch (err) {
+                console.error('데이터 로딩 실패:', err);
+            }
+        }
+
+        // 현재 index 데이터 가져오기
+        function getData(index) {
+            return cache.get(index);
+        }
+
+        // 캐시 크기 표시
+        function updateCacheDisplay() {
+            const size = cache.size;
+            $cacheDisplay.text(size.toLocaleString());
+        }
+
+        // Canvas 차트 그리기
+        function drawChart(dataPoint) {
+            const canvas = document.getElementById('data-chart');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // 배경
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, w, h);
+
+            // 그리드
+            ctx.strokeStyle = '#e9ecef';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = (h / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            if (!dataPoint) return;
+
+            // 데이터 바
+            const value = dataPoint.value;
+            const barHeight = (value / 100) * (h - 40);
+            const barWidth = 60;
+            const x = w / 2 - barWidth / 2;
+            const y = h - barHeight - 20;
+
+            // 그라데이션
+            const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, barWidth, barHeight);
+
+            // 값 표시
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(value.toFixed(2), w / 2, y - 10);
+
+            // Step 표시
+            ctx.font = '12px sans-serif';
+            ctx.fillStyle = '#6c757d';
+            ctx.fillText(`Step: ${dataPoint.step}`, w / 2, h - 5);
+        }
+
+        // 통계 업데이트
+        function updateStats() {
+            const values = [];
+            cache.forEach((val, key) => {
+                if (typeof key === 'number' && val.value !== undefined) {
+                    values.push(val.value);
+                }
+            });
+
+            if (values.length > 0) {
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+                const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+                $('#stat-min').text(min.toFixed(2));
+                $('#stat-max').text(max.toFixed(2));
+                $('#stat-avg').text(avg.toFixed(2));
+            }
+        }
+
+        // 메인 렌더링 함수
+        async function render(index) {
+            currentIndex = Math.max(0, Math.min(MAX_INDEX, index));
+            const step = indexToStep(currentIndex);
+
+            // UI 업데이트
+            $stepDisplay.text(step);
+            $indexDisplay.text(currentIndex.toLocaleString());
+
+            // 현재 chunk 로딩
+            await fetchChunk(currentIndex);
+
+            // 주변 prefetch
+            fetchChunk(currentIndex + CHUNK_SIZE);
+            fetchChunk(currentIndex - CHUNK_SIZE);
+
+            // 데이터 표시
+            const dataPoint = getData(currentIndex);
+            if (dataPoint) {
+                $valueDisplay.text(dataPoint.value.toFixed(2));
+                drawChart(dataPoint);
+                updateStats();
+            }
+        }
+
+        // jQuery UI Slider 초기화
+        $('#time-slider').slider({
+            min: 0,
+            max: MAX_STEP,
+            step: 0.1,
+            value: 0,
+            range: 'min',
+            slide: function(event, ui) {
+                // 드래그 중에는 표시만
+                const step = ui.value.toFixed(1);
+                const index = stepToIndex(ui.value);
+                $stepDisplay.text(step);
+                $indexDisplay.text(index.toLocaleString());
+            },
+            change: function(event, ui) {
+                // 실제 렌더링은 여기서
+                render(stepToIndex(ui.value));
+            }
+        });
+
+        // 버튼 이벤트
+        $('#btn-prev').on('click', () => {
+            const newStep = Math.max(0, parseFloat(indexToStep(currentIndex - 1)));
+            $('#time-slider').slider('value', newStep);
+        });
+
+        $('#btn-next').on('click', () => {
+            const newStep = Math.min(MAX_STEP, parseFloat(indexToStep(currentIndex + 1)));
+            $('#time-slider').slider('value', newStep);
+        });
+
+        $('#btn-play').on('click', function() {
+            if (playTimer) {
+                clearInterval(playTimer);
+                playTimer = null;
+                $(this).html('▶ Play');
+                return;
+            }
+
+            $(this).html('⏸ Pause');
+            playTimer = setInterval(() => {
+                if (currentIndex >= MAX_INDEX) {
+                    clearInterval(playTimer);
+                    playTimer = null;
+                    $('#btn-play').html('▶ Play');
+                    return;
+                }
+
+                const newIndex = currentIndex + 1;
+                $('#time-slider').slider('value', parseFloat(indexToStep(newIndex)));
+            }, 50); // 50ms = 빠른 재생
+        });
+
+        $('#btn-jump').on('click', () => {
+            const input = parseFloat($('#jump-input').val());
+            if (!isNaN(input) && input >= 0 && input <= MAX_STEP) {
+                $('#time-slider').slider('value', input);
+            }
+        });
+
+        $('#btn-reset').on('click', () => {
+            $('#time-slider').slider('value', 0);
+            $('#jump-input').val('');
+        });
+
+        // Enter 키로 Jump
+        $('#jump-input').on('keypress', (e) => {
+            if (e.which === 13) {
+                $('#btn-jump').click();
+            }
+        });
+
+        // 초기 렌더링
+        render(0);
+    </script>
+
+    <!-- Three.js 및 IFC 뷰어 -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.2/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/": "https://unpkg.com/three@0.160.0/", "web-ifc": "/js/web-ifc-api.js" } }
+    </script>
+    <script type="module">
+        import * as THREE from 'three'; import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; import { IFCLoader } from '/js/IFCLoader.js'; // IFC 뷰어 초기화 const container = document.getElementById('viewer-container'); let scene, camera,
+        renderer, controls, ifcLoader; let ifcModel = null; function initIFCViewer() { // Scene 설정 scene = new THREE.Scene(); scene.background = new THREE.Color(0xf0f2f5); // Camera 설정 const width = container.clientWidth; const height = container.clientHeight;
+        camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000); camera.position.set(10, 10, 10); camera.lookAt(0, 0, 0); // Renderer 설정 renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(width, height); renderer.setPixelRatio(window.devicePixelRatio);
+        container.innerHTML = ''; // 기존 내용 제거 container.appendChild(renderer.domElement); // OrbitControls 설정 controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.05; // 조명 추가 const ambientLight
+        = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); directionalLight.position.set(10, 10, 5); scene.add(directionalLight); // Grid Helper const gridHelper = new
+        THREE.GridHelper(20, 20, 0xcccccc, 0xeeeeee); scene.add(gridHelper); // IFC Loader 설정 ifcLoader = new IFCLoader(); ifcLoader.ifcManager.setWasmPath('/js/'); // 애니메이션 루프 animate(); // 리사이즈 이벤트 window.addEventListener('resize', onWindowResize, false);
+        } function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); } function onWindowResize() { const width = container.clientWidth; const height = container.clientHeight; camera.aspect = width / height;
+        camera.updateProjectionMatrix(); renderer.setSize(width, height); } // IFC 파일 로드 함수 async function loadIFCFile(file) { const url = URL.createObjectURL(file); try { // 기존 모델 제거 if (ifcModel) { scene.remove(ifcModel); ifcModel = null; } // 새 모델
+        로드 ifcLoader.load( url, (model) => { scene.add(model); ifcModel = model; // 모델을 중앙에 배치 const box = new THREE.Box3().setFromObject(model); const center = box.getCenter(new THREE.Vector3()); const size = box.getSize(new THREE.Vector3()); const maxDim
+        = Math.max(size.x, size.y, size.z); const fov = camera.fov * (Math.PI / 180); let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)); cameraZ *= 1.5; camera.position.set( center.x + cameraZ * 0.7, center.y + cameraZ * 0.7, center.z + cameraZ *
+        0.7 ); camera.lookAt(center); controls.target.copy(center); controls.update(); console.log('IFC 파일 로드 완료:', file.name); }, (progress) => { const percent = (progress.loaded / progress.total * 100).toFixed(0); console.log(`로딩 중... ${percent}%`);
+        }, (error) => { console.error('IFC 로드 실패:', error); alert('IFC 파일 로드에 실패했습니다.'); } ); } catch (error) { console.error('파일 처리 실패:', error); alert('파일 처리 중 오류가 발생했습니다.'); } finally { URL.revokeObjectURL(url); } } // 기본 IFC 파일 로드 (T-LAB_1126_re.ifc)
+        async function loadDefaultIFC() { const url = '/files/T-LAB_1126_re.ifc'; try { // 기존 모델 제거 if (ifcModel) { scene.remove(ifcModel); ifcModel = null; } ifcLoader.load( url, (model) => { scene.add(model); ifcModel = model; // 모델을 중앙에 배치 const box
+        = new THREE.Box3().setFromObject(model); const center = box.getCenter(new THREE.Vector3()); const size = box.getSize(new THREE.Vector3()); const maxDim = Math.max(size.x, size.y, size.z); const fov = camera.fov * (Math.PI / 180); let cameraZ =
+        Math.abs(maxDim / 2 / Math.tan(fov / 2)); cameraZ *= 1.5; camera.position.set( center.x + cameraZ * 0.7, center.y + cameraZ * 0.7, center.z + cameraZ * 0.7 ); camera.lookAt(center); controls.target.copy(center); controls.update(); console.log('기본
+        IFC 파일 로드 완료: T-LAB_1126_re.ifc'); }, (progress) => { const percent = (progress.loaded / progress.total * 100).toFixed(0); console.log(`로딩 중... ${percent}%`); }, (error) => { console.error('IFC 로드 실패:', error); } ); } catch (error) { console.error('파일
+        처리 실패:', error); } } // IFC 뷰어 초기화 initIFCViewer(); // 기본 IFC 파일 자동 로드 loadDefaultIFC(); // 파일 선택 버튼 이벤트 document.getElementById('load-ifc-btn').addEventListener('click', () => { document.getElementById('ifc-file-input').click(); }); document.getElementById('ifc-file-input').addEventListener('change',
+        (event) => { const file = event.target.files[0]; if (file && file.name.endsWith('.ifc')) { loadIFCFile(file); } else { alert('IFC 파일만 선택할 수 있습니다.'); } });
+    </script>
+</body>
+
+</html>

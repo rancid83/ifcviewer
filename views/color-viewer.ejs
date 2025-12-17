@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +20,7 @@
         .header {
             background-color: white;
             padding: 15px 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -146,6 +147,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>🎨 IFC 색상 변경 뷰어</h1>
@@ -166,7 +168,7 @@
             <button id="restore-deleted" class="btn-success">삭제 요소 복원</button>
         </div>
     </div>
-    
+
     <!-- 자동 시뮬레이션 색상 적용 섹션 -->
     <div style="background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <h3 style="margin-top: 0; margin-bottom: 10px; color: #333;">🎬 자동 시뮬레이션 색상 적용</h3>
@@ -190,15 +192,15 @@
                 🎨 왼쪽/오른쪽 벽 자동 색상 적용
             </button>
             <button id="auto-apply-simulation-colors" class="btn-success" style="padding: 10px 20px;">
-                🎬 시뮬레이션 색상 적용 (1898, 1926)
+                🎬 시뮬레이션 색상 적용 (왼쪽: 346,1997,404,381 / 오른쪽: 450,2025,427,473)
             </button>
         </div>
     </div>
-    
+
     <!-- 색상 진하기 시뮬레이션 섹션 -->
     <div style="background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <h3 style="margin-top: 0; margin-bottom: 10px; color: #333;">🎬 색상 진하기 시뮬레이션</h3>
-        
+
         <!-- 시작/끝 색상 설정 -->
         <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
             <div style="display: flex; align-items: center; gap: 5px;">
@@ -215,7 +217,21 @@
                 <span id="sim-opacity-value" style="min-width: 40px; font-weight: bold;">26%</span>
             </div>
         </div>
-        
+
+        <!-- 열 수신 비율 설정 -->
+        <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">
+            <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                <label style="font-weight: bold;">왼쪽 벽 열 수신:</label>
+                <input type="range" id="left-heat-ratio" min="50" max="150" value="120" step="5" style="width: 150px;">
+                <span id="left-heat-ratio-value" style="min-width: 50px; font-weight: bold;">120%</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                <label style="font-weight: bold;">오른쪽 벽 열 수신:</label>
+                <input type="range" id="right-heat-ratio" min="50" max="150" value="80" step="5" style="width: 150px;">
+                <span id="right-heat-ratio-value" style="min-width: 50px; font-weight: bold;">80%</span>
+            </div>
+        </div>
+
         <!-- 시뮬레이션 컨트롤 -->
         <div style="margin-bottom: 15px;">
             <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center; flex-wrap: wrap;">
@@ -226,7 +242,7 @@
                     <span id="sim-frame-display">프레임: 1/10</span>
                 </div>
             </div>
-            
+
             <!-- 프레임 슬라이더 -->
             <div style="margin-bottom: 10px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: bold;">
@@ -238,20 +254,20 @@
                     <span>어두움 (100%)</span>
                 </div>
             </div>
-            
+
             <!-- 현재 프레임 정보 표시 -->
             <div id="sim-frame-info" style="background-color: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 13px;">
                 <div style="margin-bottom: 5px;"><strong>왼쪽 벽:</strong> <span id="sim-left-color-display" style="color: #a28181; font-weight: bold;">#a28181</span></div>
                 <div style="margin-bottom: 5px;"><strong>오른쪽 벽:</strong> <span id="sim-right-color-display" style="color: #a28181; font-weight: bold;">#a28181</span></div>
-                <div><strong>진하기:</strong> <span id="sim-intensity-display" style="font-weight: bold;">0%</span></div>
+                <div><strong>진하기:</strong> <span id="sim-intensity-display" style="font-weight: bold;">왼쪽: 0% / 오른쪽: 0%</span></div>
             </div>
         </div>
     </div>
-    
+
     <div id="viewer-container"></div>
-    
+
     <div class="status-bar">
-        <strong>사용법:</strong> 
+        <strong>사용법:</strong>
         <span id="status-text">색상 변경 모드를 활성화한 후, 3D 뷰어에서 요소를 클릭하면 색상이 변경됩니다.</span>
     </div>
 
@@ -261,5 +277,5 @@
     </script>
     <script type="module" src="/js/color-viewer.js"></script>
 </body>
-</html>
 
+</html>
