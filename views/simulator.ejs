@@ -128,6 +128,45 @@
             height: 100%;
             border-radius: 8px;
         }
+        /* 확대/축소 버튼 스타일 */
+        
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #2c3e50;
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        
+        .zoom-btn:hover {
+            background-color: #ffffff;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .zoom-btn:active {
+            transform: scale(0.95);
+        }
         /* 시간별 사용량 보기 섹션 */
         
         .time-usage-section {
@@ -480,7 +519,13 @@
                     <input type="file" id="ifc-file-input" accept=".ifc" style="display: none;">
 
                     <!-- IFC 뷰어 -->
-                    <div id="viewer-container"></div>
+                    <div id="viewer-container">
+                        <!-- 확대/축소 버튼 -->
+                        <div class="zoom-controls">
+                            <button id="zoom-in-btn" class="zoom-btn" title="확대">+</button>
+                            <button id="zoom-out-btn" class="zoom-btn" title="축소">−</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 시간별 사용량 보기 -->

@@ -28,6 +28,29 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
+// 확대/축소 기능
+function zoomIn() {
+    controls.dollyIn(1.2); // 20% 확대
+    controls.update();
+}
+
+function zoomOut() {
+    controls.dollyOut(1.2); // 20% 축소
+    controls.update();
+}
+
+// 확대/축소 버튼 이벤트 리스너
+const zoomInBtn = document.getElementById('zoom-in-btn');
+const zoomOutBtn = document.getElementById('zoom-out-btn');
+
+if (zoomInBtn) {
+    zoomInBtn.addEventListener('click', zoomIn);
+}
+
+if (zoomOutBtn) {
+    zoomOutBtn.addEventListener('click', zoomOut);
+}
+
 // 조명 추가
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
@@ -1325,7 +1348,7 @@ function addFloorGridAndLabels() {
 
     // 4. "Ref Zone" 라벨 (우측)
     const refZoneLabel = createTextSprite('Ref Zone');
-    refZoneLabel.position.set(12, 1.2, 15); // 우측 배치
+    refZoneLabel.position.set(13.5, 1.2, 15); // 우측 배치
     scene.add(refZoneLabel);
 
     floorGridAdded = true;
@@ -1574,7 +1597,7 @@ function updateDaySelect() {
 }
 
 // 날짜 선택 이벤트 핸들러
-function onDateSelected() {
+async function onDateSelected() {
     const daySelect = document.getElementById('day-select');
     if (!daySelect) return;
 
@@ -1584,7 +1607,10 @@ function onDateSelected() {
     console.log(`📅 선택된 날짜: ${selectedDateStr}`);
 
     // 선택된 날짜의 07:00-20:00 범위 찾기
-    findDailyTimeRange();
+    await findDailyTimeRange();
+
+    // 전체 슬라이더를 해당 날짜 시작 위치로 이동
+    await syncMainSliderToSelectedDate();
 
     // 일별 슬라이더 초기화
     const dailySlider = document.getElementById('daily-time-slider');
@@ -1682,6 +1708,39 @@ async function findDailyTimeRange() {
         updateDailySliderHeader(startHour, endHour);
     } else {
         console.warn(`⚠ ${targetDateStr}의 ${startHour.toString().padStart(2, '0')}:00-${endHour.toString().padStart(2, '0')}:00 범위를 찾을 수 없습니다.`);
+    }
+}
+
+// 전체 슬라이더를 선택된 날짜의 시작 위치로 동기화
+async function syncMainSliderToSelectedDate() {
+    if (dailyStartIndex === -1) {
+        console.warn('⚠️ dailyStartIndex가 설정되지 않았습니다.');
+        return;
+    }
+
+    // filteredIndices 배열에서 dailyStartIndex의 위치 찾기
+    const filteredIndex = filteredIndices.indexOf(dailyStartIndex);
+
+    if (filteredIndex !== -1) {
+        // 전체 슬라이더 업데이트
+        const timeSlider = document.getElementById('time-slider');
+        if (timeSlider) {
+            currentFilteredIndex = filteredIndex;
+            timeSlider.value = filteredIndex;
+            currentMinute = dailyStartIndex;
+
+            // 재생 중이면 정지
+            if (isPlaying) {
+                stopPlayback();
+            }
+
+            // 시각화 업데이트
+            await updateVisualization(dailyStartIndex);
+
+            console.log(`✓ 전체 슬라이더를 선택된 날짜 시작 위치로 이동: 인덱스 ${filteredIndex} (분 ${dailyStartIndex})`);
+        }
+    } else {
+        console.warn(`⚠️ filteredIndices에서 dailyStartIndex(${dailyStartIndex})를 찾을 수 없습니다.`);
     }
 }
 
