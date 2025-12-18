@@ -551,10 +551,113 @@
             font-size: 14px;
             color: #004085;
         }
+        /* 로딩 오버레이 스타일 */
+        
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 1;
+            transition: opacity 0.3s ease-out;
+        }
+        
+        #loading-overlay.fade-out {
+            opacity: 0;
+        }
+        
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 30px;
+        }
+        
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .loading-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+        
+        .loading-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+        
+        .progress-container {
+            width: 400px;
+            max-width: 90%;
+            margin: 0 auto;
+        }
+        
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 8px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ffffff 0%, #f0f0f0 100%);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .progress-text {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.95;
+        }
     </style>
 </head>
 
 <body>
+    <!-- 로딩 오버레이 -->
+    <div id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-title">IFC 뷰어</div>
+            <div class="loading-subtitle">시뮬레이터로 이동 중...</div>
+            <div class="progress-container">
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div class="progress-text" id="progress-text">0%</div>
+            </div>
+        </div>
+    </div>
+
     <button id="simulation-mode-toggle" title="시뮬레이션 모드 전환">시뮬레이션 모드</button>
 
     <h1>
@@ -788,6 +891,44 @@
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/": "https://unpkg.com/three@0.160.0/", "web-ifc": "/js/web-ifc-api.js" } }
     </script>
+
+    <!-- 로딩 및 리다이렉트 스크립트 -->
+    <script>
+        (function() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+
+            const duration = 2000; // 2초
+            const interval = 16; // 약 60fps
+            const steps = duration / interval;
+            let currentStep = 0;
+
+            // 프로그레스 바 애니메이션
+            const progressInterval = setInterval(() => {
+                currentStep++;
+                const progress = Math.min((currentStep / steps) * 100, 100);
+
+                progressBar.style.width = progress + '%';
+                progressText.textContent = Math.round(progress) + '%';
+
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+
+                    // 페이드 아웃 효과
+                    setTimeout(() => {
+                        loadingOverlay.classList.add('fade-out');
+
+                        // 리다이렉트
+                        setTimeout(() => {
+                            window.location.href = '/simulator';
+                        }, 300);
+                    }, 200);
+                }
+            }, interval);
+        })();
+    </script>
+
     <script type="module" src="/js/viewer.js"></script>
     <script type="module" src="/js/simulation.js"></script>
     <script type="module" src="/js/ui.js"></script>
