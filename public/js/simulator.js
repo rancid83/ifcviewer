@@ -399,6 +399,7 @@ let lastRenderedFrame = -1; // 마지막으로 렌더링된 프레임 (메모리
 let timeRangeFilter = '07-18'; // '07-16', '07-18', '07-20' (기본값: 07-18)
 let filteredIndices = []; // 필터링된 프레임 인덱스 배열
 let currentFilteredIndex = 0; // 필터링된 배열에서의 현재 위치
+let playFullRange = true; // 전체 재생 모드 (true: 전체 재생, false: 사용시간 필터 적용)
 
 // 날짜 선택 관련
 let availableDates = []; // 선택 가능한 날짜 목록
@@ -517,47 +518,92 @@ function createEnergyLegend() {
 
     legendContainer.innerHTML = '';
 
-    const numSteps = 20;
-    const step = (maxDiff * 2) / numSteps; // 전체 범위를 numSteps로 나눔
+    // 그라디언트 바를 위한 색상 배열 생성 (왼쪽이 파랑, 오른쪽이 빨강)
+    const numGradientSteps = 100; // 그라디언트를 위한 더 많은 단계
+    const gradientColors = [];
 
-    // 레전드 아이템들을 역순으로 추가 (+300부터 -300까지)
-    for (let i = numSteps; i >= 0; i--) {
-        const diff = maxDiff - (step * i); // +300 → -300
+    for (let i = 0; i <= numGradientSteps; i++) {
+        const diff = -maxDiff + (maxDiff * 2 * i / numGradientSteps); // -300 → +300 (왼쪽이 파랑)
         const color = getColorStringFromSignedDifference(diff, maxDiff);
-
-        const legendItem = document.createElement('div');
-        legendItem.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-        `;
-
-        const colorBox = document.createElement('div');
-        colorBox.style.cssText = `
-            width: 40px;
-            height: 18px;
-            background-color: ${color};
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        `;
-
-        const label = document.createElement('span');
-        label.style.cssText = `
-            color: #2c3e50;
-            font-weight: 500;
-        `;
-
-        // 부호 포함 표시
-        const sign = diff > 0 ? '+' : '';
-        label.textContent = `${sign}${diff.toFixed(0)} kJ/h`;
-
-        legendItem.appendChild(colorBox);
-        legendItem.appendChild(label);
-        legendContainer.appendChild(legendItem);
+        const percent = (i / numGradientSteps) * 100;
+        gradientColors.push(`${color} ${percent}%`);
     }
 
-    console.log(`✓ 레전드 생성 완료 (부호 있는 차이값 기준): -${maxDiff} ~ +${maxDiff} kJ/h (${numSteps + 1}단계)`);
+    // 그라디언트 바 컨테이너 (padding 추가하여 양옆 텍스트가 안쪽에 들어오도록)
+    const gradientBarContainer = document.createElement('div');
+    gradientBarContainer.style.cssText = `
+        width: 100%;
+        margin-bottom: 5px;
+        padding: 0 50px;
+        box-sizing: border-box;
+    `;
+
+    // 그라디언트 바 (높이 줄임)
+    const gradientBar = document.createElement('div');
+    gradientBar.style.cssText = `
+        width: 100%;
+        height: 20px;
+        background: linear-gradient(to right, ${gradientColors.join(', ')});
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        position: relative;
+    `;
+    gradientBarContainer.appendChild(gradientBar);
+
+    // 레이블 컨테이너 (높이 줄임, 눈금선 제거, padding 추가)
+    const scaleContainer = document.createElement('div');
+    scaleContainer.style.cssText = `
+        width: 100%;
+        position: relative;
+        height: 18px;
+        margin-top: 2px;
+        padding: 0 50px;
+        box-sizing: border-box;
+    `;
+
+    // 눈금 표시 (최소, 중간, 최대) - 눈금선 없이 텍스트만
+    const tickValues = [-300, -200, -100, 0, 100, 200, 300];
+
+    tickValues.forEach((value) => {
+        const tickContainer = document.createElement('div');
+        const position = ((value + maxDiff) / (maxDiff * 2)) * 100; // 0% ~ 100%
+
+        // 양쪽 끝(-300, +300)은 transform을 조정하여 안쪽으로 이동
+        let transformX = '-50%';
+        if (value === -300) {
+            transformX = '0%'; // 왼쪽 끝은 왼쪽 정렬
+        } else if (value === 300) {
+            transformX = '-100%'; // 오른쪽 끝은 오른쪽 정렬
+        }
+
+        tickContainer.style.cssText = `
+            position: absolute;
+            left: ${position}%;
+            transform: translateX(${transformX});
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        `;
+
+        // 레이블 (단위 포함)
+        const tickLabel = document.createElement('div');
+        const sign = value > 0 ? '+' : '';
+        tickLabel.textContent = `${sign}${value} kJ/h`;
+        tickLabel.style.cssText = `
+            font-size: 10px;
+            color: #666;
+            font-weight: 500;
+            white-space: nowrap;
+        `;
+
+        tickContainer.appendChild(tickLabel);
+        scaleContainer.appendChild(tickContainer);
+    });
+
+    legendContainer.appendChild(gradientBarContainer);
+    legendContainer.appendChild(scaleContainer);
+
+    console.log(`✓ 레전드 생성 완료 (그래프 형식, 부호 있는 차이값 기준): -${maxDiff} ~ +${maxDiff} kJ/h`);
 }
 
 // ============================================
@@ -591,15 +637,22 @@ seasonBtns.forEach(btn => {
                 console.log('시즌 변경 → 재생 범위:', timeRangeFilter);
             }
 
-            // 필터링된 인덱스 재생성
-            await buildFilteredIndices();
+            // 전체 재생 모드가 아닐 때만 필터링된 인덱스 재생성
+            if (!playFullRange) {
+                await buildFilteredIndices();
+            }
             updateSliderRange();
 
             // 첫 프레임으로 이동
-            currentFilteredIndex = 0;
-            if (filteredIndices.length > 0) {
-                currentMinute = filteredIndices[0];
+            if (playFullRange) {
+                currentMinute = 0;
                 await updateVisualization(currentMinute);
+            } else {
+                currentFilteredIndex = 0;
+                if (filteredIndices.length > 0) {
+                    currentMinute = filteredIndices[0];
+                    await updateVisualization(currentMinute);
+                }
             }
 
             // 날짜 목록 재생성 (시즌이 변경되면 날짜 범위가 달라짐)
@@ -623,20 +676,27 @@ const throttledUpdate = throttle(async(minute) => {
 }, 100);
 
 timeSlider.addEventListener('input', (e) => {
-    const filteredIdx = parseInt(e.target.value);
+    const value = parseInt(e.target.value);
 
     // 재생 중이면 정지
     if (isPlaying) {
         stopPlayback();
     }
 
-    // 필터링된 인덱스로 변환
-    currentFilteredIndex = filteredIdx;
-    lastRenderedFrame = filteredIdx; // 현재 프레임 업데이트 (메모리 최적화)
-
-    if (filteredIndices.length > 0 && filteredIdx < filteredIndices.length) {
-        currentMinute = filteredIndices[filteredIdx];
+    if (playFullRange) {
+        // 전체 재생 모드: 직접 분 인덱스 사용
+        currentMinute = value;
+        lastRenderedFrame = value;
         throttledUpdate(currentMinute);
+    } else {
+        // 필터링 모드: 기존 로직 유지
+        currentFilteredIndex = value;
+        lastRenderedFrame = value;
+
+        if (filteredIndices.length > 0 && value < filteredIndices.length) {
+            currentMinute = filteredIndices[value];
+            throttledUpdate(currentMinute);
+        }
     }
 });
 
@@ -699,7 +759,16 @@ function startPlayback() {
     playBtn.disabled = true;
     pauseBtn.disabled = false;
 
-    console.log(`재생 시작 (속도: ${playbackSpeed}x)`);
+    // 전체 재생 모드에 따라 초기값 설정
+    if (playFullRange) {
+        currentMinute = parseInt(timeSlider.value);
+        timeSlider.max = totalMinutes - 1;
+        console.log(`재생 시작 (속도: ${playbackSpeed}x, 전체 재생 모드)`);
+    } else {
+        currentFilteredIndex = parseInt(timeSlider.value);
+        console.log(`재생 시작 (속도: ${playbackSpeed}x, 필터링 모드)`);
+    }
+
     lastUpdateTime = performance.now();
     playbackLoop();
 }
@@ -734,31 +803,60 @@ function playbackLoop() {
     const deltaSeconds = deltaTime / 1000;
     const framesToAdd = minutesPerFrame * deltaSeconds * framesPerSecond;
 
-    // 필터링된 인덱스 증가
-    currentFilteredIndex += framesToAdd;
+    if (playFullRange) {
+        // 전체 재생 모드: 사용시간 필터 무시하고 전체 시간대 재생
+        currentMinute += framesToAdd;
 
-    // 끝에 도달하면 정지
-    if (currentFilteredIndex >= filteredIndices.length - 1) {
-        currentFilteredIndex = filteredIndices.length - 1;
-        stopPlayback();
-    }
+        // 끝에 도달하면 정지
+        if (currentMinute >= totalMinutes - 1) {
+            currentMinute = totalMinutes - 1;
+            stopPlayback();
+        }
 
-    // 실제 프레임 인덱스로 변환
-    const intFilteredIdx = Math.floor(currentFilteredIndex);
+        // 실제 프레임 인덱스로 변환
+        const intMinute = Math.floor(currentMinute);
 
-    // 프레임이 실제로 변경되었을 때만 업데이트 (메모리 최적화)
-    if (intFilteredIdx !== lastRenderedFrame && intFilteredIdx < filteredIndices.length) {
-        lastRenderedFrame = intFilteredIdx;
-        currentMinute = filteredIndices[intFilteredIdx];
+        // 프레임이 실제로 변경되었을 때만 업데이트 (메모리 최적화)
+        if (intMinute !== lastRenderedFrame && intMinute < totalMinutes) {
+            lastRenderedFrame = intMinute;
 
-        // 슬라이더 업데이트 (필터링된 인덱스 기준)
-        timeSlider.value = intFilteredIdx;
+            // 슬라이더 업데이트 (전체 범위 기준)
+            timeSlider.max = totalMinutes - 1;
+            timeSlider.value = intMinute;
 
-        // 시각화 업데이트
-        updateVisualization(currentMinute);
+            // 시각화 업데이트
+            updateVisualization(intMinute);
 
-        // 다음 청크 미리 로드
-        dataManager.preloadNextChunk(currentMinute);
+            // 다음 청크 미리 로드
+            dataManager.preloadNextChunk(intMinute);
+        }
+    } else {
+        // 필터링된 재생 모드: 기존 로직 유지
+        currentFilteredIndex += framesToAdd;
+
+        // 끝에 도달하면 정지
+        if (currentFilteredIndex >= filteredIndices.length - 1) {
+            currentFilteredIndex = filteredIndices.length - 1;
+            stopPlayback();
+        }
+
+        // 실제 프레임 인덱스로 변환
+        const intFilteredIdx = Math.floor(currentFilteredIndex);
+
+        // 프레임이 실제로 변경되었을 때만 업데이트 (메모리 최적화)
+        if (intFilteredIdx !== lastRenderedFrame && intFilteredIdx < filteredIndices.length) {
+            lastRenderedFrame = intFilteredIdx;
+            currentMinute = filteredIndices[intFilteredIdx];
+
+            // 슬라이더 업데이트 (필터링된 인덱스 기준)
+            timeSlider.value = intFilteredIdx;
+
+            // 시각화 업데이트
+            updateVisualization(currentMinute);
+
+            // 다음 청크 미리 로드
+            dataManager.preloadNextChunk(currentMinute);
+        }
     }
 
     lastUpdateTime = now;
@@ -784,8 +882,10 @@ if (testTimeSelect) {
             stopPlayback();
         }
 
-        // 필터링된 인덱스 생성
-        await buildFilteredIndices();
+        // 전체 재생 모드가 아닐 때만 필터링된 인덱스 생성
+        if (!playFullRange) {
+            await buildFilteredIndices();
+        }
 
         // 슬라이더 범위 업데이트
         updateSliderRange();
@@ -801,11 +901,17 @@ if (testTimeSelect) {
         }
 
         // 첫 프레임으로 이동
-        currentFilteredIndex = 0;
-        if (filteredIndices.length > 0) {
-            currentMinute = filteredIndices[0];
+        if (playFullRange) {
+            currentMinute = 0;
             timeSlider.value = 0;
             await updateVisualization(currentMinute);
+        } else {
+            currentFilteredIndex = 0;
+            if (filteredIndices.length > 0) {
+                currentMinute = filteredIndices[0];
+                timeSlider.value = 0;
+                await updateVisualization(currentMinute);
+            }
         }
     });
 }
@@ -909,10 +1015,16 @@ async function buildFilteredIndices() {
 
 // 슬라이더 범위 업데이트
 function updateSliderRange() {
-    if (filteredIndices.length > 0) {
+    if (playFullRange) {
+        // 전체 재생 모드: 전체 범위로 설정
+        timeSlider.max = totalMinutes - 1;
+        timeSlider.value = 0;
+        console.log('✓ 슬라이더 범위 업데이트 (전체 재생):', totalMinutes.toLocaleString());
+    } else if (filteredIndices.length > 0) {
+        // 필터링 모드: 필터링된 범위로 설정
         timeSlider.max = filteredIndices.length - 1;
         timeSlider.value = 0;
-        console.log('✓ 슬라이더 범위 업데이트:', filteredIndices.length.toLocaleString());
+        console.log('✓ 슬라이더 범위 업데이트 (필터링):', filteredIndices.length.toLocaleString());
     }
 }
 
@@ -1019,15 +1131,22 @@ testCaseSelect.addEventListener('change', async(e) => {
     if (metadata) {
         totalMinutes = metadata.totalFrames;
 
-        // 필터링된 인덱스 재생성 (새로운 시간 범위로)
-        await buildFilteredIndices();
+        // 전체 재생 모드가 아닐 때만 필터링된 인덱스 재생성
+        if (!playFullRange) {
+            await buildFilteredIndices();
+        }
         updateSliderRange();
 
         // 첫 프레임으로 이동
-        currentFilteredIndex = 0;
-        if (filteredIndices.length > 0) {
-            currentMinute = filteredIndices[0];
+        if (playFullRange) {
+            currentMinute = 0;
             await updateVisualization(currentMinute);
+        } else {
+            currentFilteredIndex = 0;
+            if (filteredIndices.length > 0) {
+                currentMinute = filteredIndices[0];
+                await updateVisualization(currentMinute);
+            }
         }
 
         // 레전드 업데이트
@@ -1640,13 +1759,21 @@ async function findDailyTimeRange() {
     const numChunks = metadata.numChunks;
     const chunkSize = metadata.chunkSize;
 
-    // Test Zone 사용시간 범위 가져오기
-    const { startHour, endHour } = getTestTimeRange();
+    // 전체 재생 모드일 때는 00:00-23:59, 아니면 사용시간 범위 사용
+    let startHour, endHour;
+    if (playFullRange) {
+        startHour = 0;
+        endHour = 23; // 23:59까지 (1440분)
+    } else {
+        const timeRange = getTestTimeRange();
+        startHour = timeRange.startHour;
+        endHour = timeRange.endHour;
+    }
 
     let startIndex = -1;
     let endIndex = -1;
 
-    console.log(`⏳ ${targetDateStr}의 ${startHour.toString().padStart(2, '0')}:00-${endHour.toString().padStart(2, '0')}:00 범위 검색 중...`);
+    console.log(`⏳ ${targetDateStr}의 ${startHour.toString().padStart(2, '0')}:00-${endHour.toString().padStart(2, '0')}:59 범위 검색 중...`);
 
     // 모든 청크를 순회하며 해당 날짜의 시작/종료 시간 찾기
     for (let chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
@@ -1680,12 +1807,33 @@ async function findDailyTimeRange() {
                         startIndex = globalIdx;
                     }
 
-                    // 종료 시간 찾기 (종료 시간 포함)
-                    if (hour === endHour && minute === 0) {
-                        endIndex = globalIdx;
-                        // 종료 시간을 찾았으면 종료
-                        chunkIdx = numChunks;
-                        break;
+                    // 종료 시간 찾기
+                    if (playFullRange) {
+                        // 전체 재생 모드: 다음 날 00:00 직전까지 (23:59)
+                        if (hour === 23 && minute === 59) {
+                            endIndex = globalIdx;
+                        } else if (hour === endHour && minute === 59) {
+                            endIndex = globalIdx;
+                        }
+                        // 다음 날짜로 넘어가면 종료
+                        const nextDate = new Date(targetDateStr);
+                        nextDate.setDate(nextDate.getDate() + 1);
+                        const nextDateStr = nextDate.toISOString().split('T')[0];
+                        if (datepart === nextDateStr && hour === 0 && minute === 0) {
+                            // 다음 날 00:00이면 이전 인덱스가 마지막
+                            if (endIndex === -1 && globalIdx > 0) {
+                                endIndex = globalIdx - 1;
+                            }
+                            chunkIdx = numChunks;
+                            break;
+                        }
+                    } else {
+                        // 필터링 모드: 기존 로직
+                        if (hour === endHour && minute === 0) {
+                            endIndex = globalIdx;
+                            chunkIdx = numChunks;
+                            break;
+                        }
                     }
                 }
             }
@@ -1695,19 +1843,27 @@ async function findDailyTimeRange() {
     if (startIndex !== -1 && endIndex !== -1) {
         dailyStartIndex = startIndex;
         dailyEndIndex = endIndex;
-        const duration = endIndex - startIndex;
-        console.log(`✓ 날짜 범위 찾음: ${startIndex} ~ ${endIndex} (${duration} 분)`);
+        const duration = endIndex - startIndex + 1; // +1로 마지막 분 포함
 
-        // 일별 슬라이더 최대값 업데이트
-        const dailySlider = document.getElementById('daily-time-slider');
-        if (dailySlider) {
-            dailySlider.max = duration;
+        if (playFullRange) {
+            // 전체 재생 모드: 하루 전체 (1440분)로 설정
+            const dailySlider = document.getElementById('daily-time-slider');
+            if (dailySlider) {
+                dailySlider.max = 1439; // 0~1439 (1440분)
+            }
+            console.log(`✓ 날짜 범위 찾음 (전체): ${startIndex} ~ ${endIndex} (1440 분)`);
+        } else {
+            const dailySlider = document.getElementById('daily-time-slider');
+            if (dailySlider) {
+                dailySlider.max = duration;
+            }
+            console.log(`✓ 날짜 범위 찾음: ${startIndex} ~ ${endIndex} (${duration} 분)`);
         }
 
         // 헤더 텍스트 업데이트
         updateDailySliderHeader(startHour, endHour);
     } else {
-        console.warn(`⚠ ${targetDateStr}의 ${startHour.toString().padStart(2, '0')}:00-${endHour.toString().padStart(2, '0')}:00 범위를 찾을 수 없습니다.`);
+        console.warn(`⚠ ${targetDateStr}의 ${startHour.toString().padStart(2, '0')}:00-${endHour.toString().padStart(2, '0')}:59 범위를 찾을 수 없습니다.`);
     }
 }
 
@@ -1746,17 +1902,25 @@ async function syncMainSliderToSelectedDate() {
 
 // 일별 슬라이더 헤더 업데이트
 function updateDailySliderHeader(startHour, endHour) {
-    const headerElement = document.querySelector('.time-slider-container h4');
-    if (headerElement) {
-        const startStr = startHour.toString().padStart(2, '0');
-        const endStr = endHour.toString().padStart(2, '0');
-        headerElement.textContent = `⏰ 일별 시간대 슬라이더 (${startStr}:00 - ${endStr}:00)`;
-    }
+    // const headerElement = document.querySelector('.time-slider-container h4');
+    // if (headerElement) {
+    //     const startStr = startHour.toString().padStart(2, '0');
+    //     const endStr = endHour.toString().padStart(2, '0');
+    //     headerElement.textContent = `⏰ 일별 시간대 슬라이더 (${startStr}:00 - ${endStr}:00)`;
+    // }
 }
 
 // 일별 슬라이더 표시 업데이트
 async function updateDailyDisplay(minuteOffset) {
-    const globalIdx = dailyStartIndex + minuteOffset;
+    let globalIdx;
+
+    if (playFullRange) {
+        // 전체 재생 모드: dailyStartIndex부터 minuteOffset만큼 더함
+        globalIdx = dailyStartIndex + minuteOffset;
+    } else {
+        // 필터링 모드: 기존 로직
+        globalIdx = dailyStartIndex + minuteOffset;
+    }
 
     if (globalIdx > dailyEndIndex || globalIdx >= totalMinutes) return;
 
@@ -1798,7 +1962,7 @@ async function updateDailyDisplay(minuteOffset) {
         }
 
         if (minuteDisplayEl) {
-            const maxMinutes = dailyEndIndex - dailyStartIndex;
+            const maxMinutes = playFullRange ? 1440 : (dailyEndIndex - dailyStartIndex + 1);
             const percentage = maxMinutes > 0 ? ((minuteOffset / maxMinutes) * 100).toFixed(1) : 0;
             minuteDisplayEl.textContent = `진행률: ${percentage}%`;
         }
@@ -1875,15 +2039,14 @@ function updateDailySliderPosition(hour, minute) {
 
     if (!dailySlider) return;
 
-    // 07:00-20:00 범위 체크
-    if (hour >= 7 && hour <= 20) {
-        // 07:00부터의 분 단위 오프셋 계산
-        const minutesFrom7AM = (hour - 7) * 60 + minute;
-
-        // 슬라이더 범위 내에 있는지 확인
+    if (playFullRange) {
+        // 전체 재생 모드: 00:00-23:59 전체 범위
+        // 00:00부터의 분 단위 오프셋 계산
+        const minutesFromMidnight = hour * 60 + minute;
         const maxMinutes = parseInt(dailySlider.max);
-        if (minutesFrom7AM >= 0 && minutesFrom7AM <= maxMinutes) {
-            dailySlider.value = minutesFrom7AM;
+
+        if (minutesFromMidnight >= 0 && minutesFromMidnight <= maxMinutes) {
+            dailySlider.value = minutesFromMidnight;
 
             // 디스플레이 업데이트
             if (dailyTimeDisplay) {
@@ -1897,7 +2060,8 @@ function updateDailySliderPosition(hour, minute) {
             }
 
             if (dailyMinuteDisplay) {
-                dailyMinuteDisplay.textContent = `분: ${minutesFrom7AM} / ${maxMinutes}`;
+                const percentage = maxMinutes > 0 ? ((minutesFromMidnight / (maxMinutes + 1)) * 100).toFixed(1) : 0;
+                dailyMinuteDisplay.textContent = `진행률: ${percentage}%`;
             }
 
             // 슬라이더 활성화
@@ -1908,10 +2072,48 @@ function updateDailySliderPosition(hour, minute) {
             dailySlider.style.opacity = '0.5';
         }
     } else {
-        // 07:00-20:00 범위 밖
-        dailySlider.style.opacity = '0.5';
-        if (dailyTimeDisplay) {
-            dailyTimeDisplay.textContent = '범위 외';
+        // 필터링 모드: 기존 로직 (07:00-20:00 범위 체크)
+        const { startHour } = getTestTimeRange();
+        const minHour = startHour;
+        const maxHour = 20; // 기본 최대값
+
+        if (hour >= minHour && hour <= maxHour) {
+            // 시작 시간부터의 분 단위 오프셋 계산
+            const minutesFromStart = (hour - minHour) * 60 + minute;
+
+            // 슬라이더 범위 내에 있는지 확인
+            const maxMinutes = parseInt(dailySlider.max);
+            if (minutesFromStart >= 0 && minutesFromStart <= maxMinutes) {
+                dailySlider.value = minutesFromStart;
+
+                // 디스플레이 업데이트
+                if (dailyTimeDisplay) {
+                    const hourStr = hour.toString().padStart(2, '0');
+                    const minuteStr = minute.toString().padStart(2, '0');
+                    dailyTimeDisplay.textContent = `${hourStr}:${minuteStr}`;
+                }
+
+                if (dailyDateDisplay && selectedDate) {
+                    dailyDateDisplay.textContent = selectedDate.toISOString().split('T')[0];
+                }
+
+                if (dailyMinuteDisplay) {
+                    dailyMinuteDisplay.textContent = `분: ${minutesFromStart} / ${maxMinutes}`;
+                }
+
+                // 슬라이더 활성화
+                dailySlider.style.opacity = '1';
+                dailySlider.disabled = false;
+            } else {
+                // 범위를 벗어난 경우
+                dailySlider.style.opacity = '0.5';
+            }
+        } else {
+            // 범위 밖
+            dailySlider.style.opacity = '0.5';
+            if (dailyTimeDisplay) {
+                dailyTimeDisplay.textContent = '범위 외';
+            }
         }
     }
 }
@@ -2347,8 +2549,10 @@ async function initializeSimulator() {
             console.log(`   재생 시간 범위: ${timeRangeFilter}`);
         }
 
-        // 필터링된 인덱스 생성
-        await buildFilteredIndices();
+        // 전체 재생 모드가 아닐 때만 필터링된 인덱스 생성
+        if (!playFullRange) {
+            await buildFilteredIndices();
+        }
 
         // 시간 슬라이더 설정
         updateSliderRange();

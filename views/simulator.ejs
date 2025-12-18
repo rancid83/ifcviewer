@@ -128,6 +128,15 @@
             height: 100%;
             border-radius: 8px;
         }
+        /* 에너지 레전드 스타일 */
+        
+        #energy-legend {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
         /* 확대/축소 버튼 스타일 */
         
         .zoom-controls {
@@ -579,7 +588,7 @@
 
                     <!-- 전체 기간 슬라이더 -->
                     <div class="time-slider-container">
-                        <h4 style="margin-bottom: 10px; color: #2c3e50; font-size: 14px;">📅 전체 기간 슬라이더</h4>
+                        <h4 style="margin-bottom: 10px; color: #2c3e50; font-size: 14px;">📅 일별</h4>
                         <input type="range" class="time-slider" id="time-slider" min="0" max="83520" value="0" step="1">
                         <div class="time-labels">
                             <span id="current-date-display" style="color: #1e3a8a; font-weight: 600;">2025-08-01</span>
@@ -590,7 +599,7 @@
 
                     <!-- 일별 시간대 슬라이더 (신규) -->
                     <div class="time-slider-container" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-                        <h4 style="margin-bottom: 10px; color: #2c3e50; font-size: 14px;">⏰ 일별 시간대 슬라이더 (07:00 - 20:00)</h4>
+                        <h4 style="margin-bottom: 10px; color: #2c3e50; font-size: 14px;">⏰ 시간대별</h4>
                         <input type="range" class="time-slider" id="daily-time-slider" min="0" max="780" value="0" step="1">
                         <div class="time-labels">
                             <span id="daily-date-display" style="color: #1e3a8a; font-weight: 600;">2025-08-01</span>
@@ -619,6 +628,9 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 에너지 사용량 컬러 레전드 (가로 형태) - 하단 배치 -->
+                <div id="energy-legend"></div>
             </div>
         </div>
 
