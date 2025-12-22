@@ -66,25 +66,6 @@
             font-size: 18px;
             font-weight: 700;
             border-bottom: 2px solid #1e40af;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .panel-header .header-title {
-            flex: 1;
-        }
-        
-        .panel-header .header-buttons {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        
-        .panel-header .btn {
-            padding: 8px 16px;
-            font-size: 13px;
-            white-space: nowrap;
         }
         
         .panel-content {
@@ -129,7 +110,6 @@
         
         .viewer-section {
             margin-bottom: 20px;
-            position: relative;
         }
         
         #viewer-container {
@@ -140,7 +120,6 @@
             border: 2px solid #bdc3c7;
             margin-top: 15px;
             position: relative;
-            overflow: hidden;
         }
         
         #viewer-container canvas {
@@ -148,83 +127,23 @@
             width: 100%;
             height: 100%;
             border-radius: 8px;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
         }
         /* 에너지 레전드 스타일 */
         
         #energy-legend {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 10px 8px;
-            background-color: rgba(255, 255, 255, 0.95);
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #ffffff;
             border-radius: 8px;
-            border: 1px solid rgba(224, 224, 224, 0.8);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            width: 50px;
-            height: 300px;
-            pointer-events: auto;
+            border: 1px solid #e0e0e0;
         }
-        /* 에너지 사용량 표시 (뷰어 오른쪽 상단) */
-        
-        #energy-display {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 8px 12px;
-            background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 6px;
-            border: 1px solid rgba(224, 224, 224, 0.8);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            pointer-events: auto;
-            font-size: 12px;
-            line-height: 1.4;
-        }
-        
-        #energy-display .energy-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 4px;
-            white-space: nowrap;
-        }
-        
-        #energy-display .energy-row:last-child {
-            margin-bottom: 0;
-        }
-        
-        #energy-display .energy-label {
-            font-weight: 600;
-            margin-right: 8px;
-            font-size: 11px;
-            min-width: 35px;
-        }
-        
-        #energy-display .energy-value {
-            font-weight: bold;
-            font-size: 13px;
-            text-align: left;
-            width: 240px; /* -0.000009051694178197067 길이에 맞춘 고정 너비 */
-            display: inline-block;
-        }
-        
-        #energy-display .energy-unit {
-            font-size: 10px;
-            margin-left: 3px;
-        }
-        
         /* 확대/축소 버튼 스타일 */
         
         .zoom-controls {
             position: absolute;
             top: 10px;
-            left: 70px; /* 레전드 옆에 배치 */
-            z-index: 1001;
+            right: 10px;
+            z-index: 1000;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -598,16 +517,14 @@
         <!-- 좌측 패널: 분석 결과 보기 -->
         <div class="panel panel-left">
             <div class="panel-header">
-                <span class="header-title">분석 결과 보기</span>
-                <div class="header-buttons">
-                    <button class="btn btn-dark" id="load-ifc-btn">
-                        📂 파일 불러오기 (IFC)
-                    </button>
-                </div>
+                분석 결과 보기
             </div>
             <div class="panel-content">
                 <!-- IFC 파일 불러오기 -->
                 <div class="viewer-section">
+                    <button class="btn btn-dark" id="load-ifc-btn">
+                        📂 파일 불러오기 (IFC)
+                    </button>
                     <input type="file" id="ifc-file-input" accept=".ifc" style="display: none;">
 
                     <!-- IFC 뷰어 -->
@@ -616,26 +533,6 @@
                         <div class="zoom-controls">
                             <button id="zoom-in-btn" class="zoom-btn" title="확대">+</button>
                             <button id="zoom-out-btn" class="zoom-btn" title="축소">−</button>
-                        </div>
-                    </div>
-                    <!-- 에너지 사용량 컬러 레전드 (뷰어 위에 오버레이) -->
-                    <div id="energy-legend"></div>
-                    <!-- 에너지 사용량 표시 (뷰어 오른쪽 상단) -->
-                    <div id="energy-display">
-                        <div class="energy-row">
-                            <span class="energy-label" style="color: #e74c3c;">Test:</span>
-                            <span id="test-energy" class="energy-value" style="color: #e74c3c; text-align: left;">0</span>
-                            <span class="energy-unit" style="color: #e74c3c;">kJ/h</span>
-                        </div>
-                        <div class="energy-row">
-                            <span class="energy-label" style="color: #3498db;">Ref:</span>
-                            <span id="ref-energy" class="energy-value" style="color: #3498db; text-align: left;">0</span>
-                            <span class="energy-unit" style="color: #3498db;">kJ/h</span>
-                        </div>
-                        <div class="energy-row">
-                            <span class="energy-label">차이:</span>
-                            <span id="energy-diff" class="energy-value" style="text-align: left;">0</span>
-                            <span id="energy-diff-percent" class="energy-unit" style="color: #7f8c8d;">(0%)</span>
                         </div>
                     </div>
                 </div>
@@ -711,21 +608,45 @@
                         </div>
                     </div>
 
+                    <!-- 에너지 사용량 표시 -->
+                    <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border: 1px solid #e0e0e0;">
+                        <h4 style="margin-bottom: 10px; color: #2c3e50; font-size: 14px;">📊 에너지 사용량 (kJ/h)</h4>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <div>
+                                <strong style="color: #e74c3c;">Test Zone:</strong>
+                                <span id="test-energy" style="font-size: 16px; color: #e74c3c; font-weight: bold; margin-left: 5px;">0</span>
+                            </div>
+                            <div>
+                                <strong style="color: #3498db;">Ref Zone:</strong>
+                                <span id="ref-energy" style="font-size: 16px; color: #3498db; font-weight: bold; margin-left: 5px;">0</span>
+                            </div>
+                        </div>
+                        <div style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                            <strong>차이:</strong>
+                            <span id="energy-diff" style="font-size: 15px; font-weight: bold; margin-left: 5px;">0</span>
+                            <span id="energy-diff-percent" style="font-size: 13px; color: #7f8c8d; margin-left: 5px;">(0%)</span>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- 에너지 사용량 컬러 레전드 (가로 형태) - 하단 배치 -->
+                <div id="energy-legend"></div>
             </div>
         </div>
 
         <!-- 우측 패널: 분석 설정 하기 -->
         <div class="panel panel-right">
             <div class="panel-header">
-                <span class="header-title">분석 설정 하기</span>
-                <div class="header-buttons">
+                분석 설정 하기
+            </div>
+            <div class="panel-content">
+                <!-- 분석 하기 버튼 -->
+                <div style="margin-bottom: 20px; text-align: right;">
                     <button class="btn btn-dark" id="analyze-btn">
                         🔬 분석 하기 (에너지 사용량)
                     </button>
                 </div>
-            </div>
-            <div class="panel-content">
+
                 <!-- Controller 다이어그램 -->
                 <div class="controller-section">
                     <div class="diagram-image-container">

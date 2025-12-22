@@ -501,175 +501,94 @@ function getColorStringFromSignedDifference(diff, maxAbsDiff) {
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
-// 절대값 기준 색상 생성 함수 (각 zone의 사용량 기준, 0 = 흰색, 최대값 = 빨강)
-function getColorFromValue(value, minValue, maxValue) {
-    // 값이 0이면 흰색 반환
-    if (value === 0) {
-        return new THREE.Color(0xffffff);
-    }
-
-    // 양수값의 최대값만 사용 (0 ~ maxValue)
-    const absMaxValue = Math.max(0, maxValue);
-
-    if (absMaxValue === 0) return new THREE.Color(0xffffff); // 최대값이 0이면 흰색
-
-    // 절대값 기준으로 0 ~ absMaxValue를 0 ~ 1로 정규화
-    const normalized = Math.max(0, Math.min(1, Math.abs(value) / absMaxValue));
-
-    // 색상 맵핑: 0.0(흰색) → 1.0(빨강)
-    if (normalized === 0) {
-        return new THREE.Color(0xffffff); // 흰색
-    }
-
-    // 채도와 명도를 점진적으로 증가시켜 빨강으로 전환
-    const saturation = normalized * 100; // 0% → 100%
-    const lightness = 100 - (normalized * 50); // 100% → 50% (밝은 빨강 → 진한 빨강)
-
-    return new THREE.Color(`hsl(0, ${saturation}%, ${lightness}%)`);
-}
-
-// 레전드용 색상 문자열 생성 (절대값 기준)
-function getColorStringFromValue(value, minValue, maxValue) {
-    if (maxValue === minValue) return 'hsl(0, 0%, 100%)';
-    const normalized = Math.max(0, Math.min(1, (value - minValue) / (maxValue - minValue)));
-    const hue = (1 - normalized) * 240;
-    return `hsl(${hue}, 100%, 50%)`;
-}
-
-// 레전드용 색상 문자열 생성 (절대값 기준, 0 기준 흰색 → 빨강)
-function getColorStringFromAbsoluteValue(value, maxValue) {
-    if (maxValue === 0) return 'hsl(0, 0%, 100%)'; // 최대값이 0이면 흰색
-
-    // 절대값 기준으로 0 ~ maxValue를 0 ~ 1로 정규화
-    const normalized = Math.max(0, Math.min(1, Math.abs(value) / maxValue));
-
-    // 색상 맵핑: 0.0(흰색) → 1.0(빨강)
-    // 흰색(hsl(0, 0%, 100%))에서 빨강(hsl(0, 100%, 50%))으로 전환
-    if (normalized === 0) {
-        return 'hsl(0, 0%, 100%)'; // 흰색
-    }
-
-    // 채도와 명도를 점진적으로 증가시켜 빨강으로 전환
-    const saturation = normalized * 100; // 0% → 100%
-    const lightness = 100 - (normalized * 50); // 100% → 50% (밝은 빨강 → 진한 빨강)
-
-    return `hsl(0, ${saturation}%, ${lightness}%)`;
-}
-
-// 값에 따른 투명도 계산 함수
-// 값이 0에 가까울수록 투명도 높음 (기존 색상 보임), 값이 클수록 투명도 낮음 (색상 진함)
-function getOpacityFromValue(value, minValue, maxValue) {
-    if (maxValue === minValue) return 0.9; // 최소=최대면 거의 투명
-
-    // 값을 0~1로 정규화
-    const normalized = Math.max(0, Math.min(1, (value - minValue) / (maxValue - minValue)));
-
-    // 투명도: 0.9 (최소값, 거의 투명) → 0.1 (최대값, 거의 불투명)
-    // normalized가 0일 때 opacity 0.9, normalized가 1일 때 opacity 0.1
-    const opacity = 0.9 - (normalized * 0.8); // 0.9 → 0.1
-
-    return opacity;
-}
-
 // 에너지 차이값 최대 범위 (-300 ~ +300)
 let globalMaxDiff = 300;
 
-// 각 zone의 최대/최소값 (절대값 기준 색상용)
-let globalMaxTestEnergy = 0;
-let globalMinTestEnergy = 0;
-let globalMaxRefEnergy = 0;
-let globalMinRefEnergy = 0;
+// 에너지 레전드 생성 (부호 있는 차이값 기준: -300 ~ +300)
+function createEnergyLegend() {
+    const metadata = dataManager.currentMetadata;
+    if (!metadata) return;
 
-// 각 zone별 레전드 생성 함수 (세로형: 0 = 흰색, 최대값 = 빨강)
-function createZoneLegend(zoneName, minValue, maxValue, labelColor) {
-    const legendWrapper = document.createElement('div');
-    legendWrapper.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        height: 100%;
-        width: 100%;
-    `;
+    // 차이값 범위: -300 ~ +300
+    const maxDiff = 300;
+    globalMaxDiff = maxDiff;
 
-    // Zone 이름 라벨 제거 (Test Zone 텍스트 없음)
+    const legendContainer = document.getElementById('energy-legend');
+    if (!legendContainer) return;
 
-    // 양수값의 최대값만 사용 (0 ~ maxValue)
-    const absMaxValue = Math.max(0, maxValue);
+    legendContainer.innerHTML = '';
 
-    // 그라디언트 바를 위한 색상 배열 생성 (0 ~ absMaxValue 기준)
-    // 위쪽이 최대값(빨강), 아래쪽이 0(흰색)
-    const numGradientSteps = 50; // 성능을 위해 스텝 수 감소
+    // 그라디언트 바를 위한 색상 배열 생성 (왼쪽이 파랑, 오른쪽이 빨강)
+    const numGradientSteps = 100; // 그라디언트를 위한 더 많은 단계
     const gradientColors = [];
 
-    if (absMaxValue > 0) {
-        for (let i = 0; i <= numGradientSteps; i++) {
-            // i가 0일 때 최대값, i가 numGradientSteps일 때 0
-            const value = absMaxValue * (1 - i / numGradientSteps);
-            const color = getColorStringFromAbsoluteValue(value, absMaxValue);
-            const percent = (i / numGradientSteps) * 100; // 0% (위) -> 100% (아래)
-            gradientColors.push(`${color} ${percent}%`);
-        }
-    } else {
-        // 최대값이 0이면 흰색만
-        gradientColors.push(`hsl(0, 0%, 100%) 0%`, `hsl(0, 0%, 100%) 100%`);
+    for (let i = 0; i <= numGradientSteps; i++) {
+        const diff = -maxDiff + (maxDiff * 2 * i / numGradientSteps); // -300 → +300 (왼쪽이 파랑)
+        const color = getColorStringFromSignedDifference(diff, maxDiff);
+        const percent = (i / numGradientSteps) * 100;
+        gradientColors.push(`${color} ${percent}%`);
     }
 
-    // 그라디언트 바 컨테이너 (세로형)
+    // 그라디언트 바 컨테이너 (padding 추가하여 양옆 텍스트가 안쪽에 들어오도록)
     const gradientBarContainer = document.createElement('div');
     gradientBarContainer.style.cssText = `
-        position: relative;
-        width: 20px;
-        height: 280px;
+        width: 100%;
         margin-bottom: 5px;
+        padding: 0 50px;
+        box-sizing: border-box;
     `;
 
-    // 그라디언트 바 (세로형)
+    // 그라디언트 바 (높이 줄임)
     const gradientBar = document.createElement('div');
     gradientBar.style.cssText = `
         width: 100%;
-        height: 100%;
-        background: linear-gradient(to bottom, ${gradientColors.join(', ')});
+        height: 20px;
+        background: linear-gradient(to right, ${gradientColors.join(', ')});
         border-radius: 4px;
         border: 1px solid #ddd;
         position: relative;
     `;
     gradientBarContainer.appendChild(gradientBar);
 
-    // 레이블 컨테이너 (세로형)
+    // 레이블 컨테이너 (높이 줄임, 눈금선 제거, padding 추가)
     const scaleContainer = document.createElement('div');
     scaleContainer.style.cssText = `
-        position: absolute;
-        left: 100%;
-        top: 0;
-        bottom: 0;
-        width: 50px;
-        margin-left: 8px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
+        width: 100%;
+        position: relative;
+        height: 18px;
+        margin-top: 2px;
+        padding: 0 50px;
+        box-sizing: border-box;
     `;
 
-    // 눈금 표시 (절대값 기준: 최대값부터 0까지 역순)
-    const tickValues = [
-        absMaxValue,
-        absMaxValue * 0.75,
-        absMaxValue * 0.5,
-        absMaxValue * 0.25,
-        0
-    ];
+    // 눈금 표시 (최소, 중간, 최대) - 눈금선 없이 텍스트만
+    const tickValues = [-300, -200, -100, 0, 100, 200, 300];
 
     tickValues.forEach((value) => {
         const tickContainer = document.createElement('div');
+        const position = ((value + maxDiff) / (maxDiff * 2)) * 100; // 0% ~ 100%
+
+        // 양쪽 끝(-300, +300)은 transform을 조정하여 안쪽으로 이동
+        let transformX = '-50%';
+        if (value === -300) {
+            transformX = '0%'; // 왼쪽 끝은 왼쪽 정렬
+        } else if (value === 300) {
+            transformX = '-100%'; // 오른쪽 끝은 오른쪽 정렬
+        }
 
         tickContainer.style.cssText = `
+            position: absolute;
+            left: ${position}%;
+            transform: translateX(${transformX});
             display: flex;
+            flex-direction: column;
             align-items: center;
         `;
 
+        // 레이블 (단위 포함)
         const tickLabel = document.createElement('div');
-        // 0일 때는 "0", 나머지는 절대값 표시
-        const displayValue = value === 0 ? '0' : value.toFixed(0);
-        tickLabel.textContent = `${displayValue}`;
+        const sign = value > 0 ? '+' : '';
+        tickLabel.textContent = `${sign}${value} kJ/h`;
         tickLabel.style.cssText = `
             font-size: 10px;
             color: #666;
@@ -677,51 +596,14 @@ function createZoneLegend(zoneName, minValue, maxValue, labelColor) {
             white-space: nowrap;
         `;
 
-        // 단위 표시 (최대값에만)
-        if (value === absMaxValue) {
-            const unitLabel = document.createElement('div');
-            unitLabel.textContent = ' kJ/h';
-            unitLabel.style.cssText = `
-                font-size: 8px;
-                color: #999;
-                margin-left: 2px;
-            `;
-            tickContainer.appendChild(unitLabel);
-        }
-
         tickContainer.appendChild(tickLabel);
         scaleContainer.appendChild(tickContainer);
     });
 
-    gradientBarContainer.appendChild(scaleContainer);
-    legendWrapper.appendChild(gradientBarContainer);
+    legendContainer.appendChild(gradientBarContainer);
+    legendContainer.appendChild(scaleContainer);
 
-    return legendWrapper;
-}
-
-// 에너지 레전드 생성 (각 zone별로 분리)
-function createEnergyLegend() {
-    const metadata = dataManager.currentMetadata;
-    if (!metadata) return;
-
-    // 각 zone의 최대/최소값 설정
-    globalMaxTestEnergy = metadata.maxEnergyTest || 1000;
-    globalMinTestEnergy = metadata.minEnergyTest || 0;
-    globalMaxRefEnergy = metadata.maxEnergyRef || 1000;
-    globalMinRefEnergy = metadata.minEnergyRef || 0;
-
-    const legendContainer = document.getElementById('energy-legend');
-    if (!legendContainer) return;
-
-    legendContainer.innerHTML = '';
-
-    // Test Zone 레전드만 생성
-    const testLegend = createZoneLegend('Test Zone', globalMinTestEnergy, globalMaxTestEnergy, '#e74c3c');
-    legendContainer.appendChild(testLegend);
-
-    console.log(`✓ 레전드 생성 완료`);
-    console.log(`   Test Zone: ${globalMinTestEnergy.toFixed(2)} ~ ${globalMaxTestEnergy.toFixed(2)} kJ/h`);
-    console.log(`   최대값: ${globalMaxTestEnergy}, 색상 함수 테스트:`, getColorStringFromAbsoluteValue(0, globalMaxTestEnergy), getColorStringFromAbsoluteValue(globalMaxTestEnergy, globalMaxTestEnergy));
+    console.log(`✓ 레전드 생성 완료 (그래프 형식, 부호 있는 차이값 기준): -${maxDiff} ~ +${maxDiff} kJ/h`);
 }
 
 // ============================================
@@ -1144,192 +1026,6 @@ function updateSliderRange() {
         timeSlider.value = 0;
         console.log('✓ 슬라이더 범위 업데이트 (필터링):', filteredIndices.length.toLocaleString());
     }
-    // 일별 슬라이더 날짜 눈금 업데이트
-    createDailySliderTicks();
-}
-
-// 일별 슬라이더에 날짜 눈금 추가
-function createDailySliderTicks() {
-    const timeSlider = document.getElementById('time-slider');
-    if (!timeSlider) return;
-    const timeSliderContainer = timeSlider.parentElement;
-    if (!timeSliderContainer) return;
-
-    // 기존 눈금이 있으면 제거
-    const existingTicks = timeSliderContainer.querySelector('.slider-ticks-container');
-    if (existingTicks) existingTicks.remove();
-
-    const metadata = dataManager.currentMetadata;
-    if (!metadata || !metadata.startDate) return;
-
-    // 눈금 컨테이너 생성
-    const ticksContainer = document.createElement('div');
-    ticksContainer.className = 'slider-ticks-container';
-    ticksContainer.style.cssText = `
-        width: 100%;
-        position: relative;
-        height: 20px;
-        margin-bottom: 5px;
-        padding: 0 10px;
-        box-sizing: border-box;
-    `;
-
-    const maxValue = parseInt(timeSlider.max);
-    if (maxValue <= 0) return;
-
-    // 대략적인 날짜 개수 계산 (1440분 = 1일)
-    const totalDays = Math.ceil(totalMinutes / 1440);
-    const startDate = new Date(metadata.startDate);
-
-    // 눈금 개수 결정 (최대 5-7개)
-    let tickInterval = 1;
-    if (totalDays > 7) tickInterval = Math.ceil(totalDays / 6);
-    if (totalDays > 30) tickInterval = Math.ceil(totalDays / 5);
-    if (totalDays > 90) tickInterval = Math.ceil(totalDays / 4);
-
-    const tickValues = [];
-    for (let day = 0; day <= totalDays; day += tickInterval) {
-        tickValues.push(day);
-    }
-    // 마지막 날짜도 포함
-    if (tickValues.length > 0 && tickValues[tickValues.length - 1] < totalDays) {
-        tickValues.push(totalDays);
-    }
-
-    tickValues.forEach((dayOffset) => {
-        const tickContainer = document.createElement('div');
-        const position = totalDays > 0 ? (dayOffset / totalDays) * 100 : 0; // 0% ~ 100%
-
-        let transformX = '-50%';
-        if (dayOffset === 0) {
-            transformX = '0%';
-        } else if (dayOffset === totalDays) {
-            transformX = '-100%';
-        }
-
-        tickContainer.style.cssText = `
-            position: absolute;
-            left: ${position}%;
-            transform: translateX(${transformX});
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        `;
-
-        // 날짜 계산
-        const tickDate = new Date(startDate);
-        tickDate.setDate(tickDate.getDate() + dayOffset);
-        const dateStr = tickDate.toISOString().split('T')[0];
-        const displayDate = `${dateStr.split('-')[1]}/${dateStr.split('-')[2]}`; // MM/DD 형식
-
-        const tickLabel = document.createElement('div');
-        tickLabel.textContent = displayDate;
-        tickLabel.style.cssText = `
-            font-size: 10px;
-            color: #666;
-            font-weight: 500;
-            white-space: nowrap;
-        `;
-
-        tickContainer.appendChild(tickLabel);
-        ticksContainer.appendChild(tickContainer);
-    });
-
-    // 슬라이더 앞에 삽입 (상단에 표시)
-    timeSliderContainer.insertBefore(ticksContainer, timeSlider);
-}
-
-// 시간대별 슬라이더에 시간 눈금 추가
-function createTimeSliderTicks() {
-    const dailySlider = document.getElementById('daily-time-slider');
-    if (!dailySlider) return;
-    const dailySliderContainer = dailySlider.parentElement;
-    if (!dailySliderContainer) return;
-
-    // 기존 눈금이 있으면 제거
-    const existingTicks = dailySliderContainer.querySelector('.slider-ticks-container');
-    if (existingTicks) existingTicks.remove();
-
-    const maxMinutes = parseInt(dailySlider.max);
-    if (maxMinutes <= 0) return;
-
-    // 눈금 컨테이너 생성
-    const ticksContainer = document.createElement('div');
-    ticksContainer.className = 'slider-ticks-container';
-    ticksContainer.style.cssText = `
-        width: 100%;
-        position: relative;
-        height: 20px;
-        margin-bottom: 5px;
-        padding: 0 10px;
-        box-sizing: border-box;
-    `;
-
-    let startHour, endHour;
-    if (playFullRange) {
-        startHour = 0;
-        endHour = 23;
-    } else {
-        const timeRange = getTestTimeRange();
-        startHour = timeRange.startHour;
-        endHour = timeRange.endHour;
-    }
-
-    const totalHours = endHour - startHour + 1;
-    const totalMinutesInRange = maxMinutes;
-
-    // 시간 간격 결정 (2시간 또는 4시간 간격)
-    let hourInterval = 2;
-    if (totalHours > 12) hourInterval = 4;
-    if (totalHours > 24) hourInterval = 6;
-
-    const tickValues = [];
-    for (let hour = startHour; hour <= endHour; hour += hourInterval) {
-        tickValues.push(hour);
-    }
-    // 마지막 시간도 포함
-    if (tickValues.length > 0 && tickValues[tickValues.length - 1] < endHour) {
-        tickValues.push(endHour);
-    }
-
-    tickValues.forEach((hour) => {
-        const tickContainer = document.createElement('div');
-        // 시간을 분으로 변환 (시작 시간부터의 오프셋)
-        const minutesFromStart = (hour - startHour) * 60;
-        const position = totalMinutesInRange > 0 ? (minutesFromStart / totalMinutesInRange) * 100 : 0;
-
-        let transformX = '-50%';
-        if (hour === startHour) {
-            transformX = '0%';
-        } else if (hour === endHour) {
-            transformX = '-100%';
-        }
-
-        tickContainer.style.cssText = `
-            position: absolute;
-            left: ${Math.max(0, Math.min(100, position))}%;
-            transform: translateX(${transformX});
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        `;
-
-        const tickLabel = document.createElement('div');
-        const hourStr = hour.toString().padStart(2, '0');
-        tickLabel.textContent = `${hourStr}:00`;
-        tickLabel.style.cssText = `
-            font-size: 10px;
-            color: #666;
-            font-weight: 500;
-            white-space: nowrap;
-        `;
-
-        tickContainer.appendChild(tickLabel);
-        ticksContainer.appendChild(tickContainer);
-    });
-
-    // 슬라이더 앞에 삽입 (상단에 표시)
-    dailySliderContainer.insertBefore(ticksContainer, dailySlider);
 }
 
 // ============================================
@@ -1679,35 +1375,25 @@ function updateIFCColors(frameData) {
     const testEnergy = frameData.Qsens_test || 0;
     const refEnergy = frameData.Qsens_ref || 0;
 
-    console.log(`   testEnergy: ${testEnergy.toFixed(2)}, refEnergy: ${refEnergy.toFixed(2)}`);
+    // 차이값 계산 (부호 포함)
+    const diff = testEnergy - refEnergy;
 
-    // 각 zone의 사용량 기준으로 색상 계산
-    const testColor = getColorFromValue(testEnergy, globalMinTestEnergy, globalMaxTestEnergy);
-    const refColor = getColorFromValue(refEnergy, globalMinRefEnergy, globalMaxRefEnergy);
+    console.log(`   testEnergy: ${testEnergy.toFixed(2)}, refEnergy: ${refEnergy.toFixed(2)}, diff: ${diff.toFixed(2)}`);
 
-    // 각 zone의 사용량 기준으로 투명도 계산
-    const testOpacity = getOpacityFromValue(testEnergy, globalMinTestEnergy, globalMaxTestEnergy);
-    const refOpacity = getOpacityFromValue(refEnergy, globalMinRefEnergy, globalMaxRefEnergy);
+    // 부호 있는 차이값 기준 색상 (-300 ~ +300)
+    // 음수(파랑) = Test가 Ref보다 에너지 적게 사용
+    // 양수(빨강) = Test가 Ref보다 에너지 많이 사용
+    const simulationColor = getColorFromSignedDifference(diff, globalMaxDiff);
 
-    console.log(`   Test Zone 색상: ${testColor.getHexString()}, 투명도: ${testOpacity.toFixed(2)}`);
-    console.log(`   Ref Zone 색상: ${refColor.getHexString()}, 투명도: ${refOpacity.toFixed(2)}`);
+    console.log(`   색상: ${simulationColor.getHexString()}`);
 
-    // Test Zone 요소들에 색상 적용
-    const testZoneElements = [346, 1997, 404, 381];
+    // Test Cell 요소들(346, 1997, 404, 381)에 색상 적용 , 1502, 1362, 1373, 1348
+    const targetElements = [346, 1997, 404, 381];
     try {
-        applyColorToElements(testZoneElements, testColor, testOpacity);
-        console.log(`✅ Test Zone ExpressID ${testZoneElements.join(', ')}에 색상 적용 완료`);
+        applyColorToElements(targetElements, simulationColor, 0.7);
+        console.log(`✅ ExpressID ${targetElements.join(', ')}에 색상 적용 완료`);
     } catch (error) {
-        console.error('❌ Test Zone 색상 적용 오류:', error);
-    }
-
-    // Ref Zone 요소들에 색상 적용
-    const refZoneElements = [2025, 427, 450];
-    try {
-        applyColorToElements(refZoneElements, refColor, refOpacity);
-        console.log(`✅ Ref Zone ExpressID ${refZoneElements.join(', ')}에 색상 적용 완료`);
-    } catch (error) {
-        console.error('❌ Ref Zone 색상 적용 오류:', error);
+        console.error('❌ Color application error:', error);
     }
 }
 
@@ -1880,41 +1566,6 @@ function updateEnergyDisplay(frameData) {
     }
 }
 
-// 시간대에 따라 배경색 업데이트 함수 (점진적 전환)
-function updateBackgroundByTime(hour, minute = 0) {
-    // 시간을 분 단위로 변환 (0 ~ 1439)
-    const totalMinutes = hour * 60 + minute;
-
-    // 색상 정의
-    const dayColor = new THREE.Color(0xffffff); // 흰색 (낮)
-    const lightGrayColor = new THREE.Color(0x9e9e9e); // 옅은 회색 (전환)
-    const nightColor = new THREE.Color(0x2c2c2c); // 진한 회색 (밤)
-
-    let finalColor;
-
-    // 시간대별 색상 계산
-    if (totalMinutes >= 360 && totalMinutes < 1020) {
-        // 06:00 ~ 17:00: 흰색 (낮)
-        finalColor = dayColor;
-    } else if (totalMinutes >= 1020 && totalMinutes < 1080) {
-        // 17:00 ~ 18:00: 흰색 → 옅은 회색 (일몰 시작, 1시간 전환)
-        const progress = (totalMinutes - 1020) / 60; // 0.0 ~ 1.0
-        finalColor = dayColor.clone().lerp(lightGrayColor, progress);
-    } else if (totalMinutes >= 1080 || totalMinutes < 300) {
-        // 18:00 ~ 05:00: 진한 회색 (밤)
-        finalColor = nightColor;
-    } else if (totalMinutes >= 300 && totalMinutes < 360) {
-        // 05:00 ~ 06:00: 옅은 회색 → 흰색 (일출 시작, 1시간 전환)
-        const progress = (totalMinutes - 300) / 60; // 0.0 ~ 1.0
-        finalColor = lightGrayColor.clone().lerp(dayColor, progress);
-    } else {
-        // 기본값 (혹시 모를 경우)
-        finalColor = dayColor;
-    }
-
-    scene.background = finalColor;
-}
-
 function updateTimeDisplay(timeStr, minute) {
     // 시간 및 날짜 표시 업데이트
     const dateDisplayEl = document.getElementById('current-date-display');
@@ -1957,9 +1608,6 @@ function updateTimeDisplay(timeStr, minute) {
         if (timeDisplayEl && displayTime) {
             timeDisplayEl.textContent = displayTime;
         }
-
-        // 배경색 업데이트 (시간대에 따라, 분 단위로 점진적 전환)
-        updateBackgroundByTime(currentHour, currentMinute);
 
         // 일별 슬라이더 동기화
         syncDailySlider(displayDate, currentHour, currentMinute, minute);
@@ -2038,9 +1686,6 @@ async function populateDateSelects() {
     }
 
     updateDaySelect();
-
-    // 일별 슬라이더 날짜 눈금 업데이트
-    createDailySliderTicks();
 }
 
 // 일 셀렉트박스 업데이트
@@ -2217,9 +1862,6 @@ async function findDailyTimeRange() {
 
         // 헤더 텍스트 업데이트
         updateDailySliderHeader(startHour, endHour);
-
-        // 시간대별 슬라이더 시간 눈금 업데이트
-        createTimeSliderTicks();
     } else {
         console.warn(`⚠ ${targetDateStr}의 ${startHour.toString().padStart(2, '0')}:00-${endHour.toString().padStart(2, '0')}:59 범위를 찾을 수 없습니다.`);
     }
@@ -2300,21 +1942,15 @@ async function updateDailyDisplay(minuteOffset) {
             const timeString = frame.time.toString();
             let displayDate = '';
             let displayTime = '';
-            let currentHour = 0;
-            let currentMinute = 0;
 
             if (timeString.includes(' ')) {
                 const [datePart, timePart] = timeString.split(' ');
                 displayDate = datePart;
                 const [hour, minute] = timePart.split(':');
                 displayTime = `${hour}:${minute}`;
-                currentHour = parseInt(hour);
-                currentMinute = parseInt(minute);
             } else {
                 const [hour, minute] = timeString.split(':');
                 displayTime = `${hour}:${minute}`;
-                currentHour = parseInt(hour);
-                currentMinute = parseInt(minute);
                 const metadata = dataManager.currentMetadata;
                 if (metadata && metadata.startDate) {
                     displayDate = metadata.startDate;
@@ -2323,9 +1959,6 @@ async function updateDailyDisplay(minuteOffset) {
 
             if (dateDisplayEl && displayDate) dateDisplayEl.textContent = displayDate;
             if (timeDisplayEl && displayTime) timeDisplayEl.textContent = displayTime;
-
-            // 배경색 업데이트 (시간대에 따라, 분 단위로 점진적 전환)
-            updateBackgroundByTime(currentHour, currentMinute);
         }
 
         if (minuteDisplayEl) {
