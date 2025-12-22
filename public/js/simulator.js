@@ -88,8 +88,26 @@ const mouse = new THREE.Vector2();
 // Material 캐시 (메모리 최적화)
 const materialCache = new Map();
 
+// Subset 캐시 (성능 최적화)
+const subsetCache = new Map();
+
 // 바닥 그리드 추가 여부 플래그
 let floorGridAdded = false;
+
+// 디버그 모드 (프로덕션에서는 false로 설정)
+const DEBUG = false;
+
+// 렌더링 최적화 변수
+let needsRender = true;
+let isRendering = false;
+
+// 재생 루프 최적화 변수
+let pendingUpdate = null;
+let isUpdating = false;
+
+// DOM 업데이트 배치 처리
+let pendingDOMUpdates = new Set();
+let domUpdateScheduled = false;
 
 // IFC 모델 상태 UI 업데이트
 function updateIFCModelStatus(isLoaded, modelID = null) {
@@ -192,7 +210,7 @@ class SimulationDataManager {
         try {
             const response = await fetch(`/data/simulation/${dataPath}/index.json`);
             this.currentMetadata = await response.json();
-            console.log(`✓ Loaded metadata for ${dataPath}:`, this.currentMetadata);
+            debugLog(`✓ Loaded metadata for ${dataPath}:`, this.currentMetadata);
             return this.currentMetadata;
         } catch (error) {
             console.error(`Failed to load metadata for ${dataPath}:`, error);
@@ -254,13 +272,13 @@ class SimulationDataManager {
 
     clearCache() {
         this.loadedChunks.clear();
-        console.log('Cache cleared');
+        debugLog('Cache cleared');
     }
 
     async changeSeason(newSeason) {
         if (this.currentSeason === newSeason) return;
 
-        console.log(`Changing season: ${this.currentSeason} → ${newSeason}`);
+        debugLog(`Changing season: ${this.currentSeason} → ${newSeason}`);
         this.clearCache();
         await this.loadMetadata(this.currentCase, newSeason);
     }
@@ -268,7 +286,7 @@ class SimulationDataManager {
     async changeCase(newCase) {
         if (this.currentCase === newCase) return;
 
-        console.log(`Changing case: ${this.currentCase} → ${newCase}`);
+        debugLog(`Changing case: ${this.currentCase} → ${newCase}`);
         this.clearCache();
         await this.loadMetadata(newCase, this.currentSeason);
     }
@@ -428,6 +446,33 @@ function throttle(func, delay) {
             }, delay);
         }
     };
+}
+
+// 디버그 로그 함수 (조건부)
+function debugLog(...args) {
+    if (DEBUG) {
+        console.log(...args);
+    }
+}
+
+// DOM 업데이트 배치 처리 함수
+function scheduleDOMUpdate(updateFn) {
+    pendingDOMUpdates.add(updateFn);
+
+    if (!domUpdateScheduled) {
+        domUpdateScheduled = true;
+        requestAnimationFrame(() => {
+            pendingDOMUpdates.forEach(fn => {
+                try {
+                    fn();
+                } catch (error) {
+                    if (DEBUG) console.error('DOM 업데이트 오류:', error);
+                }
+            });
+            pendingDOMUpdates.clear();
+            domUpdateScheduled = false;
+        });
+    }
 }
 
 // 절대 차이값 기준 색상 생성 (차이 작음 = 파랑, 차이 큼 = 빨강)
@@ -719,9 +764,9 @@ function createEnergyLegend() {
     const testLegend = createZoneLegend('Test Zone', globalMinTestEnergy, globalMaxTestEnergy, '#e74c3c');
     legendContainer.appendChild(testLegend);
 
-    console.log(`✓ 레전드 생성 완료`);
-    console.log(`   Test Zone: ${globalMinTestEnergy.toFixed(2)} ~ ${globalMaxTestEnergy.toFixed(2)} kJ/h`);
-    console.log(`   최대값: ${globalMaxTestEnergy}, 색상 함수 테스트:`, getColorStringFromAbsoluteValue(0, globalMaxTestEnergy), getColorStringFromAbsoluteValue(globalMaxTestEnergy, globalMaxTestEnergy));
+    debugLog(`✓ 레전드 생성 완료`);
+    debugLog(`   Test Zone: ${globalMinTestEnergy.toFixed(2)} ~ ${globalMaxTestEnergy.toFixed(2)} kJ/h`);
+    debugLog(`   최대값: ${globalMaxTestEnergy}, 색상 함수 테스트:`, getColorStringFromAbsoluteValue(0, globalMaxTestEnergy), getColorStringFromAbsoluteValue(globalMaxTestEnergy, globalMaxTestEnergy));
 }
 
 // ============================================
@@ -740,7 +785,7 @@ seasonBtns.forEach(btn => {
         btn.classList.add('active');
 
         const newSeason = btn.dataset.season;
-        console.log('Season changed to:', newSeason);
+        debugLog('Season changed to:', newSeason);
 
         await dataManager.changeSeason(newSeason);
 
@@ -752,7 +797,7 @@ seasonBtns.forEach(btn => {
             const testTimeSelect = document.getElementById('test-time');
             if (testTimeSelect) {
                 timeRangeFilter = testTimeSelect.value;
-                console.log('시즌 변경 → 재생 범위:', timeRangeFilter);
+                debugLog('시즌 변경 → 재생 범위:', timeRangeFilter);
             }
 
             // 전체 재생 모드가 아닐 때만 필터링된 인덱스 재생성
@@ -791,7 +836,7 @@ const throttledUpdate = throttle(async(minute) => {
     currentMinute = minute;
     await updateVisualization(minute);
     dataManager.preloadNextChunk(minute);
-}, 100);
+}, 50); // 100ms → 50ms로 감소 (더 반응성 있게)
 
 timeSlider.addEventListener('input', (e) => {
     const value = parseInt(e.target.value);
@@ -838,7 +883,7 @@ pauseBtn.addEventListener('click', () => {
 // 재생 속도 변경
 speedSelect.addEventListener('change', (e) => {
     playbackSpeed = parseInt(e.target.value);
-    console.log('재생 속도 변경:', playbackSpeed + 'x');
+    debugLog('재생 속도 변경:', playbackSpeed + 'x');
 });
 
 // 사용하지 않는 subset 정리 (메모리 최적화)
@@ -850,9 +895,10 @@ function cleanupOldSubsets() {
         }
     });
 
-    // 100개 이상의 subset이 있으면 정리
-    if (subsets.length > 100) {
-        subsets.forEach(subset => {
+    // 50개 이상의 subset이 있으면 정리 (100 → 50으로 감소)
+    if (subsets.length > 50) {
+        const toRemove = subsets.slice(0, subsets.length - 50);
+        toRemove.forEach(subset => {
             scene.remove(subset);
             if (subset.geometry) subset.geometry.dispose();
             if (subset.material) {
@@ -863,6 +909,12 @@ function cleanupOldSubsets() {
                 }
             }
         });
+
+        // subset 캐시도 정리
+        if (subsetCache.size > 50) {
+            const keysToDelete = Array.from(subsetCache.keys()).slice(0, subsetCache.size - 50);
+            keysToDelete.forEach(key => subsetCache.delete(key));
+        }
     }
 }
 
@@ -881,10 +933,10 @@ function startPlayback() {
     if (playFullRange) {
         currentMinute = parseInt(timeSlider.value);
         timeSlider.max = totalMinutes - 1;
-        console.log(`재생 시작 (속도: ${playbackSpeed}x, 전체 재생 모드)`);
+        debugLog(`재생 시작 (속도: ${playbackSpeed}x, 전체 재생 모드)`);
     } else {
         currentFilteredIndex = parseInt(timeSlider.value);
-        console.log(`재생 시작 (속도: ${playbackSpeed}x, 필터링 모드)`);
+        debugLog(`재생 시작 (속도: ${playbackSpeed}x, 필터링 모드)`);
     }
 
     lastUpdateTime = performance.now();
@@ -906,7 +958,22 @@ function stopPlayback() {
 
     lastRenderedFrame = -1; // 프레임 카운터 리셋
 
-    console.log('재생 정지');
+    debugLog('재생 정지');
+}
+
+// 비동기 업데이트 래퍼 (await 없이 처리)
+async function updateVisualizationAsync(minute) {
+    if (isUpdating) return;
+    isUpdating = true;
+
+    try {
+        await updateVisualization(minute);
+        needsRender = true; // 렌더링 필요 표시
+    } catch (error) {
+        if (DEBUG) console.error('시각화 업데이트 오류:', error);
+    } finally {
+        isUpdating = false;
+    }
 }
 
 // 재생 루프
@@ -929,21 +996,22 @@ function playbackLoop() {
         if (currentMinute >= totalMinutes - 1) {
             currentMinute = totalMinutes - 1;
             stopPlayback();
+            return;
         }
 
         // 실제 프레임 인덱스로 변환
         const intMinute = Math.floor(currentMinute);
 
-        // 프레임이 실제로 변경되었을 때만 업데이트 (메모리 최적화)
-        if (intMinute !== lastRenderedFrame && intMinute < totalMinutes) {
+        // 프레임이 실제로 변경되었고 업데이트가 진행 중이 아닐 때만 처리
+        if (intMinute !== lastRenderedFrame && intMinute < totalMinutes && !isUpdating) {
             lastRenderedFrame = intMinute;
 
-            // 슬라이더 업데이트 (전체 범위 기준)
+            // UI 업데이트는 즉시 (동기)
             timeSlider.max = totalMinutes - 1;
             timeSlider.value = intMinute;
 
-            // 시각화 업데이트
-            updateVisualization(intMinute);
+            // 무거운 작업은 비동기로 처리 (await 제거)
+            updateVisualizationAsync(intMinute);
 
             // 다음 청크 미리 로드
             dataManager.preloadNextChunk(intMinute);
@@ -956,21 +1024,22 @@ function playbackLoop() {
         if (currentFilteredIndex >= filteredIndices.length - 1) {
             currentFilteredIndex = filteredIndices.length - 1;
             stopPlayback();
+            return;
         }
 
         // 실제 프레임 인덱스로 변환
         const intFilteredIdx = Math.floor(currentFilteredIndex);
 
-        // 프레임이 실제로 변경되었을 때만 업데이트 (메모리 최적화)
-        if (intFilteredIdx !== lastRenderedFrame && intFilteredIdx < filteredIndices.length) {
+        // 프레임이 실제로 변경되었고 업데이트가 진행 중이 아닐 때만 처리
+        if (intFilteredIdx !== lastRenderedFrame && intFilteredIdx < filteredIndices.length && !isUpdating) {
             lastRenderedFrame = intFilteredIdx;
             currentMinute = filteredIndices[intFilteredIdx];
 
             // 슬라이더 업데이트 (필터링된 인덱스 기준)
             timeSlider.value = intFilteredIdx;
 
-            // 시각화 업데이트
-            updateVisualization(currentMinute);
+            // 무거운 작업은 비동기로 처리 (await 제거)
+            updateVisualizationAsync(currentMinute);
 
             // 다음 청크 미리 로드
             dataManager.preloadNextChunk(currentMinute);
@@ -993,7 +1062,7 @@ if (testTimeSelect) {
         const selectedTime = e.target.value;
         timeRangeFilter = selectedTime; // '07-16', '07-18', '07-20'
 
-        console.log('사용 시간 변경 → 재생 범위:', timeRangeFilter);
+        debugLog('사용 시간 변경 → 재생 범위:', timeRangeFilter);
 
         // 재생 중이면 정지
         if (isPlaying) {
@@ -1034,7 +1103,7 @@ if (testTimeSelect) {
     });
 }
 
-// 필터링된 인덱스 생성
+// 필터링된 인덱스 생성 (병렬 처리 최적화)
 async function buildFilteredIndices() {
     filteredIndices = [];
 
@@ -1057,15 +1126,15 @@ async function buildFilteredIndices() {
             break;
         default:
             // 알 수 없는 값이면 전체 범위
-            console.log('✓ 전체 범위 선택');
+            debugLog('✓ 전체 범위 선택');
             for (let i = 0; i < totalMinutes; i++) {
                 filteredIndices.push(i);
             }
             return;
     }
 
-    console.log(`⏳ 시간 필터링 중: ${startHour}:00 ~ ${endHour}:00`);
-    console.log(`   전체 프레임: ${totalMinutes.toLocaleString()}`);
+    debugLog(`⏳ 시간 필터링 중: ${startHour}:00 ~ ${endHour}:00`);
+    debugLog(`   전체 프레임: ${totalMinutes.toLocaleString()}`);
 
     // 모든 청크를 순회하며 시간 범위에 맞는 인덱스 찾기
     const metadata = dataManager.currentMetadata;
@@ -1074,61 +1143,75 @@ async function buildFilteredIndices() {
     const numChunks = metadata.numChunks;
     const chunkSize = metadata.chunkSize;
 
-    console.log(`   청크 수: ${numChunks}, 청크 크기: ${chunkSize}`);
+    debugLog(`   청크 수: ${numChunks}, 청크 크기: ${chunkSize}`);
 
+    // 청크를 병렬로 로드 (배치 처리)
+    const batchSize = 5; // 한 번에 5개씩 처리
     let processedFrames = 0;
-    for (let chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
-        // 캐시를 사용하지 않고 직접 로드 (메모리 효율을 위해)
-        const chunk = await dataManager.loadChunk(chunkIdx, true);
-        if (!chunk || !chunk.data) {
-            console.warn(`   청크 ${chunkIdx} 로드 실패`);
-            continue;
+
+    for (let i = 0; i < numChunks; i += batchSize) {
+        const batch = [];
+        for (let j = 0; j < batchSize && i + j < numChunks; j++) {
+            batch.push(dataManager.loadChunk(i + j, true));
         }
 
-        const chunkDataLength = chunk.data.length;
+        const loadedChunks = await Promise.all(batch);
 
-        for (let localIdx = 0; localIdx < chunkDataLength; localIdx++) {
-            const frame = chunk.data[localIdx];
-            const globalIdx = chunkIdx * chunkSize + localIdx;
-
-            // totalMinutes를 넘지 않도록 체크
-            if (globalIdx >= totalMinutes) {
-                console.log(`   청크 ${chunkIdx}: globalIdx(${globalIdx}) >= totalMinutes(${totalMinutes}), 중단`);
-                break;
+        // 각 청크 처리
+        loadedChunks.forEach((chunk, batchIdx) => {
+            const chunkIdx = i + batchIdx;
+            if (!chunk || !chunk.data) {
+                if (DEBUG) console.warn(`   청크 ${chunkIdx} 로드 실패`);
+                return;
             }
 
-            processedFrames++;
+            const chunkDataLength = chunk.data.length;
 
-            if (frame && frame.time) {
-                // 시간 문자열 파싱 (여러 형식 지원)
-                let hour;
-                const timeStr = frame.time.toString();
+            for (let localIdx = 0; localIdx < chunkDataLength; localIdx++) {
+                const frame = chunk.data[localIdx];
+                const globalIdx = chunkIdx * chunkSize + localIdx;
 
-                if (timeStr.includes(' ')) {
-                    // "1900-01-01 07:30:00" 형식
-                    const timePart = timeStr.split(' ')[1];
-                    hour = parseInt(timePart.split(':')[0]);
-                } else {
-                    // "07:30:00" 형식
-                    hour = parseInt(timeStr.split(':')[0]);
+                // totalMinutes를 넘지 않도록 체크
+                if (globalIdx >= totalMinutes) {
+                    if (DEBUG) debugLog(`   청크 ${chunkIdx}: globalIdx(${globalIdx}) >= totalMinutes(${totalMinutes}), 중단`);
+                    break;
                 }
 
-                // 시간 범위 체크
-                if (hour >= startHour && hour <= endHour) {
-                    filteredIndices.push(globalIdx);
+                processedFrames++;
+
+                if (frame && frame.time) {
+                    // 시간 문자열 파싱 (여러 형식 지원)
+                    let hour;
+                    const timeStr = frame.time.toString();
+
+                    if (timeStr.includes(' ')) {
+                        // "1900-01-01 07:30:00" 형식
+                        const timePart = timeStr.split(' ')[1];
+                        hour = parseInt(timePart.split(':')[0]);
+                    } else {
+                        // "07:30:00" 형식
+                        hour = parseInt(timeStr.split(':')[0]);
+                    }
+
+                    // 시간 범위 체크
+                    if (hour >= startHour && hour <= endHour) {
+                        filteredIndices.push(globalIdx);
+                    }
                 }
             }
-        }
+        });
 
         // 진행 상황 표시 (10개 청크마다)
-        if ((chunkIdx + 1) % 10 === 0 || chunkIdx === numChunks - 1) {
-            console.log(`   진행: ${chunkIdx + 1}/${numChunks} 청크, 처리된 프레임: ${processedFrames.toLocaleString()}, 필터링된 프레임: ${filteredIndices.length.toLocaleString()}`);
+        if ((i + batchSize) % (10 * batchSize) === 0 || i + batchSize >= numChunks) {
+            debugLog(`   진행: ${Math.min(i + batchSize, numChunks)}/${numChunks} 청크, 처리된 프레임: ${processedFrames.toLocaleString()}, 필터링된 프레임: ${filteredIndices.length.toLocaleString()}`);
         }
+
+        // UI 업데이트를 위한 yield (메인 스레드 블로킹 방지)
+        await new Promise(resolve => setTimeout(resolve, 0));
     }
 
-    console.log(`   총 처리된 프레임: ${processedFrames.toLocaleString()}`);
-
-    console.log(`✓ 필터링 완료: ${filteredIndices.length.toLocaleString()} 프레임 (${startHour}:00 ~ ${endHour}:00)`);
+    debugLog(`   총 처리된 프레임: ${processedFrames.toLocaleString()}`);
+    debugLog(`✓ 필터링 완료: ${filteredIndices.length.toLocaleString()} 프레임 (${startHour}:00 ~ ${endHour}:00)`);
 }
 
 // 슬라이더 범위 업데이트
@@ -1137,12 +1220,12 @@ function updateSliderRange() {
         // 전체 재생 모드: 전체 범위로 설정
         timeSlider.max = totalMinutes - 1;
         timeSlider.value = 0;
-        console.log('✓ 슬라이더 범위 업데이트 (전체 재생):', totalMinutes.toLocaleString());
+        debugLog('✓ 슬라이더 범위 업데이트 (전체 재생):', totalMinutes.toLocaleString());
     } else if (filteredIndices.length > 0) {
         // 필터링 모드: 필터링된 범위로 설정
         timeSlider.max = filteredIndices.length - 1;
         timeSlider.value = 0;
-        console.log('✓ 슬라이더 범위 업데이트 (필터링):', filteredIndices.length.toLocaleString());
+        debugLog('✓ 슬라이더 범위 업데이트 (필터링):', filteredIndices.length.toLocaleString());
     }
     // 일별 슬라이더 날짜 눈금 업데이트
     createDailySliderTicks();
@@ -1425,7 +1508,7 @@ testCaseSelect.addEventListener('change', async(e) => {
 
         // 사용 시간에 따라 재생 범위 설정
         timeRangeFilter = caseData.time; // '07-16', '07-18', '07-20'
-        console.log('케이스 변경 → 사용 시간:', caseData.time, '→ 재생 범위:', timeRangeFilter);
+        debugLog('케이스 변경 → 사용 시간:', caseData.time, '→ 재생 범위:', timeRangeFilter);
     }
 
     // 데이터 매니저 케이스 변경
@@ -1552,7 +1635,7 @@ const simulationCases = {
 const analyzeBtn = document.getElementById('analyze-btn');
 
 analyzeBtn.addEventListener('click', async() => {
-    console.log('분석 시작...');
+    debugLog('분석 시작...');
 
     if (!dataManager.currentMetadata) {
         alert('시뮬레이션 데이터가 로드되지 않았습니다.');
@@ -1583,8 +1666,8 @@ analyzeBtn.addEventListener('click', async() => {
         usageTime: document.getElementById('test-time').value
     };
 
-    console.log('Ref Zone 설정:', refCellSettings);
-    console.log('Test Zone 설정 (', testCase, '):', testCellSettings);
+    debugLog('Ref Zone 설정:', refCellSettings);
+    debugLog('Test Zone 설정 (', testCase, '):', testCellSettings);
 
     // 에너지 분석 실행
     await performEnergyAnalysis(refCellSettings, testCellSettings, testCase);
@@ -1595,7 +1678,7 @@ analyzeBtn.addEventListener('click', async() => {
 
 // 에너지 분석 수행
 async function performEnergyAnalysis(refCell, testCell, testCaseName) {
-    console.log('에너지 분석 수행 중...');
+    debugLog('에너지 분석 수행 중...');
 
     const metadata = dataManager.currentMetadata;
     if (!metadata) {
@@ -1629,7 +1712,7 @@ async function performEnergyAnalysis(refCell, testCell, testCaseName) {
     //     `차이: ${diff.toFixed(2)} kWh (${diff > 0 ? '+' : ''}${diffPercent}%)\n\n` +
     //     `현재 프레임의 데이터를 보려면 시간 슬라이더를 조정하세요.`);
 
-    console.log('분석 완료:', {
+    debugLog('분석 완료:', {
         testCase: testCaseName,
         season,
         totalTestEnergy,
@@ -1644,42 +1727,44 @@ async function performEnergyAnalysis(refCell, testCell, testCaseName) {
 // 시각화 업데이트 함수
 // ============================================
 async function updateVisualization(minute) {
-    console.log(`📊 updateVisualization 호출 - minute: ${minute}`);
+    debugLog(`📊 updateVisualization 호출 - minute: ${minute}`);
 
     const frameData = await dataManager.getFrameByIndex(minute);
 
     if (!frameData) {
-        console.warn(`⚠️ No data for minute ${minute}`);
+        if (DEBUG) console.warn(`⚠️ No data for minute ${minute}`);
         return;
     }
 
-    console.log(`   frameData 로드 완료 - time: ${frameData.time}`);
+    debugLog(`   frameData 로드 완료 - time: ${frameData.time}`);
 
     // IFC 색상 업데이트 (동기 함수로 즉시 실행)
     updateIFCColors(frameData);
 
-    // UI 정보 업데이트
-    updateEnergyDisplay(frameData);
-    updateTimeDisplay(frameData.time, minute);
+    // UI 정보 업데이트 (배치 처리)
+    scheduleDOMUpdate(() => {
+        updateEnergyDisplay(frameData);
+        updateTimeDisplay(frameData.time, minute);
+    });
 
-    console.log(`✅ updateVisualization 완료`);
+    debugLog(`✅ updateVisualization 완료`);
 }
 
 function updateIFCColors(frameData) {
-    console.log('🎨 updateIFCColors 호출됨');
-    console.log('   ifcModel:', ifcModel ? '존재' : '없음');
-    console.log('   currentModelID:', currentModelID);
+    debugLog('🎨 updateIFCColors 호출됨');
+    debugLog('   ifcModel:', ifcModel ? '존재' : '없음');
+    debugLog('   currentModelID:', currentModelID);
 
     // IFC 모델이 로드되지 않았으면 조용히 return (초기화 중일 수 있음)
     if (!ifcModel || currentModelID === null) {
-        console.warn('⚠️ IFC 모델이 로드되지 않았습니다. 색상 적용 건너뜀');
+        if (DEBUG) console.warn('⚠️ IFC 모델이 로드되지 않았습니다. 색상 적용 건너뜀');
         return;
     }
 
     const testEnergy = frameData.Qsens_test || 0;
     const refEnergy = frameData.Qsens_ref || 0;
 
-    console.log(`   testEnergy: ${testEnergy.toFixed(2)}, refEnergy: ${refEnergy.toFixed(2)}`);
+    debugLog(`   testEnergy: ${testEnergy.toFixed(2)}, refEnergy: ${refEnergy.toFixed(2)}`);
 
     // 각 zone의 사용량 기준으로 색상 계산
     const testColor = getColorFromValue(testEnergy, globalMinTestEnergy, globalMaxTestEnergy);
@@ -1689,25 +1774,25 @@ function updateIFCColors(frameData) {
     const testOpacity = getOpacityFromValue(testEnergy, globalMinTestEnergy, globalMaxTestEnergy);
     const refOpacity = getOpacityFromValue(refEnergy, globalMinRefEnergy, globalMaxRefEnergy);
 
-    console.log(`   Test Zone 색상: ${testColor.getHexString()}, 투명도: ${testOpacity.toFixed(2)}`);
-    console.log(`   Ref Zone 색상: ${refColor.getHexString()}, 투명도: ${refOpacity.toFixed(2)}`);
+    debugLog(`   Test Zone 색상: ${testColor.getHexString()}, 투명도: ${testOpacity.toFixed(2)}`);
+    debugLog(`   Ref Zone 색상: ${refColor.getHexString()}, 투명도: ${refOpacity.toFixed(2)}`);
 
     // Test Zone 요소들에 색상 적용
     const testZoneElements = [346, 1997, 404, 381];
     try {
         applyColorToElements(testZoneElements, testColor, testOpacity);
-        console.log(`✅ Test Zone ExpressID ${testZoneElements.join(', ')}에 색상 적용 완료`);
+        debugLog(`✅ Test Zone ExpressID ${testZoneElements.join(', ')}에 색상 적용 완료`);
     } catch (error) {
-        console.error('❌ Test Zone 색상 적용 오류:', error);
+        if (DEBUG) console.error('❌ Test Zone 색상 적용 오류:', error);
     }
 
     // Ref Zone 요소들에 색상 적용
     const refZoneElements = [2025, 427, 450];
     try {
         applyColorToElements(refZoneElements, refColor, refOpacity);
-        console.log(`✅ Ref Zone ExpressID ${refZoneElements.join(', ')}에 색상 적용 완료`);
+        debugLog(`✅ Ref Zone ExpressID ${refZoneElements.join(', ')}에 색상 적용 완료`);
     } catch (error) {
-        console.error('❌ Ref Zone 색상 적용 오류:', error);
+        if (DEBUG) console.error('❌ Ref Zone 색상 적용 오류:', error);
     }
 }
 
@@ -1823,36 +1908,57 @@ function getMaterial(color, opacity) {
 }
 
 function applyColorToElements(elementIds, color, opacity = 1.0) {
-    console.log(`   🖌️ applyColorToElements 호출 - IDs: ${elementIds}, opacity: ${opacity}`);
+    debugLog(`   🖌️ applyColorToElements 호출 - IDs: ${elementIds}, opacity: ${opacity}`);
 
     if (!ifcModel || currentModelID === null) {
-        console.warn('   ⚠️ applyColorToElements: IFC 모델이 없습니다');
+        if (DEBUG) console.warn('   ⚠️ applyColorToElements: IFC 모델이 없습니다');
         return;
     }
 
     const material = getMaterial(color, opacity);
-    console.log(`   Material 생성 완료`);
+    debugLog(`   Material 생성 완료`);
 
     // 각 요소에 대해 개별적으로 subset 생성 (고유 customID 사용)
     elementIds.forEach(id => {
+        // 색상이 변경되지 않았으면 subset 재생성 스킵 (캐싱)
+        const colorHex = typeof color === 'number' ? color : color.getHex();
+        const cacheKey = `${id}_${colorHex}_${opacity.toFixed(2)}`;
+
+        // 캐시에 있으면 스킵
+        if (subsetCache.has(cacheKey)) {
+            debugLog(`   ExpressID ${id} 캐시 히트 - 스킵`);
+            return;
+        }
+
         try {
-            console.log(`   ExpressID ${id}에 createSubset 호출 시도...`);
+            debugLog(`   ExpressID ${id}에 createSubset 호출 시도...`);
             const result = ifcLoader.ifcManager.createSubset({
                 modelID: currentModelID,
                 ids: [id],
                 material: material,
                 scene,
                 customID: `element-${id}`, // 각 요소마다 고유 ID
-                removePrevious: false // 다른 요소의 subset 유지
+                removePrevious: true // 이전 subset 제거하여 메모리 누수 방지
             });
-            console.log(`   ✅ ExpressID ${id} createSubset 완료`, result);
+
+            // 캐시에 저장
+            subsetCache.set(cacheKey, result);
+
+            // 캐시 크기 제한 (메모리 관리)
+            if (subsetCache.size > 50) {
+                const firstKey = subsetCache.keys().next().value;
+                subsetCache.delete(firstKey);
+            }
+
+            debugLog(`   ✅ ExpressID ${id} createSubset 완료`);
         } catch (error) {
-            console.error(`   ❌ ExpressID ${id} createSubset 실패:`, error);
+            if (DEBUG) console.error(`   ❌ ExpressID ${id} createSubset 실패:`, error);
         }
     });
 }
 
 function updateEnergyDisplay(frameData) {
+    // DOM 업데이트는 이미 scheduleDOMUpdate로 래핑되어 있으므로 직접 실행
     const testEnergy = frameData.Qsens_test || 0;
     const refEnergy = frameData.Qsens_ref || 0;
 
@@ -2221,14 +2327,14 @@ async function findDailyTimeRange() {
         // 시간대별 슬라이더 시간 눈금 업데이트
         createTimeSliderTicks();
     } else {
-        console.warn(`⚠ ${targetDateStr}의 ${startHour.toString().padStart(2, '0')}:00-${endHour.toString().padStart(2, '0')}:59 범위를 찾을 수 없습니다.`);
+        if (DEBUG) console.warn(`⚠ ${targetDateStr}의 ${startHour.toString().padStart(2, '0')}:00-${endHour.toString().padStart(2, '0')}:59 범위를 찾을 수 없습니다.`);
     }
 }
 
 // 전체 슬라이더를 선택된 날짜의 시작 위치로 동기화
 async function syncMainSliderToSelectedDate() {
     if (dailyStartIndex === -1) {
-        console.warn('⚠️ dailyStartIndex가 설정되지 않았습니다.');
+        if (DEBUG) console.warn('⚠️ dailyStartIndex가 설정되지 않았습니다.');
         return;
     }
 
@@ -2251,10 +2357,10 @@ async function syncMainSliderToSelectedDate() {
             // 시각화 업데이트
             await updateVisualization(dailyStartIndex);
 
-            console.log(`✓ 전체 슬라이더를 선택된 날짜 시작 위치로 이동: 인덱스 ${filteredIndex} (분 ${dailyStartIndex})`);
+            debugLog(`✓ 전체 슬라이더를 선택된 날짜 시작 위치로 이동: 인덱스 ${filteredIndex} (분 ${dailyStartIndex})`);
         }
     } else {
-        console.warn(`⚠️ filteredIndices에서 dailyStartIndex(${dailyStartIndex})를 찾을 수 없습니다.`);
+        if (DEBUG) console.warn(`⚠️ filteredIndices에서 dailyStartIndex(${dailyStartIndex})를 찾을 수 없습니다.`);
     }
 }
 
@@ -2486,12 +2592,23 @@ function updateDailySliderPosition(hour, minute) {
 }
 
 // ============================================
-// 렌더링 루프
+// 렌더링 루프 (최적화: 변경이 있을 때만 렌더링)
 // ============================================
 function animate() {
     requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
+
+    // 컨트롤 업데이트 (항상 필요)
+    if (controls.update()) {
+        needsRender = true;
+    }
+
+    // 변경사항이 있을 때만 렌더링
+    if (needsRender && !isRendering) {
+        isRendering = true;
+        renderer.render(scene, camera);
+        needsRender = false;
+        isRendering = false;
+    }
 }
 
 animate();
@@ -2522,10 +2639,10 @@ function onMouseClick(event) {
         }
     });
 
-    console.log(`   메시 개수: ${meshes.length}`);
+    debugLog(`   메시 개수: ${meshes.length}`);
 
     const intersects = raycaster.intersectObjects(meshes, true);
-    console.log(`   교차된 객체 수: ${intersects.length}`);
+    debugLog(`   교차된 객체 수: ${intersects.length}`);
 
     if (intersects.length > 0) {
         const intersect = intersects[0];
@@ -2539,7 +2656,7 @@ function onMouseClick(event) {
                     intersect.faceIndex
                 );
 
-                console.log(`   getExpressId 결과: ${expressID}`);
+                debugLog(`   getExpressId 결과: ${expressID}`);
 
                 if (expressID !== undefined && expressID !== null) {
                     selectedExpressID = expressID;
@@ -2549,8 +2666,8 @@ function onMouseClick(event) {
                     selectedElementsForSimulation.add(expressID);
 
                     // 콘솔에 ExpressID 출력
-                    console.log(`🔍 선택된 요소 ExpressID: ${expressID}`);
-                    console.log(`📋 시뮬레이션 대상 요소 목록:`, Array.from(selectedElementsForSimulation));
+                    debugLog(`🔍 선택된 요소 ExpressID: ${expressID}`);
+                    debugLog(`📋 시뮬레이션 대상 요소 목록:`, Array.from(selectedElementsForSimulation));
 
                     // 클릭한 요소를 파랑색으로 하이라이트
                     const highlightColor = new THREE.Color(0x0099ff); // 파랑색
@@ -2564,9 +2681,9 @@ function onMouseClick(event) {
                             scene,
                             removePrevious: true // ✅ 이전 subset 제거하고 새로 생성
                         });
-                        console.log(`✨ 요소 ${expressID} 선택됨 (시뮬레이션 색상 적용 대상에 추가)`);
+                        debugLog(`✨ 요소 ${expressID} 선택됨 (시뮬레이션 색상 적용 대상에 추가)`);
                     } catch (error) {
-                        console.error('하이라이트 적용 실패:', error);
+                        if (DEBUG) console.error('하이라이트 적용 실패:', error);
                     }
 
                     const expressIDEl = document.getElementById('selected-express-id');
@@ -2578,27 +2695,26 @@ function onMouseClick(event) {
                     }
                 }
             } catch (error) {
-                console.error('❌ ExpressID 가져오기 실패:', error);
+                if (DEBUG) console.error('❌ ExpressID 가져오기 실패:', error);
             }
         } else {
-            console.log('   클릭된 객체에 modelID가 없습니다.');
+            debugLog('   클릭된 객체에 modelID가 없습니다.');
         }
     } else {
-        console.log('   클릭한 위치에 객체가 없습니다.');
+        debugLog('   클릭한 위치에 객체가 없습니다.');
     }
 }
 
 // 마우스 클릭 이벤트 리스너 등록 (초기화 함수에서 등록하도록 이동)
 function registerClickEvent() {
-    console.log('🔧 클릭 이벤트 리스너 등록 시도...');
-    console.log('   renderer:', renderer ? '존재' : '없음');
-    // console.log('   renderer.domElement:', renderer ? .domElement ? '존재' : '없음');
+    debugLog('🔧 클릭 이벤트 리스너 등록 시도...');
+    debugLog('   renderer:', renderer ? '존재' : '없음');
 
     if (renderer && renderer.domElement) {
         renderer.domElement.addEventListener('click', onMouseClick);
-        console.log('✅ 클릭 이벤트 리스너 등록 완료!');
+        debugLog('✅ 클릭 이벤트 리스너 등록 완료!');
     } else {
-        console.error('❌ renderer 또는 renderer.domElement가 없습니다!');
+        if (DEBUG) console.error('❌ renderer 또는 renderer.domElement가 없습니다!');
     }
 }
 
@@ -2666,7 +2782,7 @@ function applyDiffColor() {
             removePrevious: true
         });
 
-        console.log(`✓ 차이값 색상 적용: ExpressID ${selectedExpressID}, 차이값: ${diffValue} kJ/h`);
+        debugLog(`✓ 차이값 색상 적용: ExpressID ${selectedExpressID}, 차이값: ${diffValue} kJ/h`);
 
         // 색상 정보 표시
         let colorInfo = '';
@@ -2680,7 +2796,7 @@ function applyDiffColor() {
 
         alert(`색상 적용 완료!\nExpressID: ${selectedExpressID}\n차이값: ${diffValue} kJ/h\n색상: ${colorInfo}`);
     } catch (error) {
-        console.error('색상 적용 실패:', error);
+        if (DEBUG) console.error('색상 적용 실패:', error);
         alert('색상 적용에 실패했습니다. 콘솔을 확인해주세요.');
     }
 }
@@ -2696,7 +2812,7 @@ function resetTestColor() {
         // IFC Manager를 통해 서브셋 제거 (color-viewer.js 방식)
         ifcLoader.ifcManager.removeSubset(currentModelID, scene, [selectedExpressID]);
 
-        console.log(`✓ 색상 초기화: ExpressID ${selectedExpressID}`);
+        debugLog(`✓ 색상 초기화: ExpressID ${selectedExpressID}`);
         alert(`색상 초기화 완료!\nExpressID: ${selectedExpressID}`);
     } catch (error) {
         console.error('색상 초기화 실패:', error);
@@ -2725,7 +2841,7 @@ function selectManualExpressID() {
         expressIDEl.style.borderColor = '#22c55e';
     }
 
-    console.log(`✓ 수동 선택: ExpressID ${expressID}`);
+    debugLog(`✓ 수동 선택: ExpressID ${expressID}`);
     alert(`ExpressID ${expressID} 선택 완료!\n이제 색상을 적용할 수 있습니다.`);
 }
 
@@ -2897,7 +3013,7 @@ async function initializeSimulator() {
         // 기본 케이스는 색상 없음 (모두 기본 스타일)
         updateInputColors(defaultCase);
 
-        console.log('✓ Test Zone 초기값 설정 완료 (Ref 케이스)');
+        debugLog('✓ Test Zone 초기값 설정 완료 (Ref 케이스)');
     }
 
     // 기본값: Ref + Summer 로드
@@ -2906,14 +3022,14 @@ async function initializeSimulator() {
     if (metadata) {
         totalMinutes = metadata.totalFrames;
 
-        console.log(`✓ 데이터 로드 완료: ${totalMinutes.toLocaleString()} 프레임`);
-        console.log(`   에너지 범위: ${metadata.minEnergyTest.toFixed(2)} ~ ${metadata.maxEnergyTest.toFixed(2)} kJ/h`);
+        debugLog(`✓ 데이터 로드 완료: ${totalMinutes.toLocaleString()} 프레임`);
+        debugLog(`   에너지 범위: ${metadata.minEnergyTest.toFixed(2)} ~ ${metadata.maxEnergyTest.toFixed(2)} kJ/h`);
 
         // Test Zone의 기본 사용 시간 값 읽기
         const testTimeSelect = document.getElementById('test-time');
         if (testTimeSelect) {
             timeRangeFilter = testTimeSelect.value; // 기본값: '07-18'
-            console.log(`   재생 시간 범위: ${timeRangeFilter}`);
+            debugLog(`   재생 시간 범위: ${timeRangeFilter}`);
         }
 
         // 전체 재생 모드가 아닐 때만 필터링된 인덱스 생성
@@ -2927,7 +3043,7 @@ async function initializeSimulator() {
         // 에너지 레전드 생성
         createEnergyLegend();
 
-        console.log(`✓ 데이터 초기화 완료`);
+        debugLog(`✓ 데이터 초기화 완료`);
 
         // 날짜 선택 이벤트 리스너 추가
         const monthSelect = document.getElementById('month-select');
@@ -2965,10 +3081,10 @@ async function initializeSimulator() {
     // IFC 파일 로드 완료 후 클릭 이벤트 등록
     registerClickEvent();
 
-    console.log(`✅ 시뮬레이터 초기화 완료 (IFC 모델 로드 완료)`);
+    debugLog(`✅ 시뮬레이터 초기화 완료 (IFC 모델 로드 완료)`);
 
     // 초기 로드 완료 - 수동 선택과 동일한 방식으로 준비됨
-    console.log('💡 재생 버튼을 눌러 시뮬레이션을 시작하세요.');
+    debugLog('💡 재생 버튼을 눌러 시뮬레이션을 시작하세요.');
 }
 
 // 기본 IFC 파일 자동 로드
