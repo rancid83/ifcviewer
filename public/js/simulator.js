@@ -683,7 +683,7 @@ function createZoneLegend(zoneName, minValue, maxValue, labelColor) {
             unitLabel.textContent = ' kJ/h';
             unitLabel.style.cssText = `
                 font-size: 8px;
-                color: #999;
+                color: #bbb;
                 margin-left: 2px;
             `;
             tickContainer.appendChild(unitLabel);
