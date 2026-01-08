@@ -1419,11 +1419,17 @@
         }
         
         .zone-info-menu-item.disabled {
-            opacity: 0.4;
+            opacity: 0.5;
+            cursor: pointer;
         }
         
         .zone-info-menu-item.disabled .zone-info-menu-icon {
-            opacity: 0.5;
+            opacity: 1;
+            filter: grayscale(100%) brightness(0.6);
+        }
+        
+        .zone-info-menu-item.disabled .zone-info-menu-label {
+            color: #888888;
         }
         
         .zone-info-menu-icon {
@@ -1884,7 +1890,13 @@
                                 </div>
                             </div>
                         </div>
-                        <img src="/img/tlab-project.png" alt="T-LAB 프로젝트 다이어그램" class="diagram-image">
+                        <img src="/img/tlab-project.png" alt="T-LAB 프로젝트 다이어그램" class="diagram-image" usemap="#zone-map">
+                        <map name="zone-map" id="zone-map">
+                            <!-- REF_CELL 영역 (좌측 영역, 좌표는 이미지 크기에 맞게 조정 필요) -->
+                            <area shape="rect" coords="0,0,50%,100%" alt="Zone: REF_CELL" href="javascript:void(0);" data-zone="REF_CELL" class="zone-area">
+                            <!-- TEST_CELL 영역 (우측 영역, 좌표는 이미지 크기에 맞게 조정 필요) -->
+                            <area shape="rect" coords="50%,0,100%,100%" alt="Zone: TEST_CELL" href="javascript:void(0);" data-zone="TEST_CELL" class="zone-area">
+                        </map>
                     </div>
                 </div>
 
@@ -2152,11 +2164,11 @@
                     <div class="zone-info-menu-title">Airnode Regime Data</div>
                     <div class="zone-info-menu-container">
                         <div class="zone-info-menu-left">
-                            <div class="zone-info-menu-item" data-type="heating" id="zone-menu-heating">
+                            <div class="zone-info-menu-item disabled" data-type="heating" id="zone-menu-heating">
                                 <div class="zone-info-menu-icon">☀️🌡️</div>
                                 <span class="zone-info-menu-label">Heating</span>
                             </div>
-                            <div class="zone-info-menu-item" data-type="cooling" id="zone-menu-cooling">
+                            <div class="zone-info-menu-item disabled" data-type="cooling" id="zone-menu-cooling">
                                 <div class="zone-info-menu-icon">❄️🌡️</div>
                                 <span class="zone-info-menu-label">Cooling</span>
                             </div>
@@ -2523,6 +2535,53 @@
                 });
             });
 
+            // Zone 정보 팝업 표시 함수 (재사용)
+            function showZoneInfoPopup(zoneName) {
+                const zoneInfoPopup = document.getElementById('zone-info-popup');
+                const zoneInfoTitle = document.getElementById('zone-info-popup-title');
+
+                if (zoneInfoPopup && zoneInfoTitle) {
+                    // Zone 이름 설정
+                    zoneInfoTitle.textContent = 'Zone: ' + zoneName;
+
+                    // Zone별 초기값 설정
+                    if (zoneName === 'REF_CELL') {
+                        document.getElementById('zone-volume').value = '151.20';
+                        document.getElementById('zone-capacitance').value = '181.44';
+                        document.getElementById('zone-floor-area').value = '54.00';
+                    } else if (zoneName === 'TEST_CELL') {
+                        document.getElementById('zone-volume').value = '151.20';
+                        document.getElementById('zone-capacitance').value = '181.44';
+                        document.getElementById('zone-floor-area').value = '54.00';
+                    }
+
+                    // 메뉴 아이템 활성 상태 초기화
+                    document.querySelectorAll('.zone-info-menu-item').forEach(function(item) {
+                        item.classList.remove('active');
+                    });
+
+                    // 모든 Type Manager 팝업 닫기
+                    document.querySelectorAll('.type-manager-popup-overlay').forEach(function(popup) {
+                        popup.classList.remove('show');
+                    });
+
+                    // 팝업 표시
+                    zoneInfoPopup.classList.add('show');
+                }
+            }
+
+            // 이미지맵 영역 클릭 이벤트 핸들러
+            const zoneAreas = document.querySelectorAll('map[name="zone-map"] area');
+            zoneAreas.forEach(function(area) {
+                area.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const zoneName = this.getAttribute('data-zone');
+                    if (zoneName) {
+                        showZoneInfoPopup(zoneName);
+                    }
+                });
+            });
+
             // Schedule 팝업 이벤트 핸들러
             const schedulePopup = document.getElementById('schedule-popup');
             const scheduleCheckBtn = document.getElementById('schedule-check-btn');
@@ -2587,40 +2646,56 @@
             // 클릭 시 팝업 표시 아이템 (Gain/losses, Ventilation)
             const popupItems = ['gain', 'ventilation'];
 
+            // Heating, Cooling 초기 상태 설정 (둘 다 disabled인 경우 Heating을 기본 활성화)
+            const heatingItem = document.getElementById('zone-menu-heating');
+            const coolingItem = document.getElementById('zone-menu-cooling');
+            if (heatingItem && coolingItem) {
+                const heatingDisabled = heatingItem.classList.contains('disabled');
+                const coolingDisabled = coolingItem.classList.contains('disabled');
+                
+                // 둘 다 disabled인 경우 Heating을 기본 활성화 (팝업은 표시하지 않음)
+                if (heatingDisabled && coolingDisabled) {
+                    heatingItem.classList.remove('disabled');
+                    heatingItem.classList.add('active');
+                    // 초기 상태에서는 팝업을 표시하지 않음
+                }
+            }
+
             zoneMenuItems.forEach(function(menuItem) {
                 menuItem.addEventListener('click', function() {
                     const type = this.dataset.type;
                     const targetPopup = typeManagerPopups[type];
 
-                    // 토글 형식 아이템 처리 (Heating, Cooling)
+                    // 토글 형식 아이템 처리 (Heating, Cooling) - 상호 배타적 동작
                     if (toggleItems.includes(type)) {
-                        // 토글 상태 변경
-                        const isActive = this.classList.toggle('active');
-
-                        if (isActive) {
-                            // 활성화 시 팝업 표시
-                            if (targetPopup) {
-                                targetPopup.classList.add('show');
-                            }
-                            // 다른 토글 아이템 비활성화
-                            toggleItems.forEach(function(toggleType) {
-                                if (toggleType !== type) {
-                                    const otherItem = document.getElementById('zone-menu-' + toggleType);
-                                    if (otherItem) {
-                                        otherItem.classList.remove('active');
-                                    }
-                                    const otherPopup = typeManagerPopups[toggleType];
-                                    if (otherPopup) {
-                                        otherPopup.classList.remove('show');
-                                    }
-                                }
-                            });
-                        } else {
-                            // 비활성화 시 팝업 닫기
-                            if (targetPopup) {
-                                targetPopup.classList.remove('show');
-                            }
+                        // 현재 클릭한 아이템이 이미 활성화되어 있으면 아무것도 하지 않음
+                        if (this.classList.contains('active')) {
+                            return;
                         }
+
+                        // 클릭한 아이템 활성화
+                        this.classList.remove('disabled');
+                        this.classList.add('active');
+                        
+                        // 활성화 시 팝업 표시
+                        if (targetPopup) {
+                            targetPopup.classList.add('show');
+                        }
+                        
+                        // 다른 토글 아이템 비활성화 (하지만 disabled로 만들지 않음)
+                        toggleItems.forEach(function(toggleType) {
+                            if (toggleType !== type) {
+                                const otherItem = document.getElementById('zone-menu-' + toggleType);
+                                if (otherItem) {
+                                    otherItem.classList.remove('active');
+                                    // disabled는 제거하지 않음 (이미 활성화된 적이 있으면)
+                                }
+                                const otherPopup = typeManagerPopups[toggleType];
+                                if (otherPopup) {
+                                    otherPopup.classList.remove('show');
+                                }
+                            }
+                        });
                     }
                     // 클릭 시 팝업 표시 아이템 처리 (Gain/losses, Ventilation)
                     else if (popupItems.includes(type)) {
