@@ -29,9 +29,16 @@ app.get('/color-viewer', (req, res) => {
     });
 });
 
-// 시뮬레이터 라우트
+// 시뮬레이터 라우트 (어두운 테마 - 기본)
 app.get('/simulator', (req, res) => {
     res.render('simulator', {
+        title: '건물 에너지 분석 시뮬레이터'
+    });
+});
+
+// 시뮬레이터 라우트 (밝은 테마)
+app.get('/simulator-white', (req, res) => {
+    res.render('simulator-white', {
         title: '건물 에너지 분석 시뮬레이터'
     });
 });

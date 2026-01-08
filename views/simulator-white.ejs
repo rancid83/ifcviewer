@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>건물 에너지 분석 시뮬레이터</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f0f2f5;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #ffffff;
+            color: #2c3e50;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            border-bottom: 2px solid #e8ecef;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 95px);
+            gap: 15px;
+            padding: 15px;
+        }
+        
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-left {
+            flex: 1;
+            min-width: 500px;
+        }
+        
+        .panel-right {
+            flex: 1;
+            min-width: 500px;
+        }
+        
+        .panel-header {
+            background-color: #1e3a8a;
+            color: #ffffff;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: 700;
+            border-bottom: 2px solid #1e40af;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .panel-header .header-title {
+            flex: 1;
+        }
+        
+        .panel-header .header-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .panel-header .btn {
+            padding: 8px 16px;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        .panel-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-dark {
+            background-color: #34495e;
+            color: white;
+        }
+        
+        .btn-dark:hover {
+            background-color: #2c3e50;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        /* IFC 뷰어 섹션 */
+        
+        .viewer-section {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        #viewer-container {
+            width: 100%;
+            height: 400px;
+            background-color: #fff;
+            border-radius: 8px;
+            border: 2px solid #bdc3c7;
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #viewer-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        /* 에너지 레전드 스타일 */
+        
+        #energy-legend {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 10px 8px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            border: 1px solid rgba(224, 224, 224, 0.8);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            width: 50px;
+            height: 300px;
+            pointer-events: auto;
+        }
+        /* 에너지 사용량 표시 (뷰어 오른쪽 상단) */
+        
+        #energy-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 6px;
+            border: 1px solid rgba(224, 224, 224, 0.8);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            pointer-events: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        #energy-display .energy-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+        
+        #energy-display .energy-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        #energy-display .energy-label {
+            font-weight: 600;
+            margin-right: 8px;
+            font-size: 11px;
+            min-width: 35px;
+        }
+        
+        #energy-display .energy-value {
+            font-weight: bold;
+            font-size: 13px;
+            text-align: left;
+            width: 240px; /* -0.000009051694178197067 길이에 맞춘 고정 너비 */
+            display: inline-block;
+        }
+        
+        #energy-display .energy-unit {
+            font-size: 10px;
+            margin-left: 3px;
+        }
+        
+        /* 확대/축소 버튼 스타일 */
+        
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            left: 70px; /* 레전드 옆에 배치 */
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #2c3e50;
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        
+        .zoom-btn:hover {
+            background-color: #ffffff;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .zoom-btn:active {
+            transform: scale(0.95);
+        }
+        /* 시간별 사용량 보기 섹션 */
+        
+        .time-usage-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .time-usage-section h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .season-toggle {
+            display: inline-flex;
+            background-color: #e8ecef;
+            border-radius: 8px;
+            padding: 4px;
+            border: 1px solid #d1d5db;
+        }
+        
+        .season-btn {
+            padding: 10px 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            background-color: transparent;
+            color: #6b7280;
+        }
+        
+        .season-btn.active {
+            background-color: #ffffff;
+            color: #2c3e50;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .play-btn {
+            background-color: #10b981;
+            color: white;
+        }
+        
+        .play-btn:hover:not(:disabled) {
+            background-color: #059669;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+        
+        .pause-btn {
+            background-color: #f59e0b;
+            color: white;
+        }
+        
+        .pause-btn:hover:not(:disabled) {
+            background-color: #d97706;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+        }
+        
+        .speed-select {
+            padding: 8px 12px;
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            background-color: white;
+            color: #2c3e50;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .speed-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .time-slider-container {
+            margin-bottom: 20px;
+        }
+        
+        .time-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+            background: #e0e4e8;
+            -webkit-appearance: none;
+        }
+        
+        .time-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .time-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .time-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+        
+        .date-selector {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .date-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .date-input-group label {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+        
+        .date-input-group input {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        /* Controller 다이어그램 섹션 */
+        
+        .controller-section {
+            margin-bottom: 20px;
+        }
+        
+        .controller-diagram {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            margin-top: 15px;
+        }
+        
+        .diagram-title {
+            text-align: center;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .diagram-image-container {
+            width: 100%;
+            height: 400px;
+            background-color: #fff;
+            border-radius: 8px;
+            border: 2px solid #bdc3c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .diagram-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        /* 시뮬레이션 설정 섹션 */
+        
+        .simulation-settings {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .simulation-settings h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .settings-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .settings-table th {
+            background-color: #f3f4f6;
+            color: #374151;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            border-bottom: 2px solid #d1d5db;
+        }
+        
+        .settings-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        
+        .settings-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .param-label {
+            font-size: 11px;
+            color: #7f8c8d;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .param-input {
+            width: 100%;
+            padding: 8px 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            text-align: center;
+        }
+        
+        .param-input[type="number"] {
+            padding: 6px;
+        }
+        
+        select.param-input {
+            padding: 6px 8px;
+            text-align: center;
+            text-align-last: center;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 28px;
+        }
+        
+        .case-select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #3b82f6;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e40af;
+            background-color: #eff6ff;
+            cursor: pointer;
+        }
+        
+        .case-select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .param-value {
+            width: 100%;
+            padding: 6px;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 13px;
+            text-align: center;
+            color: #374151;
+        }
+        
+        .cell-row-label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        /* 반응형 */
+        
+        @media (max-width: 1200px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .panel-left,
+            .panel-right {
+                min-width: 100%;
+            }
+            #viewer-container {
+                height: 300px;
+            }
+            .diagram-image-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>건물 에너지 분석 시뮬레이터</h1>
+    </div>
+
+    <div class="main-container">
+        <!-- 좌측 패널: 분석 결과 보기 -->
+        <div class="panel panel-left">
+            <div class="panel-header">
+                <span class="header-title">분석 결과 보기</span>
+                <div class="header-buttons">
+                    <button class="btn btn-dark" id="load-ifc-btn">
+                        📂 파일 불러오기 (IFC)
+                    </button>
+                </div>
+            </div>
+            <div class="panel-content">
+                <!-- IFC 파일 불러오기 -->
+                <div class="viewer-section">
+                    <input type="file" id="ifc-file-input" accept=".ifc" style="display: none;">
+
+                    <!-- IFC 뷰어 -->
+                    <div id="viewer-container">
+                        <!-- 확대/축소 버튼 -->
+                        <div class="zoom-controls">
+                            <button id="zoom-in-btn" class="zoom-btn" title="확대">+</button>
+                            <button id="zoom-out-btn" class="zoom-btn" title="축소">−</button>
+                        </div>
+                    </div>
+                    <!-- 에너지 사용량 컬러 레전드 (뷰어 위에 오버레이) -->
+                    <div id="energy-legend"></div>
+                    <!-- 에너지 사용량 표시 (뷰어 오른쪽 상단) -->
+                    <div id="energy-display">
+                        <div class="energy-row">
+                            <span class="energy-label" style="color: #e74c3c;">Test:</span>
+                            <span id="test-energy" class="energy-value" style="color: #e74c3c; text-align: left;">0</span>
+                            <span class="energy-unit" style="color: #e74c3c;">kJ/h</span>
+                        </div>
+                        <div class="energy-row">
+                            <span class="energy-label" style="color: #3498db;">Ref:</span>
+                            <span id="ref-energy" class="energy-value" style="color: #3498db; text-align: left;">0</span>
+                            <span class="energy-unit" style="color: #3498db;">kJ/h</span>
+                        </div>
+                        <div class="energy-row">
+                            <span class="energy-label">차이:</span>
+                            <span id="energy-diff" class="energy-value" style="text-align: left;">0</span>
+                            <span id="energy-diff-percent" class="energy-unit" style="color: #7f8c8d;">(0%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 시간별 사용량 보기 -->
+                <div class="time-usage-section">
+                    <h3>⏰ 시간별 사용량 보기</h3>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                            <!-- 여름/겨울 토글 -->
+                            <div class="season-toggle">
+                                <button class="season-btn active" data-season="summer">여름</button>
+                                <button class="season-btn" data-season="winter">겨울</button>
+                            </div>
+
+                            <!-- 날짜 선택 -->
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <label style="font-size: 14px; color: #2c3e50; font-weight: 600;">날짜:</label>
+                                <select id="year-select" class="date-select" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                                    <option value="2025">2025년</option>
+                                </select>
+                                <select id="month-select" class="date-select" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                                    <!-- JavaScript로 동적 생성 -->
+                                </select>
+                                <select id="day-select" class="date-select" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                                    <!-- JavaScript로 동적 생성 -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 재생 컨트롤 -->
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button id="play-btn" class="control-btn play-btn">
+                                ▶ 재생
+                            </button>
+                            <button id="pause-btn" class="control-btn pause-btn" disabled>
+                                ⏸ 정지
+                            </button>
+                            <select id="speed-select" class="speed-select">
+                                <option value="1">1x</option>
+                                <option value="2">2x</option>
+                                <option value="5">5x</option>
+                                <option value="10" selected>10x</option>
+                                <option value="30">30x</option>
+                                <option value="60">60x</option>
+                                <option value="120">120x</option>
+                                <option value="200">200x</option>
+                                <option value="300">300x</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 전체 기간 슬라이더 -->
+                    <div class="time-slider-container">
+                        <h4 style="margin-bottom: 10px; color: #2c3e50; font-size: 14px;">📅 일별</h4>
+                        <input type="range" class="time-slider" id="time-slider" min="0" max="83520" value="0" step="1">
+                        <div class="time-labels">
+                            <span id="current-date-display" style="color: #1e3a8a; font-weight: 600;">2025-08-01</span>
+                            <span id="current-time-display">00:00</span>
+                            <span id="current-minute-display">프레임: 0</span>
+                        </div>
+                    </div>
+
+                    <!-- 일별 시간대 슬라이더 (신규) -->
+                    <div class="time-slider-container" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                        <h4 style="margin-bottom: 10px; color: #2c3e50; font-size: 14px;">⏰ 시간대별</h4>
+                        <input type="range" class="time-slider" id="daily-time-slider" min="0" max="780" value="0" step="1">
+                        <div class="time-labels">
+                            <span id="daily-date-display" style="color: #1e3a8a; font-weight: 600;">2025-08-01</span>
+                            <span id="daily-time-display">07:00</span>
+                            <span id="daily-minute-display" style="display: none;">분: 0 / 780</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측 패널: 분석 설정 하기 -->
+        <div class="panel panel-right">
+            <div class="panel-header">
+                <span class="header-title">분석 설정 하기</span>
+                <div class="header-buttons">
+                    <button class="btn btn-dark" id="analyze-btn">
+                        🔬 분석 하기 (에너지 사용량)
+                    </button>
+                </div>
+            </div>
+            <div class="panel-content">
+                <!-- Controller 다이어그램 -->
+                <div class="controller-section">
+                    <div class="diagram-image-container">
+                        <img src="/img/tlab-project.png" alt="T-LAB 프로젝트 다이어그램" class="diagram-image">
+                    </div>
+                </div>
+
+                <!-- 시뮬레이션 설정 -->
+                <div class="simulation-settings">
+                    <h3>⚙️ 시뮬레이션 설정</h3>
+                    <div style="background-color: #fef3c7; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 12px; color: #92400e; border-left: 4px solid #f59e0b;">
+                        <strong>📌 Time step:</strong> 1분 | <strong>냉방:</strong> 8월~9월 | <strong>난방:</strong> 1월~2월 | <strong>주중 운전</strong>
+                    </div>
+                    <table class="settings-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 120px;">구분</th>
+                                <th style="width: 110px;">인체 발열<br>[kJ/h·m²]</th>
+                                <th style="width: 110px;">기기 발열<br>[kJ/h·m²]</th>
+                                <th style="width: 110px;">조명 발열<br>[kJ/h·m²]</th>
+                                <th style="width: 120px;">외기 도입량<br>[m³/m²·h]</th>
+                                <th style="width: 100px;">난방 설정<br>[°C]</th>
+                                <th style="width: 100px;">냉방 설정<br>[°C]</th>
+                                <th style="width: 130px;">사용 시간</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="cell-row-label" style="background-color: #f0f9ff;">Ref Zone</td>
+                                <td>
+                                    <div class="param-value">22.3</div>
+                                </td>
+                                <td>
+                                    <div class="param-value">50.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value">23.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value">6</div>
+                                </td>
+                                <td>
+                                    <div class="param-value">20</div>
+                                </td>
+                                <td>
+                                    <div class="param-value">26</div>
+                                </td>
+                                <td>
+                                    <select class="param-input" id="ref-time">
+                                        <option value="07-16">07-16시</option>
+                                        <option value="07-18" selected>07-18시</option>
+                                        <option value="07-20">07-20시</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="cell-row-label" style="background-color: #fffbeb;">Test Zone</td>
+                                <td><input type="number" class="param-input" id="test-human" value="22.3" step="0.1"></td>
+                                <td><input type="number" class="param-input" id="test-equipment" value="50.4" step="0.1"></td>
+                                <td><input type="number" class="param-input" id="test-lighting" value="23.4" step="0.1"></td>
+                                <td><input type="number" class="param-input" id="test-outdoor" value="6" step="0.1"></td>
+                                <td><input type="number" class="param-input" id="test-heating" value="20" step="0.5"></td>
+                                <td><input type="number" class="param-input" id="test-cooling" value="26" step="0.5"></td>
+                                <td>
+                                    <select class="param-input" id="test-time">
+                                        <option value="07-16">07-16시</option>
+                                        <option value="07-18" selected>07-18시</option>
+                                        <option value="07-20">07-20시</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Test Zone 케이스 선택 -->
+                    <div style="margin-top: 15px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+                        <label style="font-weight: 600; color: #374151; font-size: 14px;">
+                            Test Zone 케이스 선택:
+                        </label>
+                        <select class="case-select" id="test-case" style="width: auto; min-width: 300px;">
+                            <option value="ref">Ref (기준값)</option>
+                            <optgroup label="내부 발열 조정 (±30%)">
+                                <option value="case1+">Case1+ (인체/기기/조명 +30%)</option>
+                                <option value="case1-">Case1- (인체/기기/조명 -30%)</option>
+                            </optgroup>
+                            <optgroup label="외기 도입량 조정 (±50%)">
+                                <option value="case2+">Case2+ (외기 도입량 +50%)</option>
+                                <option value="case2-">Case2- (외기 도입량 -50%)</option>
+                            </optgroup>
+                            <optgroup label="설정온도 조정 (±2℃)">
+                                <option value="case3+">Case3+ (난방 -2℃, 냉방 +2℃)</option>
+                                <option value="case3-">Case3- (난방 +2℃, 냉방 -2℃)</option>
+                            </optgroup>
+                            <optgroup label="사용시간 조정 (±2시간)">
+                                <option value="case4+">Case4+ (사용시간 +2시간)</option>
+                                <option value="case4-">Case4- (사용시간 -2시간)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script async src="https://unpkg.com/es-module-shims@1.8.2/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/": "https://unpkg.com/three@0.160.0/", "web-ifc": "/js/web-ifc-api.js" } }
+    </script>
+    <script type="module" src="/js/simulator.js"></script>
+</body>
+
+</html>
