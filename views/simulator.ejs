@@ -38,8 +38,33 @@
         .logo {
             font-size: 28px;
             font-weight: 700;
-            color: #10b981;
             letter-spacing: 2px;
+            display: inline-flex;
+            gap: 2px;
+            align-items: center;
+        }
+        
+        .logo span {
+            /* padding: 2px 4px; */
+            -webkit-text-stroke: 1.5px #ffffff;
+            text-stroke: 1.5px #ffffff;
+            font-weight: 700;
+            display: inline-block;
+        }
+        
+        .logo .logo-k {
+            color: #1e40af;
+            /* dark blue */
+        }
+        
+        .logo .logo-c {
+            color: #10b981;
+            /* green */
+        }
+        
+        .logo .logo-l {
+            color: #1e40af;
+            /* dark blue */
         }
         
         .header-title {
@@ -636,7 +661,7 @@
         /* 시뮬레이션 설정 섹션 */
         
         .simulation-settings {
-            background-color: #0a0a0a;
+            background-color: #000000;
             padding: 20px;
             border-radius: 8px;
             border: 1px solid #333333;
@@ -646,15 +671,35 @@
             margin-bottom: 15px;
             color: #ffffff;
             font-size: 16px;
+            font-weight: 600;
+        }
+        /* 파라미터 정보 바 */
+        
+        .simulation-params-bar {
+            background-color: #2a2a2a;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .params-pin-icon {
+            color: #ff0000;
+            font-size: 14px;
         }
         
         .settings-table {
             width: 100%;
             border-collapse: collapse;
+            background-color: #000000;
         }
         
         .settings-table th {
-            background-color: #1a1a1a;
+            background-color: #000000;
             color: #ffffff;
             padding: 10px;
             text-align: center;
@@ -667,6 +712,7 @@
             padding: 10px;
             border-bottom: 1px solid #333333;
             text-align: center;
+            background-color: #000000;
         }
         
         .settings-table tr:last-child td {
@@ -734,7 +780,8 @@
             border-radius: 4px;
             font-size: 13px;
             text-align: center;
-            color: #9ca3af;
+            color: #ffffff;
+            min-height: 24px;
         }
         
         .cell-row-label {
@@ -1441,6 +1488,26 @@
             justify-content: center;
             flex-shrink: 0;
             transition: all 0.3s;
+            position: relative;
+        }
+        
+        .zone-info-menu-icon .icon-overlay {
+            position: absolute;
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        
+        .zone-info-menu-icon .icon-sun,
+        .zone-info-menu-icon .icon-snow {
+            font-size: 20px;
+            z-index: 1;
+            transform: translateY(-4px);
+        }
+        
+        .zone-info-menu-icon .icon-temp {
+            font-size: 20px;
+            z-index: 2;
+            transform: translateY(4px);
         }
         
         .zone-info-menu-item.active .zone-info-menu-icon {
@@ -1509,6 +1576,31 @@
         
         .type-manager-popup-icon {
             font-size: 24px;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+        
+        .icon-overlay {
+            position: absolute;
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        
+        .icon-sun,
+        .icon-snow {
+            font-size: 20px;
+            z-index: 1;
+            transform: translateY(-4px);
+        }
+        
+        .icon-temp {
+            font-size: 20px;
+            z-index: 2;
+            transform: translateY(4px);
         }
         
         .type-manager-popup-title {
@@ -1621,13 +1713,31 @@
         .type-manager-edit-icon:hover {
             color: #ffffff;
         }
+        
+        .type-manager-subsection {
+            margin-bottom: 20px;
+        }
+        
+        .type-manager-subsection:last-of-type {
+            margin-bottom: 0;
+        }
+        
+        .type-manager-divider {
+            height: 1px;
+            background-color: #555555;
+            margin: 25px 0;
+        }
     </style>
 </head>
 
 <body>
     <div class="header">
         <div class="header-left">
-            <div class="logo">KCL</div>
+            <div class="logo">
+                <span class="logo-k">K</span>
+                <span class="logo-c">C</span>
+                <span class="logo-l">L</span>
+            </div>
             <div class="header-title">T-Lab Digital Twin System</div>
         </div>
         <div class="header-right">
@@ -1902,104 +2012,70 @@
 
                 <!-- 시뮬레이션 설정 -->
                 <div class="simulation-settings">
-                    <h3>⚙️ 시뮬레이션 설정</h3>
-                    <div style="background-color: #fef3c7; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 12px; color: #92400e; border-left: 4px solid #f59e0b;">
-                        <strong>📌 Time step:</strong> 1분 | <strong>냉방:</strong> 8월~9월 | <strong>난방:</strong> 1월~2월 | <strong>주중 운전</strong>
+                    <h3>시뮬레이션 설정</h3>
+                    <!-- 파라미터 정보 바 -->
+                    <div class="simulation-params-bar">
+                        <span class="params-pin-icon">📌</span>
+                        <span>Time step: 1분 | 냉방: 8월~9월 | 난방: 1월~2월 | 주중 운전</span>
                     </div>
                     <table class="settings-table">
                         <thead>
                             <tr>
-                                <th style="width: 120px;">구분</th>
-                                <th style="width: 110px;">인체 발열<br>[kJ/h·m²]</th>
-                                <th style="width: 110px;">기기 발열<br>[kJ/h·m²]</th>
-                                <th style="width: 110px;">조명 발열<br>[kJ/h·m²]</th>
-                                <th style="width: 120px;">외기 도입량<br>[m³/m²·h]</th>
-                                <th style="width: 100px;">난방 설정<br>[°C]</th>
-                                <th style="width: 100px;">냉방 설정<br>[°C]</th>
-                                <th style="width: 130px;">사용 시간</th>
+                                <th style="width: 120px;">Zone</th>
+                                <th style="width: 150px;">기기발열 [kJ/h·m²]</th>
+                                <th style="width: 150px;">조명발열 [kJ/h·m²]</th>
+                                <th style="width: 150px;">외기도입량 [m³/m²·h]</th>
+                                <th style="width: 120px;">설정온도 [°C]</th>
+                                <th style="width: 130px;">사용시간</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td class="cell-row-label" style="background-color: #f0f9ff;">Ref Zone</td>
+                                <td class="cell-row-label" style="background-color: #1a1a1a;">REF_CELL</td>
                                 <td>
-                                    <div class="param-value">22.3</div>
+                                    <div class="param-value" id="ref-equipment">50.4</div>
                                 </td>
                                 <td>
-                                    <div class="param-value">50.4</div>
+                                    <div class="param-value" id="ref-lighting">23.4</div>
                                 </td>
                                 <td>
-                                    <div class="param-value">23.4</div>
+                                    <div class="param-value" id="ref-ventilation">6</div>
                                 </td>
                                 <td>
-                                    <div class="param-value">6</div>
+                                    <div class="param-value" id="ref-temperature">26</div>
                                 </td>
                                 <td>
-                                    <div class="param-value">20</div>
-                                </td>
-                                <td>
-                                    <div class="param-value">26</div>
-                                </td>
-                                <td>
-                                    <select class="param-input" id="ref-time">
-                                        <option value="07-16">07-16시</option>
-                                        <option value="07-18" selected>07-18시</option>
-                                        <option value="07-20">07-20시</option>
-                                    </select>
+                                    <div class="param-value" id="ref-time-display">07:00-18:00</div>
                                 </td>
                             </tr>
                             <tr>
-                                <td class="cell-row-label" style="background-color: #fffbeb;">Test Zone</td>
-                                <td><input type="number" class="param-input" id="test-human" value="22.3" step="0.1"></td>
-                                <td><input type="number" class="param-input" id="test-equipment" value="50.4" step="0.1"></td>
-                                <td><input type="number" class="param-input" id="test-lighting" value="23.4" step="0.1"></td>
-                                <td><input type="number" class="param-input" id="test-outdoor" value="6" step="0.1"></td>
-                                <td><input type="number" class="param-input" id="test-heating" value="20" step="0.5"></td>
-                                <td><input type="number" class="param-input" id="test-cooling" value="26" step="0.5"></td>
+                                <td class="cell-row-label" style="background-color: #1a1a1a;">TEST_CELL</td>
                                 <td>
-                                    <select class="param-input" id="test-time">
-                                        <option value="07-16">07-16시</option>
-                                        <option value="07-18" selected>07-18시</option>
-                                        <option value="07-20">07-20시</option>
-                                    </select>
+                                    <div class="param-value" id="test-equipment-display">50.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="test-lighting-display">23.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="test-ventilation-display">6</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="test-temperature-display">26</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="test-time-display">07:00-18:00</div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <!-- Test Zone 케이스 선택 -->
-                    <div style="margin-top: 15px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-                        <label style="font-weight: 600; color: #ffffff; font-size: 14px;">
-                            Test Zone 케이스 선택:
-                        </label>
-                        <select class="case-select" id="test-case" style="width: auto; min-width: 300px;">
-                            <option value="ref">Ref (기준값)</option>
-                            <optgroup label="내부 발열 조정 (±30%)">
-                                <option value="case1+">Case1+ (인체/기기/조명 +30%)</option>
-                                <option value="case1-">Case1- (인체/기기/조명 -30%)</option>
-                            </optgroup>
-                            <optgroup label="외기 도입량 조정 (±50%)">
-                                <option value="case2+">Case2+ (외기 도입량 +50%)</option>
-                                <option value="case2-">Case2- (외기 도입량 -50%)</option>
-                            </optgroup>
-                            <optgroup label="설정온도 조정 (±2℃)">
-                                <option value="case3+">Case3+ (난방 -2℃, 냉방 +2℃)</option>
-                                <option value="case3-">Case3- (난방 +2℃, 냉방 -2℃)</option>
-                            </optgroup>
-                            <optgroup label="사용시간 조정 (±2시간)">
-                                <option value="case4+">Case4+ (사용시간 +2시간)</option>
-                                <option value="case4-">Case4- (사용시간 -2시간)</option>
-                            </optgroup>
-                        </select>
-                    </div>
-
                     <!-- 버튼 영역 (오른쪽 하단) -->
                     <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
                         <button class="btn btn-gray" id="analyze-energy-btn">
-                            🔬 분석하기 (에너지 사용량)
+                            분석하기 (에너지 사용량)
                         </button>
                         <button class="btn btn-gray" id="send-control-signal-btn">
-                            📡 제어신호 송출
+                            제어신호 송출
                         </button>
                     </div>
                 </div>
@@ -2165,11 +2241,17 @@
                     <div class="zone-info-menu-container">
                         <div class="zone-info-menu-left">
                             <div class="zone-info-menu-item disabled" data-type="heating" id="zone-menu-heating">
-                                <div class="zone-info-menu-icon">☀️🌡️</div>
+                                <div class="zone-info-menu-icon">
+                                    <span class="icon-overlay icon-sun">☀️</span>
+                                    <span class="icon-overlay icon-temp">🌡️</span>
+                                </div>
                                 <span class="zone-info-menu-label">Heating</span>
                             </div>
                             <div class="zone-info-menu-item disabled" data-type="cooling" id="zone-menu-cooling">
-                                <div class="zone-info-menu-icon">❄️🌡️</div>
+                                <div class="zone-info-menu-icon">
+                                    <span class="icon-overlay icon-snow">❄️</span>
+                                    <span class="icon-overlay icon-temp">🌡️</span>
+                                </div>
                                 <span class="zone-info-menu-label">Cooling</span>
                             </div>
                         </div>
@@ -2193,7 +2275,10 @@
     <div class="type-manager-popup-overlay" id="heating-type-popup">
         <div class="type-manager-popup">
             <div class="type-manager-popup-header">
-                <span class="type-manager-popup-icon">☀️🌡️</span>
+                <span class="type-manager-popup-icon">
+                    <span class="icon-overlay icon-sun">☀️</span>
+                <span class="icon-overlay icon-temp">🌡️</span>
+                </span>
                 <span class="type-manager-popup-title">"Heating Type" Manager</span>
                 <div class="type-manager-popup-buttons">
                     <button class="type-manager-popup-btn" id="heating-type-check-btn" title="확인">✓</button>
@@ -2224,7 +2309,10 @@
     <div class="type-manager-popup-overlay" id="cooling-type-popup">
         <div class="type-manager-popup">
             <div class="type-manager-popup-header">
-                <span class="type-manager-popup-icon">❄️🌡️</span>
+                <span class="type-manager-popup-icon">
+                    <span class="icon-overlay icon-snow">❄️</span>
+                <span class="icon-overlay icon-temp">🌡️</span>
+                </span>
                 <span class="type-manager-popup-title">"Cooling Type" Manager</span>
                 <div class="type-manager-popup-buttons">
                     <button class="type-manager-popup-btn" id="cooling-type-check-btn" title="확인">✓</button>
@@ -2256,25 +2344,49 @@
         <div class="type-manager-popup">
             <div class="type-manager-popup-header">
                 <span class="type-manager-popup-icon">🕯️</span>
-                <span class="type-manager-popup-title">"Gain/losses Type" Manager</span>
+                <span class="type-manager-popup-title">"Gain/loss Type" Manager</span>
                 <div class="type-manager-popup-buttons">
                     <button class="type-manager-popup-btn" id="gain-type-check-btn" title="확인">✓</button>
                     <button class="type-manager-popup-btn" id="gain-type-close-btn" title="닫기">✕</button>
                 </div>
             </div>
             <div class="type-manager-popup-content">
-                <div class="type-manager-section-title">Gain/losses Control</div>
-                <div class="type-manager-section-subtitle">Gain/losses 설정을 선택하세요</div>
-                <div class="type-manager-form-group">
-                    <label class="type-manager-label">set value:</label>
-                    <div class="type-manager-select-wrapper">
-                        <select class="type-manager-select" id="gain-type-select">
-                            <option value="select">Select</option>
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium (default)</option>
-                            <option value="high">High</option>
-                        </select>
-                        <span class="type-manager-edit-icon" title="편집">✏️</span>
+                <!-- electrical equipment 섹션 -->
+                <div class="type-manager-subsection">
+                    <div class="type-manager-section-title">electrical equipment</div>
+                    <div class="type-manager-form-group">
+                        <label class="type-manager-label">set gain/loss:</label>
+                        <div class="type-manager-select-wrapper">
+                            <select class="type-manager-select" id="gain-type-electrical-select">
+                                <option value="select">Select</option>
+                                <option value="35.3">35.3</option>
+                                <option value="50.4" selected>50.4 (default)</option>
+                                <option value="65.5">65.5</option>
+                            </select>
+                            <span class="type-manager-unit">kJ/h·m²</span>
+                            <span class="type-manager-edit-icon" title="편집">✏️</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 구분선 -->
+                <div class="type-manager-divider"></div>
+
+                <!-- lights 섹션 -->
+                <div class="type-manager-subsection">
+                    <div class="type-manager-section-title">lights</div>
+                    <div class="type-manager-form-group">
+                        <label class="type-manager-label">set gain/loss:</label>
+                        <div class="type-manager-select-wrapper">
+                            <select class="type-manager-select" id="gain-type-lights-select">
+                                <option value="select">Select</option>
+                                <option value="16.4">16.4</option>
+                                <option value="23.4" selected>23.4 (default)</option>
+                                <option value="30.4">30.4</option>
+                            </select>
+                            <span class="type-manager-unit">kJ/h·m²</span>
+                            <span class="type-manager-edit-icon" title="편집">✏️</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2293,18 +2405,17 @@
                 </div>
             </div>
             <div class="type-manager-popup-content">
-                <div class="type-manager-section-title">Ventilation Control</div>
-                <div class="type-manager-section-subtitle">환기 설정을 선택하세요</div>
+                <div class="type-manager-section-title" style="border-bottom: 1px solid #555555; padding-bottom: 10px; margin-bottom: 15px;">Supply air flow</div>
                 <div class="type-manager-form-group">
-                    <label class="type-manager-label">set rate:</label>
+                    <label class="type-manager-label">Volume flow rate related to reference floor area:</label>
                     <div class="type-manager-select-wrapper">
                         <select class="type-manager-select" id="ventilation-type-select">
                             <option value="select">Select</option>
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium (default)</option>
-                            <option value="high">High</option>
+                            <option value="3">3</option>
+                            <option value="6" selected>6 (default)</option>
+                            <option value="9">9</option>
                         </select>
-                        <span class="type-manager-unit">m³/h</span>
+                        <span class="type-manager-unit">m³/m²·h</span>
                         <span class="type-manager-edit-icon" title="편집">✏️</span>
                     </div>
                 </div>
@@ -2479,6 +2590,13 @@
                             let zoneName = label.textContent.trim();
                             zoneInfoTitle.textContent = zoneName;
 
+                            // 현재 선택된 Zone 추적 (Zone: REF_CELL 또는 Zone: TEST_CELL 형식에서 REF_CELL 또는 TEST_CELL 추출)
+                            if (zoneName === 'Zone: REF_CELL') {
+                                currentSelectedZone = 'REF_CELL';
+                            } else if (zoneName === 'Zone: TEST_CELL') {
+                                currentSelectedZone = 'TEST_CELL';
+                            }
+
                             // Zone별 초기값 설정
                             if (zoneName === 'Zone: REF_CELL') {
                                 document.getElementById('zone-volume').value = '151.20';
@@ -2535,14 +2653,53 @@
                 });
             });
 
+            // 현재 선택된 Zone 추적
+            let currentSelectedZone = null; // 'REF_CELL' or 'TEST_CELL'
+
+            // 시뮬레이션 설정 테이블 업데이트 함수
+            function updateSimulationTable(zone, field, value) {
+                if (zone === 'REF_CELL') {
+                    const refFields = {
+                        'equipment': 'ref-equipment',
+                        'lighting': 'ref-lighting',
+                        'ventilation': 'ref-ventilation',
+                        'temperature': 'ref-temperature',
+                        'time': 'ref-time-display'
+                    };
+                    const fieldId = refFields[field];
+                    if (fieldId) {
+                        const element = document.getElementById(fieldId);
+                        if (element) {
+                            element.textContent = value;
+                        }
+                    }
+                } else if (zone === 'TEST_CELL') {
+                    const testFields = {
+                        'equipment': 'test-equipment-display',
+                        'lighting': 'test-lighting-display',
+                        'ventilation': 'test-ventilation-display',
+                        'temperature': 'test-temperature-display',
+                        'time': 'test-time-display'
+                    };
+                    const fieldId = testFields[field];
+                    if (fieldId) {
+                        const element = document.getElementById(fieldId);
+                        if (element) {
+                            element.textContent = value;
+                        }
+                    }
+                }
+            }
+
             // Zone 정보 팝업 표시 함수 (재사용)
             function showZoneInfoPopup(zoneName) {
                 const zoneInfoPopup = document.getElementById('zone-info-popup');
                 const zoneInfoTitle = document.getElementById('zone-info-popup-title');
 
                 if (zoneInfoPopup && zoneInfoTitle) {
-                    // Zone 이름 설정
+                    // Zone 이름 설정 및 현재 Zone 저장
                     zoneInfoTitle.textContent = 'Zone: ' + zoneName;
+                    currentSelectedZone = zoneName; // 'REF_CELL' or 'TEST_CELL'
 
                     // Zone별 초기값 설정
                     if (zoneName === 'REF_CELL') {
@@ -2652,11 +2809,13 @@
             if (heatingItem && coolingItem) {
                 const heatingDisabled = heatingItem.classList.contains('disabled');
                 const coolingDisabled = coolingItem.classList.contains('disabled');
-                
+
                 // 둘 다 disabled인 경우 Heating을 기본 활성화 (팝업은 표시하지 않음)
                 if (heatingDisabled && coolingDisabled) {
                     heatingItem.classList.remove('disabled');
                     heatingItem.classList.add('active');
+                    // Cooling은 disabled 상태 유지 (상호 배타적)
+                    coolingItem.classList.add('disabled');
                     // 초기 상태에서는 팝업을 표시하지 않음
                 }
             }
@@ -2676,19 +2835,19 @@
                         // 클릭한 아이템 활성화
                         this.classList.remove('disabled');
                         this.classList.add('active');
-                        
+
                         // 활성화 시 팝업 표시
                         if (targetPopup) {
                             targetPopup.classList.add('show');
                         }
-                        
-                        // 다른 토글 아이템 비활성화 (하지만 disabled로 만들지 않음)
+
+                        // 다른 토글 아이템 비활성화
                         toggleItems.forEach(function(toggleType) {
                             if (toggleType !== type) {
                                 const otherItem = document.getElementById('zone-menu-' + toggleType);
                                 if (otherItem) {
                                     otherItem.classList.remove('active');
-                                    // disabled는 제거하지 않음 (이미 활성화된 적이 있으면)
+                                    otherItem.classList.add('disabled');
                                 }
                                 const otherPopup = typeManagerPopups[toggleType];
                                 if (otherPopup) {
@@ -2699,6 +2858,10 @@
                     }
                     // 클릭 시 팝업 표시 아이템 처리 (Gain/losses, Ventilation)
                     else if (popupItems.includes(type)) {
+                        // disabled 상태의 아이템은 클릭 불가
+                        if (this.classList.contains('disabled')) {
+                            return;
+                        }
                         // 다른 메뉴 아이템의 활성 상태 제거 (같은 타입만)
                         popupItems.forEach(function(popupType) {
                             if (popupType !== type) {
@@ -2841,11 +3004,189 @@
                 }
             }
 
-            // 각 Type Manager 팝업 설정
-            setupTypeManagerPopup('heating-type-popup', 'heating-type-check-btn', 'heating-type-close-btn', 'heating-type-select', 'zone-menu-heating');
-            setupTypeManagerPopup('cooling-type-popup', 'cooling-type-check-btn', 'cooling-type-close-btn', 'cooling-type-select', 'zone-menu-cooling');
-            setupTypeManagerPopup('gain-type-popup', 'gain-type-check-btn', 'gain-type-close-btn', 'gain-type-select', 'zone-menu-gain');
-            setupTypeManagerPopup('ventilation-type-popup', 'ventilation-type-check-btn', 'ventilation-type-close-btn', 'ventilation-type-select', 'zone-menu-ventilation');
+            // Heating Type Manager 팝업 확인 버튼
+            const heatingCheckBtn = document.getElementById('heating-type-check-btn');
+            const heatingSelect = document.getElementById('heating-type-select');
+            const heatingPopup = document.getElementById('heating-type-popup');
+            const heatingMenuItem = document.getElementById('zone-menu-heating');
+            const heatingCloseBtn = document.getElementById('heating-type-close-btn');
+
+            if (heatingCheckBtn) {
+                heatingCheckBtn.addEventListener('click', function() {
+                    if (currentSelectedZone && heatingSelect && heatingSelect.value !== 'select') {
+                        updateSimulationTable(currentSelectedZone, 'temperature', heatingSelect.value);
+                    }
+                    if (heatingPopup) {
+                        heatingPopup.classList.remove('show');
+                    }
+                    if (heatingMenuItem) {
+                        heatingMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (heatingCloseBtn) {
+                heatingCloseBtn.addEventListener('click', function() {
+                    if (heatingPopup) {
+                        heatingPopup.classList.remove('show');
+                    }
+                    if (heatingMenuItem) {
+                        heatingMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (heatingPopup) {
+                heatingPopup.addEventListener('click', function(e) {
+                    if (e.target === heatingPopup) {
+                        heatingPopup.classList.remove('show');
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('active');
+                        }
+                    }
+                });
+            }
+
+            // Cooling Type Manager 팝업 확인 버튼
+            const coolingCheckBtn = document.getElementById('cooling-type-check-btn');
+            const coolingSelect = document.getElementById('cooling-type-select');
+            const coolingPopup = document.getElementById('cooling-type-popup');
+            const coolingMenuItem = document.getElementById('zone-menu-cooling');
+            const coolingCloseBtn = document.getElementById('cooling-type-close-btn');
+
+            if (coolingCheckBtn) {
+                coolingCheckBtn.addEventListener('click', function() {
+                    if (currentSelectedZone && coolingSelect && coolingSelect.value !== 'select') {
+                        updateSimulationTable(currentSelectedZone, 'temperature', coolingSelect.value);
+                    }
+                    if (coolingPopup) {
+                        coolingPopup.classList.remove('show');
+                    }
+                    if (coolingMenuItem) {
+                        coolingMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (coolingCloseBtn) {
+                coolingCloseBtn.addEventListener('click', function() {
+                    if (coolingPopup) {
+                        coolingPopup.classList.remove('show');
+                    }
+                    if (coolingMenuItem) {
+                        coolingMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (coolingPopup) {
+                coolingPopup.addEventListener('click', function(e) {
+                    if (e.target === coolingPopup) {
+                        coolingPopup.classList.remove('show');
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('active');
+                        }
+                    }
+                });
+            }
+
+            // Gain/loss Type Manager 팝업 설정 (두 개의 select 처리)
+            const gainPopup = document.getElementById('gain-type-popup');
+            const gainCheckBtn = document.getElementById('gain-type-check-btn');
+            const gainCloseBtn = document.getElementById('gain-type-close-btn');
+            const gainElectricalSelect = document.getElementById('gain-type-electrical-select');
+            const gainLightsSelect = document.getElementById('gain-type-lights-select');
+            const gainMenuItem = document.getElementById('zone-menu-gain');
+
+            if (gainCheckBtn) {
+                gainCheckBtn.addEventListener('click', function() {
+                    if (currentSelectedZone && gainElectricalSelect && gainLightsSelect) {
+                        const electricalValue = gainElectricalSelect.value;
+                        const lightsValue = gainLightsSelect.value;
+                        if (electricalValue !== 'select') {
+                            updateSimulationTable(currentSelectedZone, 'equipment', electricalValue);
+                        }
+                        if (lightsValue !== 'select') {
+                            updateSimulationTable(currentSelectedZone, 'lighting', lightsValue);
+                        }
+                        console.log('Gain/loss Type 설정 적용:', {
+                            electrical: electricalValue,
+                            lights: lightsValue
+                        });
+                    }
+                    if (gainPopup) {
+                        gainPopup.classList.remove('show');
+                    }
+                    if (gainMenuItem) {
+                        gainMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (gainCloseBtn) {
+                gainCloseBtn.addEventListener('click', function() {
+                    if (gainPopup) {
+                        gainPopup.classList.remove('show');
+                    }
+                    if (gainMenuItem) {
+                        gainMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (gainPopup) {
+                gainPopup.addEventListener('click', function(e) {
+                    if (e.target === gainPopup) {
+                        gainPopup.classList.remove('show');
+                        if (gainMenuItem) {
+                            gainMenuItem.classList.remove('active');
+                        }
+                    }
+                });
+            }
+
+            // Ventilation Type Manager 팝업 확인 버튼
+            const ventilationCheckBtn = document.getElementById('ventilation-type-check-btn');
+            const ventilationSelect = document.getElementById('ventilation-type-select');
+            const ventilationPopup = document.getElementById('ventilation-type-popup');
+            const ventilationMenuItem = document.getElementById('zone-menu-ventilation');
+            const ventilationCloseBtn = document.getElementById('ventilation-type-close-btn');
+
+            if (ventilationCheckBtn) {
+                ventilationCheckBtn.addEventListener('click', function() {
+                    if (currentSelectedZone && ventilationSelect && ventilationSelect.value !== 'select') {
+                        updateSimulationTable(currentSelectedZone, 'ventilation', ventilationSelect.value);
+                    }
+                    if (ventilationPopup) {
+                        ventilationPopup.classList.remove('show');
+                    }
+                    if (ventilationMenuItem) {
+                        ventilationMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (ventilationCloseBtn) {
+                ventilationCloseBtn.addEventListener('click', function() {
+                    if (ventilationPopup) {
+                        ventilationPopup.classList.remove('show');
+                    }
+                    if (ventilationMenuItem) {
+                        ventilationMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (ventilationPopup) {
+                ventilationPopup.addEventListener('click', function(e) {
+                    if (e.target === ventilationPopup) {
+                        ventilationPopup.classList.remove('show');
+                        if (ventilationMenuItem) {
+                            ventilationMenuItem.classList.remove('active');
+                        }
+                    }
+                });
+            }
 
             // 분석하기 (에너지 사용량) 버튼 - 재생 버튼 클릭 효과
             const analyzeEnergyBtn = document.getElementById('analyze-energy-btn');
@@ -2885,5 +3226,7 @@
         });
     </script>
 </body>
+
+</html>
 
 </html>

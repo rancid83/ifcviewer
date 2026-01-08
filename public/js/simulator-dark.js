@@ -1484,62 +1484,64 @@ function updateInputColor(inputId, currentValue, refValue) {
 // ============================================
 const testCaseSelect = document.getElementById('test-case');
 
-testCaseSelect.addEventListener('change', async(e) => {
-    const selectedCase = e.target.value;
+if (testCaseSelect) {
+    testCaseSelect.addEventListener('change', async(e) => {
+        const selectedCase = e.target.value;
 
-    // 재생 중이면 정지
-    if (isPlaying) {
-        stopPlayback();
-    }
-
-    // Test Zone 파라미터 값 업데이트
-    const caseData = simulationCases[selectedCase];
-    if (caseData) {
-        document.getElementById('test-human').value = caseData.human;
-        document.getElementById('test-equipment').value = caseData.equipment;
-        document.getElementById('test-lighting').value = caseData.lighting;
-        document.getElementById('test-outdoor').value = caseData.outdoor;
-        document.getElementById('test-heating').value = caseData.heating;
-        document.getElementById('test-cooling').value = caseData.cooling;
-        document.getElementById('test-time').value = caseData.time;
-
-        // 변경된 값에 색상 적용
-        updateInputColors(selectedCase);
-
-        // 사용 시간에 따라 재생 범위 설정
-        timeRangeFilter = caseData.time; // '07-16', '07-18', '07-20'
-        debugLog('케이스 변경 → 사용 시간:', caseData.time, '→ 재생 범위:', timeRangeFilter);
-    }
-
-    // 데이터 매니저 케이스 변경
-    await dataManager.changeCase(selectedCase);
-
-    const metadata = dataManager.currentMetadata;
-    if (metadata) {
-        totalMinutes = metadata.totalFrames;
-
-        // 전체 재생 모드가 아닐 때만 필터링된 인덱스 재생성
-        if (!playFullRange) {
-            await buildFilteredIndices();
+        // 재생 중이면 정지
+        if (isPlaying) {
+            stopPlayback();
         }
-        updateSliderRange();
 
-        // 첫 프레임으로 이동
-        if (playFullRange) {
-            currentMinute = 0;
-            await updateVisualization(currentMinute);
-        } else {
-            currentFilteredIndex = 0;
-            if (filteredIndices.length > 0) {
-                currentMinute = filteredIndices[0];
-                await updateVisualization(currentMinute);
+        // Test Zone 파라미터 값 업데이트
+        const caseData = simulationCases[selectedCase];
+        if (caseData) {
+            document.getElementById('test-human').value = caseData.human;
+            document.getElementById('test-equipment').value = caseData.equipment;
+            document.getElementById('test-lighting').value = caseData.lighting;
+            document.getElementById('test-outdoor').value = caseData.outdoor;
+            document.getElementById('test-heating').value = caseData.heating;
+            document.getElementById('test-cooling').value = caseData.cooling;
+            document.getElementById('test-time').value = caseData.time;
+
+            // 변경된 값에 색상 적용
+            updateInputColors(selectedCase);
+
+            // 사용 시간에 따라 재생 범위 설정
+            timeRangeFilter = caseData.time; // '07-16', '07-18', '07-20'
+            debugLog('케이스 변경 → 사용 시간:', caseData.time, '→ 재생 범위:', timeRangeFilter);
+        }
+
+        // 데이터 매니저 케이스 변경
+        await dataManager.changeCase(selectedCase);
+
+        const metadata = dataManager.currentMetadata;
+        if (metadata) {
+            totalMinutes = metadata.totalFrames;
+
+            // 전체 재생 모드가 아닐 때만 필터링된 인덱스 재생성
+            if (!playFullRange) {
+                await buildFilteredIndices();
             }
-        }
+            updateSliderRange();
 
-        // 레전드 업데이트
-        createEnergyLegend();
-    }
-});
+            // 첫 프레임으로 이동
+            if (playFullRange) {
+                currentMinute = 0;
+                await updateVisualization(currentMinute);
+            } else {
+                currentFilteredIndex = 0;
+                if (filteredIndices.length > 0) {
+                    currentMinute = filteredIndices[0];
+                    await updateVisualization(currentMinute);
+                }
+            }
+
+            // 레전드 업데이트
+            createEnergyLegend();
+        }
+    });
+}
 
 // ============================================
 // 시뮬레이션 케이스 데이터
@@ -2996,13 +2998,22 @@ async function initializeSimulator() {
     const defaultCase = 'ref';
     const defaultCaseData = simulationCases[defaultCase];
     if (defaultCaseData) {
-        document.getElementById('test-human').value = defaultCaseData.human;
-        document.getElementById('test-equipment').value = defaultCaseData.equipment;
-        document.getElementById('test-lighting').value = defaultCaseData.lighting;
-        document.getElementById('test-outdoor').value = defaultCaseData.outdoor;
-        document.getElementById('test-heating').value = defaultCaseData.heating;
-        document.getElementById('test-cooling').value = defaultCaseData.cooling;
-        document.getElementById('test-time').value = defaultCaseData.time;
+        // 기존 input 요소가 있으면 업데이트
+        const testHuman = document.getElementById('test-human');
+        const testEquipment = document.getElementById('test-equipment');
+        const testLighting = document.getElementById('test-lighting');
+        const testOutdoor = document.getElementById('test-outdoor');
+        const testHeating = document.getElementById('test-heating');
+        const testCooling = document.getElementById('test-cooling');
+        const testTime = document.getElementById('test-time');
+
+        if (testHuman) testHuman.value = defaultCaseData.human;
+        if (testEquipment) testEquipment.value = defaultCaseData.equipment;
+        if (testLighting) testLighting.value = defaultCaseData.lighting;
+        if (testOutdoor) testOutdoor.value = defaultCaseData.outdoor;
+        if (testHeating) testHeating.value = defaultCaseData.heating;
+        if (testCooling) testCooling.value = defaultCaseData.cooling;
+        if (testTime) testTime.value = defaultCaseData.time;
 
         // 케이스 선택도 기본값으로 설정
         const testCaseSelect = document.getElementById('test-case');
@@ -3011,7 +3022,9 @@ async function initializeSimulator() {
         }
 
         // 기본 케이스는 색상 없음 (모두 기본 스타일)
-        updateInputColors(defaultCase);
+        if (typeof updateInputColors === 'function') {
+            updateInputColors(defaultCase);
+        }
 
         debugLog('✓ Test Zone 초기값 설정 완료 (Ref 케이스)');
     }
