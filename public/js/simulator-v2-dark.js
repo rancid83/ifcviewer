@@ -658,6 +658,69 @@ class SimulationDataManager {
 const dataManager = new SimulationDataManager();
 
 // ============================================
+// Ref Zone 기본 데이터 로드 함수
+// ============================================
+async function loadRefZoneDefaultData(season, frameIndex = 0) {
+    try {
+        const refPath = season === 'summer' ? 'ref-summer' : 'ref-winter';
+        const cacheKey = `${refPath}-${frameIndex}`;
+        const chunkSize = 1440; // simulation 데이터와 동일한 chunk 크기
+
+        // 캐시 확인
+        if (refZoneDefaultDataCache.has(cacheKey)) {
+            const cached = refZoneDefaultDataCache.get(cacheKey);
+            refZoneDefaultData = cached.data;
+            refZoneDefaultEnergy = cached.energy;
+            debugLog(`✓ Ref zone 기본값 캐시에서 로드: ${refZoneDefaultEnergy}`);
+            return refZoneDefaultEnergy;
+        }
+
+        // chunk-0.json에서 해당 프레임 로드 (필요시 다른 chunk도 로드 가능)
+        const chunkIndex = Math.floor(frameIndex / chunkSize);
+        const response = await fetch(`/data/simulation/${refPath}/chunk-${chunkIndex}.json`);
+        const chunk = await response.json();
+
+        if (chunk && chunk.data && chunk.data.length > 0) {
+            const localIndex = frameIndex % chunkSize;
+            const frameData = chunk.data[localIndex] || chunk.data[0]; // 인덱스 범위 초과 시 첫 번째 프레임 사용
+
+            // 해당 프레임의 Qsens_ref를 기본값으로 사용
+            refZoneDefaultEnergy = frameData.Qsens_ref || 0;
+            refZoneDefaultData = chunk;
+
+            // 캐시에 저장
+            refZoneDefaultDataCache.set(cacheKey, {
+                data: chunk,
+                energy: refZoneDefaultEnergy
+            });
+
+            // 캐시 크기 제한
+            if (refZoneDefaultDataCache.size > 10) {
+                const firstKey = refZoneDefaultDataCache.keys().next().value;
+                refZoneDefaultDataCache.delete(firstKey);
+            }
+
+            debugLog(`✓ Ref zone 기본값 로드 완료 (${refPath}, 프레임 ${frameIndex}): ${refZoneDefaultEnergy}`);
+            return refZoneDefaultEnergy;
+        }
+    } catch (error) {
+        console.error(`Ref zone 기본 데이터 로드 실패 (${season}, 프레임 ${frameIndex}):`, error);
+        refZoneDefaultEnergy = 0; // 기본값으로 0 사용
+        return 0;
+    }
+
+    return 0;
+}
+
+// 프레임 인덱스에 따라 Ref zone 기본값 업데이트
+async function updateRefZoneDefaultEnergy(frameIndex) {
+    const currentSeason = dataManager.currentSeason;
+    if (!currentSeason) return;
+
+    await loadRefZoneDefaultData(currentSeason, frameIndex);
+}
+
+// ============================================
 // UI 이벤트 핸들러
 // ============================================
 
@@ -1066,6 +1129,11 @@ let globalMinTestEnergy = 0;
 let globalMaxRefEnergy = 0;
 let globalMinRefEnergy = 0;
 
+// Ref zone 기본값 (ref-summer/ref-winter 데이터에서 로드)
+let refZoneDefaultData = null;
+let refZoneDefaultEnergy = 0; // 현재 프레임의 기본 에너지 값
+let refZoneDefaultDataCache = new Map(); // 시즌별 캐시
+
 // 각 zone별 레전드 생성 함수 (세로형: 0 = 흰색, 최대값 = 빨강)
 function createZoneLegend(zoneName, minValue, maxValue, labelColor) {
     const legendWrapper = document.createElement('div');
@@ -1229,6 +1297,9 @@ seasonBtns.forEach(btn => {
         debugLog('Season changed to:', newSeason);
 
         await dataManager.changeSeason(newSeason);
+
+        // Ref zone 기본 데이터 로드 (시즌 변경 시)
+        await loadRefZoneDefaultData(newSeason, 0);
 
         const metadata = dataManager.currentMetadata;
         if (metadata) {
@@ -3287,6 +3358,9 @@ async function updateVisualization(minute) {
 
     debugLog(`   frameData 로드 완료 - time: ${frameData.time}`);
 
+    // Ref zone 기본값 업데이트 (프레임 인덱스에 따라)
+    await updateRefZoneDefaultEnergy(minute);
+
     // IFC 색상 업데이트 (동기 함수로 즉시 실행)
     updateIFCColors(frameData);
 
@@ -3310,10 +3384,12 @@ function updateIFCColors(frameData) {
         return;
     }
 
+    // Test zone: simulation2에서 가져온 값 사용
     const testEnergy = frameData.Qsens_test || 0;
-    const refEnergy = frameData.Qsens_ref || 0;
+    // Ref zone: 기본값 유지 (simulation2의 Qsens_ref 대신 ref-summer/ref-winter 데이터 사용)
+    const refEnergy = refZoneDefaultEnergy;
 
-    debugLog(`   testEnergy: ${testEnergy.toFixed(2)}, refEnergy: ${refEnergy.toFixed(2)}`);
+    debugLog(`   testEnergy: ${testEnergy.toFixed(2)}, refEnergy: ${refEnergy.toFixed(2)} (기본값)`);
 
     // 각 zone의 사용량 기준으로 색상 계산
     const testColor = getColorFromValue(testEnergy, globalMinTestEnergy, globalMaxTestEnergy);
@@ -3508,8 +3584,10 @@ function applyColorToElements(elementIds, color, opacity = 1.0) {
 
 function updateEnergyDisplay(frameData) {
     // DOM 업데이트는 이미 scheduleDOMUpdate로 래핑되어 있으므로 직접 실행
+    // Test zone: simulation2에서 가져온 값 사용
     const testEnergy = frameData.Qsens_test || 0;
-    const refEnergy = frameData.Qsens_ref || 0;
+    // Ref zone: 기본값 유지 (simulation2의 Qsens_ref 대신 ref-summer/ref-winter 데이터 사용)
+    const refEnergy = refZoneDefaultEnergy;
 
     // 에너지 값 표시 (없으면 생성)
     let testEnergyEl = document.getElementById('test-energy');
@@ -4879,6 +4957,9 @@ async function initializeSimulator() {
 
     // 기본값: Case01 + Summer 로드
     const metadata = await dataManager.loadMetadata('case01', 'summer');
+
+    // Ref zone 기본 데이터 로드 (초기화 시)
+    await loadRefZoneDefaultData('summer', 0);
 
     if (metadata) {
         totalMinutes = metadata.totalFrames;
