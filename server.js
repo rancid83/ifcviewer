@@ -30,7 +30,7 @@ app.get('/color-viewer', (req, res) => {
 });
 
 // 시뮬레이터 라우트 (어두운 테마 - 기본)
-app.get('/simulator-v1', (req, res) => {
+app.get('/simulator-v0', (req, res) => {
     res.render('simulator', {
         title: '건물 에너지 분석 시뮬레이터'
     });
@@ -43,7 +43,14 @@ app.get('/simulator-white', (req, res) => {
     });
 });
 
-// 시뮬레이터 라우트 v2 (복사본)
+// 시뮬레이터 라우트 v1 (simulation 데이터 사용)
+app.get('/simulator-v1', (req, res) => {
+    res.render('simulator-v1', {
+        title: '건물 에너지 분석 시뮬레이터 v1'
+    });
+});
+
+// 시뮬레이터 라우트 v2 (simulation2 데이터 사용)
 app.get('/simulator', (req, res) => {
     res.render('simulator-v2', {
         title: '건물 에너지 분석 시뮬레이터 v2'

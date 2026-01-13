@@ -1,0 +1,3661 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>건물 에너지 분석 시뮬레이터</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #000000;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #000000;
+            color: #ffffff;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(255, 255, 255, 0.08);
+            border-bottom: 2px solid #1a1a1a;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            display: inline-flex;
+            gap: 2px;
+            align-items: center;
+        }
+        
+        .logo span {
+            /* padding: 2px 4px; */
+            -webkit-text-stroke: 1.5px #ffffff;
+            text-stroke: 1.5px #ffffff;
+            font-weight: 700;
+            display: inline-block;
+        }
+        
+        .logo .logo-k {
+            color: #1e40af;
+            /* dark blue */
+        }
+        
+        .logo .logo-c {
+            color: #10b981;
+            /* green */
+        }
+        
+        .logo .logo-l {
+            color: #1e40af;
+            /* dark blue */
+        }
+        
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: -0.3px;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 0;
+            align-items: center;
+            border: 1px solid #333333;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .header-btn {
+            padding: 10px 20px;
+            border: none;
+            border-right: 1px solid #333333;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            background-color: transparent;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .header-btn:last-child {
+            border-right: none;
+        }
+        
+        .header-btn:hover {
+            background-color: #2a2a2a;
+        }
+        
+        .header-btn:active {
+            background-color: #1a1a1a;
+        }
+        
+        .header-btn-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        
+        .header-btn-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 95px);
+            gap: 15px;
+            padding: 15px;
+        }
+        
+        .panel {
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-left {
+            flex: 1;
+            min-width: 500px;
+        }
+        
+        .panel-right {
+            flex: 1;
+            min-width: 500px;
+        }
+        
+        .panel-header {
+            background-color: #0a0a0a;
+            color: #ffffff;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: 700;
+            border-bottom: 2px solid #2a2a2a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        .panel-header .header-title {
+            text-align: center;
+        }
+        
+        .panel-header .header-buttons {
+            position: absolute;
+            right: 20px;
+        }
+        
+        .panel-header .header-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .panel-header .btn {
+            padding: 8px 16px;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        .panel-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-dark {
+            background-color: #34495e;
+            color: white;
+        }
+        
+        .btn-dark:hover {
+            background-color: #2c3e50;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-gray {
+            background-color: #6b7280;
+            color: #ffffff;
+        }
+        
+        .btn-gray:hover {
+            background-color: #4b5563;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
+        }
+        /* IFC 뷰어 섹션 */
+        
+        .viewer-section {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        #viewer-container {
+            width: 100%;
+            height: 400px;
+            background-color: #0a0a0a;
+            border-radius: 8px;
+            border: 2px solid #333333;
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #viewer-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        /* 에너지 레전드 스타일 */
+        
+        #energy-legend {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 10px 8px;
+            background-color: rgba(0, 0, 0, 0.95);
+            border-radius: 8px;
+            border: 1px solid rgba(50, 50, 50, 0.8);
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+            width: 50px;
+            height: 300px;
+            pointer-events: auto;
+        }
+        /* 에너지 사용량 표시 (뷰어 오른쪽 상단) */
+        
+        #energy-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            background-color: rgba(0, 0, 0, 0.95);
+            border-radius: 6px;
+            border: 1px solid rgba(50, 50, 50, 0.8);
+            box-shadow: 0 2px 6px rgba(255, 255, 255, 0.15);
+            z-index: 1000;
+            pointer-events: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        #energy-display .energy-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+        
+        #energy-display .energy-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        #energy-display .energy-label {
+            font-weight: 600;
+            margin-right: 8px;
+            font-size: 11px;
+            min-width: 35px;
+        }
+        
+        #energy-display .energy-value {
+            font-weight: bold;
+            font-size: 13px;
+            text-align: left;
+            width: 240px;
+            /* -0.000009051694178197067 길이에 맞춘 고정 너비 */
+            display: inline-block;
+        }
+        
+        #energy-display .energy-unit {
+            font-size: 10px;
+            margin-left: 3px;
+        }
+        /* 확대/축소 버튼 스타일 */
+        
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            left: 70px;
+            /* 레전드 옆에 배치 */
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 6px;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            border: 1px solid #333333;
+        }
+        
+        .zoom-btn:hover {
+            background-color: #1a1a1a;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+        }
+        
+        .zoom-btn:active {
+            transform: scale(0.95);
+        }
+        /* 시간별 사용량 보기 섹션 */
+        
+        .time-usage-section {
+            background-color: #0a0a0a;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333333;
+        }
+        
+        .time-usage-section h3 {
+            margin-bottom: 15px;
+            color: #ffffff;
+            font-size: 16px;
+        }
+        
+        .season-toggle {
+            display: inline-flex;
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            padding: 4px;
+            border: 1px solid #333333;
+        }
+        
+        .season-btn {
+            padding: 10px 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            background-color: transparent;
+            color: #9ca3af;
+        }
+        
+        .season-btn.active {
+            background-color: #2a2a2a;
+            color: #ffffff;
+            box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .play-btn {
+            background-color: #10b981;
+            color: white;
+        }
+        
+        .play-btn:hover:not(:disabled) {
+            background-color: #059669;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+        
+        .pause-btn {
+            background-color: #f59e0b;
+            color: white;
+        }
+        
+        .pause-btn:hover:not(:disabled) {
+            background-color: #d97706;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+        }
+        
+        .speed-select {
+            padding: 8px 12px;
+            border: 2px solid #333333;
+            border-radius: 6px;
+            background-color: #2a2a2a;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .speed-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
+        .time-slider-container {
+            margin-bottom: 20px;
+        }
+        
+        .time-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+            background: #333333;
+            -webkit-appearance: none;
+        }
+        
+        .time-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .time-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .time-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #9ca3af;
+            font-weight: 600;
+        }
+        
+        .date-selector {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .date-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .date-input-group label {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+        
+        .date-input-group input {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        /* Controller 다이어그램 섹션 */
+        
+        .controller-section {
+            margin-bottom: 20px;
+        }
+        
+        .controller-diagram {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            margin-top: 15px;
+        }
+        
+        .diagram-title {
+            text-align: center;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .diagram-image-container {
+            width: 100%;
+            height: 417px;
+            background-color: #0a0a0a;
+            border-radius: 8px;
+            border: 2px solid #333333;
+            display: flex;
+            align-items: stretch;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .diagram-image-loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(10, 10, 10, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            z-index: 10;
+            border-radius: 8px;
+        }
+        
+        .diagram-image-loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #3e3e42;
+            border-top-color: #007acc;
+            border-radius: 50%;
+            animation: diagram-image-spin 1s linear infinite;
+        }
+        
+        @keyframes diagram-image-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .diagram-image-loading-text {
+            color: #cccccc;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .diagram-image {
+            flex: 0 0 75%;
+            height: 100%;
+            object-fit: contain;
+            display: none;
+            /* 초기에는 숨김 */
+        }
+        
+        .diagram-image.show {
+            display: block;
+            /* 시뮬레이션 선택 시 표시 */
+        }
+        /* Tree Menu Styles */
+        
+        .tree-menu {
+            flex: 0 0 212px;
+            background-color: #494949;
+            border-right: 2px solid #333333;
+            padding: 15px;
+            overflow-y: auto;
+            color: #ffffff;
+            font-size: 14px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tree-menu-item {
+            margin-bottom: 5px;
+        }
+        
+        .tree-menu-toggle {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 3px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            user-select: none;
+        }
+        
+        .tree-menu-toggle:hover {
+            background-color: #2a2a2a;
+        }
+        
+        .tree-menu-icon {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #9ca3af;
+            flex-shrink: 0;
+        }
+        
+        .tree-menu-label {
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .tree-menu-children {
+            margin-left: 26px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .tree-menu-item.expanded>.tree-menu-children {
+            display: block;
+        }
+        
+        .tree-menu-item.expanded>.tree-menu-toggle>.tree-menu-icon::before {
+            content: '−';
+        }
+        
+        .tree-menu-item:not(.expanded)>.tree-menu-toggle>.tree-menu-icon::before {
+            content: '+';
+        }
+        
+        .tree-menu-item.leaf>.tree-menu-toggle>.tree-menu-icon {
+            width: 18px;
+            margin-right: 8px;
+        }
+        
+        .tree-menu-item.leaf>.tree-menu-toggle>.tree-menu-icon::before {
+            content: '•';
+            color: #6b7280;
+        }
+        /* 시뮬레이션 설정 섹션 */
+        
+        .simulation-settings {
+            background-color: #000000;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333333;
+        }
+        
+        .simulation-settings h3 {
+            margin-bottom: 12px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        /* 날짜 범위 설정 섹션 */
+        
+        .date-range-section {
+            background-color: #1a1a1a;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #333333;
+            margin-bottom: 12px;
+        }
+        
+        .date-range-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .date-range-container label {
+            font-size: 12px;
+            color: #ffffff;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .date-range-container input[type="date"] {
+            padding: 6px 10px;
+            border: 1px solid #333333;
+            border-radius: 4px;
+            font-size: 13px;
+            background-color: #2a2a2a;
+            color: #ffffff;
+            font-family: inherit;
+            min-width: 140px;
+        }
+        
+        .date-range-container input[type="date"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        
+        .date-range-separator {
+            color: #666666;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 5px;
+        }
+        /* 파라미터 정보 바 */
+        
+        .simulation-params-bar {
+            background-color: #2a2a2a;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .params-pin-icon {
+            color: #ff0000;
+            font-size: 14px;
+        }
+        
+        .settings-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #000000;
+        }
+        
+        .settings-table th {
+            background-color: #000000;
+            color: #ffffff;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            border-bottom: 2px solid #333333;
+        }
+        
+        .settings-table td {
+            padding: 5px;
+            border-bottom: 1px solid #333333;
+            text-align: center;
+            background-color: #000000;
+        }
+        
+        .settings-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .param-label {
+            font-size: 11px;
+            color: #7f8c8d;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .param-input {
+            width: 100%;
+            padding: 8px 6px;
+            border: 1px solid #333333;
+            border-radius: 4px;
+            font-size: 13px;
+            text-align: center;
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+        
+        .param-input[type="number"] {
+            padding: 6px;
+        }
+        
+        select.param-input {
+            padding: 6px 8px;
+            text-align: center;
+            text-align-last: center;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 28px;
+        }
+        
+        .case-select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #3b82f6;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #60a5fa;
+            background-color: #1a2332;
+            cursor: pointer;
+        }
+        
+        .case-select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
+        .param-value {
+            width: 100%;
+            padding: 10px;
+            background-color: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 4px;
+            font-size: 13px;
+            text-align: center;
+            color: #ffffff;
+            min-height: 24px;
+        }
+        
+        .cell-row-label {
+            font-weight: 600;
+            color: #ffffff;
+            font-size: 13px;
+        }
+        /* 반응형 */
+        
+        @media (max-width: 1200px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .panel-left,
+            .panel-right {
+                min-width: 100%;
+            }
+            #viewer-container {
+                height: 300px;
+            }
+            .diagram-image-container {
+                height: 300px;
+            }
+        }
+        /* BIM 데이터 추출 팝업 스타일 */
+        
+        .bim-extract-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        
+        .bim-extract-popup-overlay.show {
+            display: flex;
+        }
+        
+        .bim-extract-popup {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            width: 90%;
+            max-width: 1000px;
+            height: 80vh;
+            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .bim-extract-popup-header {
+            background-color: #252526;
+            color: #ffffff;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #3e3e42;
+        }
+        
+        .bim-extract-popup-close {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            line-height: 1;
+        }
+        
+        .bim-extract-popup-close:hover {
+            background-color: #3e3e42;
+        }
+        
+        .bim-extract-popup-body {
+            flex: 1;
+            padding: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-color: #1e1e1e;
+        }
+        
+        .bim-extract-progress-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        
+        .bim-extract-progress-content {
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        .bim-extract-progress-message {
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .bim-extract-progress {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+            padding: 0 20px;
+        }
+        
+        .bim-extract-progress::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 50px;
+            right: 50px;
+            height: 2px;
+            background-color: #3e3e42;
+            z-index: 1;
+        }
+        
+        .bim-extract-progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            flex: 1;
+        }
+        
+        .bim-extract-progress-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #1e1e1e;
+            border: 2px solid #3e3e42;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        
+        .bim-extract-progress-circle.completed {
+            background-color: #007acc;
+            border-color: #007acc;
+        }
+        
+        .bim-extract-progress-circle.completed::after {
+            content: '✓';
+            color: #ffffff;
+            font-size: 20px;
+        }
+        
+        .bim-extract-progress-label {
+            color: #cccccc;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .bim-extract-editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: #1e1e1e;
+        }
+        
+        .bim-extract-editor {
+            width: 100%;
+            height: 100%;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 15px;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            resize: none;
+            outline: none;
+            overflow-y: auto;
+            overflow-x: auto;
+            white-space: pre;
+            tab-size: 4;
+        }
+        
+        .bim-extract-editor::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        
+        .bim-extract-editor::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+        
+        .bim-extract-editor::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 6px;
+        }
+        
+        .bim-extract-editor::-webkit-scrollbar-thumb:hover {
+            background: #4e4e4e;
+        }
+        
+        .bim-extract-popup-footer {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 15px;
+            border-top: 1px solid #3e3e42;
+            background-color: #252526;
+        }
+        
+        .bim-extract-popup-confirm-btn {
+            padding: 10px 24px;
+            border: 1px solid #007acc;
+            border-radius: 4px;
+            background-color: #007acc;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .bim-extract-popup-confirm-btn:hover {
+            background-color: #005a9e;
+            border-color: #005a9e;
+        }
+        /* 시뮬레이션 매니저 팝업 스타일 */
+        
+        .simulation-manager-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: flex-start;
+            align-items: center;
+            z-index: 10001;
+            padding: 15px;
+            padding-left: 180px;
+        }
+        
+        .simulation-manager-popup-overlay.show {
+            display: flex;
+        }
+        
+        .simulation-manager-popup {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            min-width: 600px;
+            max-width: 700px;
+            overflow: hidden;
+            border: 1px solid #555555;
+        }
+        
+        .simulation-manager-popup-warning {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            border-bottom: 1px solid #cccccc;
+        }
+        
+        .simulation-manager-popup-header {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: left;
+            position: relative;
+            border-bottom: 1px solid #cccccc;
+        }
+        
+        .simulation-manager-popup-title {
+            color: #000000;
+        }
+        
+        .simulation-manager-popup-buttons {
+            position: absolute;
+            top: 8px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .simulation-manager-popup-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            background-color: #e0e0e0;
+            color: #000000;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .simulation-manager-popup-btn:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .simulation-manager-popup-btn:active {
+            background-color: #c0c0c0;
+        }
+        
+        .simulation-manager-popup-content {
+            padding: 40px;
+        }
+        
+        .simulation-manager-form-group {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .simulation-manager-label {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            min-width: 120px;
+        }
+        
+        .simulation-manager-select {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #333333;
+            border-radius: 6px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .simulation-manager-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
+        .simulation-manager-select option {
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+        /* Schedule 팝업 스타일 */
+        
+        .schedule-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: flex-start;
+            align-items: center;
+            z-index: 10001;
+            padding: 15px;
+            padding-left: 180px;
+        }
+        
+        .schedule-popup-overlay.show {
+            display: flex;
+        }
+        
+        .schedule-popup {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            min-width: 500px;
+            max-width: 600px;
+            overflow: hidden;
+            border: 1px solid #555555;
+        }
+        
+        .schedule-popup-header {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: left;
+            position: relative;
+            border-bottom: 1px solid #cccccc;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .schedule-popup-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .schedule-popup-title {
+            flex: 1;
+            color: #000000;
+        }
+        
+        .schedule-popup-buttons {
+            position: absolute;
+            top: 8px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .schedule-popup-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            background-color: #e0e0e0;
+            color: #000000;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .schedule-popup-btn:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .schedule-popup-btn:active {
+            background-color: #c0c0c0;
+        }
+        
+        .schedule-popup-content {
+            padding: 30px 40px;
+        }
+        
+        .schedule-zone-section {
+            margin-bottom: 30px;
+        }
+        
+        .schedule-zone-section:last-child {
+            margin-bottom: 0;
+        }
+        
+        .schedule-zone-title {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-decoration: underline;
+        }
+        
+        .schedule-form-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .schedule-label {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            min-width: 140px;
+        }
+        
+        .schedule-select-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .schedule-select {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #333333;
+            border-radius: 6px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .schedule-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
+        .schedule-select option {
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+        
+        .schedule-edit-icon {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            color: #9ca3af;
+            transition: color 0.2s;
+        }
+        
+        .schedule-edit-icon:hover {
+            color: #ffffff;
+        }
+        
+        .schedule-divider {
+            height: 1px;
+            background-color: #555555;
+            margin: 20px 0;
+        }
+        /* Zone 정보 팝업 스타일 */
+        
+        .zone-info-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: flex-start;
+            align-items: flex-start;
+            z-index: 10002;
+            padding: 15px;
+            padding-left: 180px;
+            padding-top: 80px;
+        }
+        
+        .zone-info-popup-overlay.show {
+            display: flex;
+        }
+        
+        .zone-info-popup {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            min-width: 750px;
+            max-width: 900px;
+            width: 800px;
+            overflow: hidden;
+            border: 1px solid #555555;
+        }
+        
+        .zone-info-popup-header {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: left;
+            position: relative;
+            border-bottom: 1px solid #cccccc;
+        }
+        
+        .zone-info-popup-title {
+            color: #000000;
+        }
+        
+        .zone-info-popup-buttons {
+            position: absolute;
+            top: 8px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .zone-info-popup-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            background-color: #e0e0e0;
+            color: #000000;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .zone-info-popup-btn:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .zone-info-popup-content {
+            padding: 30px 40px;
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+        
+        .zone-info-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .zone-info-section-title {
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .zone-info-field {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .zone-info-field:last-child {
+            margin-bottom: 0;
+        }
+        
+        .zone-info-field-label {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+        }
+        
+        .zone-info-field-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .zone-info-field-input {
+            padding: 8px 12px;
+            border: 1px solid #333333;
+            border-radius: 6px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-size: 15px;
+            width: 120px;
+            text-align: right;
+        }
+        
+        .zone-info-field-unit {
+            color: #9ca3af;
+            font-size: 14px;
+        }
+        
+        .zone-info-menu-group {
+            flex: 1;
+            min-width: 350px;
+            padding-left: 30px;
+            border-left: 1px solid #555555;
+        }
+        
+        .zone-info-menu-title {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .zone-info-menu-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .zone-info-menu-left {
+            flex: 1;
+        }
+        
+        .zone-info-menu-right {
+            flex: 1;
+            padding-left: 20px;
+            border-left: 1px solid #555555;
+        }
+        
+        .zone-info-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background-color: #1a1a1a;
+            border: 1px solid #333333;
+        }
+        
+        .zone-info-menu-item:hover {
+            background-color: #2a2a2a;
+            border-color: #444444;
+        }
+        
+        .zone-info-menu-item.active {
+            background-color: #1e3a5f;
+            border-color: #3b82f6;
+        }
+        
+        .zone-info-menu-item.disabled {
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        
+        .zone-info-menu-item.disabled .zone-info-menu-icon {
+            opacity: 1;
+            filter: grayscale(100%) brightness(0.6);
+        }
+        
+        .zone-info-menu-item.disabled .zone-info-menu-label {
+            color: #888888;
+        }
+        
+        .zone-info-menu-icon {
+            font-size: 24px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .zone-info-menu-icon .icon-overlay {
+            position: absolute;
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        
+        .zone-info-menu-icon .icon-sun,
+        .zone-info-menu-icon .icon-snow {
+            font-size: 20px;
+            z-index: 1;
+            transform: translateY(-4px);
+        }
+        
+        .zone-info-menu-icon .icon-temp {
+            font-size: 20px;
+            z-index: 2;
+            transform: translateY(4px);
+        }
+        
+        .zone-info-menu-item.active .zone-info-menu-icon {
+            opacity: 1;
+            filter: brightness(1.2);
+        }
+        
+        .zone-info-menu-label {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            flex: 1;
+        }
+        
+        .zone-info-divider {
+            height: 1px;
+            background-color: #555555;
+            margin: 25px 0;
+        }
+        /* Type Manager 팝업 스타일 (Heating, Cooling, Gain/losses, Ventilation 공통) */
+        
+        .type-manager-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: flex-start;
+            align-items: flex-start;
+            z-index: 10003;
+            padding: 15px;
+            padding-left: 180px;
+            padding-top: 350px;
+        }
+        
+        .type-manager-popup-overlay.show {
+            display: flex;
+        }
+        
+        .type-manager-popup {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            min-width: 750px;
+            max-width: 900px;
+            width: 800px;
+            overflow: hidden;
+            border: 1px solid #555555;
+        }
+        
+        .type-manager-popup-header {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: left;
+            position: relative;
+            border-bottom: 1px solid #cccccc;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .type-manager-popup-icon {
+            font-size: 24px;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+        
+        .icon-overlay {
+            position: absolute;
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        
+        .icon-sun,
+        .icon-snow {
+            font-size: 20px;
+            z-index: 1;
+            transform: translateY(-4px);
+        }
+        
+        .icon-temp {
+            font-size: 20px;
+            z-index: 2;
+            transform: translateY(4px);
+        }
+        
+        .type-manager-popup-title {
+            flex: 1;
+            color: #000000;
+        }
+        
+        .type-manager-popup-buttons {
+            position: absolute;
+            top: 8px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .type-manager-popup-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            background-color: #e0e0e0;
+            color: #000000;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .type-manager-popup-btn:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .type-manager-popup-content {
+            padding: 30px 40px;
+        }
+        
+        .type-manager-section-title {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .type-manager-section-subtitle {
+            color: #9ca3af;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        
+        .type-manager-form-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .type-manager-label {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+        }
+        
+        .type-manager-select-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .type-manager-select {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #333333;
+            border-radius: 6px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .type-manager-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
+        .type-manager-select option {
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+        
+        .type-manager-unit {
+            color: #9ca3af;
+            font-size: 14px;
+        }
+        
+        .type-manager-edit-icon {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            color: #9ca3af;
+            transition: color 0.2s;
+        }
+        
+        .type-manager-edit-icon:hover {
+            color: #ffffff;
+        }
+        
+        .type-manager-subsection {
+            margin-bottom: 20px;
+        }
+        
+        .type-manager-subsection:last-of-type {
+            margin-bottom: 0;
+        }
+        
+        .type-manager-divider {
+            height: 1px;
+            background-color: #555555;
+            margin: 25px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">
+                <img src="/img/KCL_Logo.png" alt="KCL Logo" style="height: 40px; width: auto;">
+            </div>
+            <div class="header-title">T-Lab Digital Twin System</div>
+        </div>
+        <div class="header-right">
+            <button class="header-btn" id="header-load-bim-btn">
+                <span class="header-btn-icon">
+                    <img src="/img/bim-load-icon.png" alt="BIM 불러오기">
+                </span>
+                <span>BIM 불러오기</span>
+            </button>
+            <button class="header-btn" id="header-extract-bim-btn">
+                <span class="header-btn-icon">
+                    <img src="/img/bim-extract-icon.png" alt="BIM 데이터 추출">
+                </span>
+                <span>BIM 데이터 추출</span>
+            </button>
+            <button class="header-btn" id="header-select-sim-btn">
+                <span class="header-btn-icon">
+                    <img src="/img/simulation-select-icon.png" alt="시뮬레이션 선택">
+                </span>
+                <span>시뮬레이션 선택</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- 좌측 패널: 분석 결과 보기 -->
+        <div class="panel panel-left">
+            <div class="panel-header">
+                <span class="header-title">Building Information Model</span>
+                <div class="header-buttons" style="display: none;">
+                    <button class="btn btn-dark" id="load-ifc-btn">
+                        📂 파일 불러오기 (IFC)
+                    </button>
+                </div>
+            </div>
+            <div class="panel-content">
+                <!-- IFC 파일 불러오기 -->
+                <div class="viewer-section">
+                    <input type="file" id="ifc-file-input" accept=".ifc" style="display: none;">
+
+                    <!-- IFC 뷰어 -->
+                    <div id="viewer-container">
+                        <!-- 확대/축소 버튼 -->
+                        <div class="zoom-controls">
+                            <button id="zoom-in-btn" class="zoom-btn" title="확대">+</button>
+                            <button id="zoom-out-btn" class="zoom-btn" title="축소">−</button>
+                        </div>
+                    </div>
+                    <!-- 에너지 사용량 컬러 레전드 (뷰어 위에 오버레이) -->
+                    <div id="energy-legend"></div>
+                    <!-- 에너지 사용량 표시 (뷰어 오른쪽 상단) -->
+                    <div id="energy-display">
+                        <div class="energy-row">
+                            <span class="energy-label" style="color: #e74c3c;">Test:</span>
+                            <span id="test-energy" class="energy-value" style="color: #e74c3c; text-align: left;">0</span>
+                            <span class="energy-unit" style="color: #e74c3c;">kJ/h</span>
+                        </div>
+                        <div class="energy-row">
+                            <span class="energy-label" style="color: #3498db;">Ref:</span>
+                            <span id="ref-energy" class="energy-value" style="color: #3498db; text-align: left;">0</span>
+                            <span class="energy-unit" style="color: #3498db;">kJ/h</span>
+                        </div>
+                        <div class="energy-row">
+                            <span class="energy-label">차이:</span>
+                            <span id="energy-diff" class="energy-value" style="text-align: left;">0</span>
+                            <span id="energy-diff-percent" class="energy-unit" style="color: #7f8c8d;">(0%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 시간별 사용량 보기 -->
+                <div class="time-usage-section">
+                    <h3>⏰ 시간별 사용량 보기</h3>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                            <!-- 여름/겨울 토글 -->
+                            <div class="season-toggle">
+                                <button class="season-btn active" data-season="summer">여름</button>
+                                <button class="season-btn" data-season="winter">겨울</button>
+                            </div>
+
+                            <!-- 날짜 범위 설정 -->
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <label style="font-size: 14px; color: #ffffff; font-weight: 600;">기간:</label>
+                                <input type="date" id="start-date-input" class="date-range-input" style="padding: 8px; border: 1px solid #333333; border-radius: 6px; font-size: 14px; background-color: #2a2a2a; color: #ffffff; min-width: 140px;">
+                                <span style="color: #ffffff; margin: 0 5px; font-weight: 600;">~</span>
+                                <input type="date" id="end-date-input" class="date-range-input" style="padding: 8px; border: 1px solid #333333; border-radius: 6px; font-size: 14px; background-color: #2a2a2a; color: #ffffff; min-width: 140px;">
+                                <button id="apply-date-range-btn" class="btn-sm btn-primary" style="padding: 8px 16px; font-size: 13px; margin-left: 5px;">적용</button>
+                            </div>
+                        </div>
+
+                        <!-- 재생 컨트롤 -->
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button id="play-btn" class="control-btn play-btn">
+                                ▶ 재생
+                            </button>
+                            <button id="pause-btn" class="control-btn pause-btn" disabled>
+                                ⏸ 정지
+                            </button>
+                            <select id="speed-select" class="speed-select">
+                                <option value="1">1x</option>
+                                <option value="2">2x</option>
+                                <option value="5">5x</option>
+                                <option value="10" selected>10x</option>
+                                <option value="30">30x</option>
+                                <option value="60">60x</option>
+                                <option value="120">120x</option>
+                                <option value="200">200x</option>
+                                <option value="300">300x</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 전체 기간 슬라이더 -->
+                    <div class="time-slider-container">
+                        <h4 style="margin-bottom: 10px; color: #ffffff; font-size: 14px;">📅 일별</h4>
+                        <input type="range" class="time-slider" id="time-slider" min="0" max="83520" value="0" step="1">
+                        <div class="time-labels">
+                            <span id="current-date-display" style="color: #60a5fa; font-weight: 600;">2025-08-01</span>
+                            <span id="current-time-display">00:00</span>
+                            <span id="current-minute-display">프레임: 0</span>
+                        </div>
+                    </div>
+
+                    <!-- 일별 시간 표시 (슬라이더 제거) -->
+                    <div class="time-slider-container" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #333333;">
+                        <h4 style="margin-bottom: 10px; color: #ffffff; font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                            <span>⏰ 시간대별</span>
+                            <span id="daily-time-header-display" style="color: #60a5fa; font-weight: 600; font-size: 14px;">2025-08-01 07:00</span>
+                        </h4>
+                        <input type="range" class="time-slider" id="daily-time-slider" min="0" max="780" value="0" step="1" style="display: none;">
+                        <div class="time-labels" style="display: none;">
+                            <span id="daily-date-display" style="color: #60a5fa; font-weight: 600;">2025-08-01</span>
+                            <span id="daily-time-display">07:00</span>
+                            <span id="daily-minute-display" style="display: none;">분: 0 / 780</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측 패널: 분석 설정 하기 -->
+        <div class="panel panel-right">
+            <div class="panel-header">
+                <span class="header-title">Energy Simulation</span>
+                <div class="header-buttons" style="display: none;">
+                    <button class="btn btn-dark" id="analyze-btn">
+                        🔬 분석 하기 (에너지 사용량)
+                    </button>
+                </div>
+            </div>
+            <div class="panel-content">
+                <!-- Controller 다이어그램 -->
+                <div class="controller-section">
+                    <div class="diagram-image-container">
+                        <!-- 로딩바 -->
+                        <div class="diagram-image-loading" id="diagram-image-loading" style="display: none;">
+                            <div class="diagram-image-loading-spinner"></div>
+                            <div class="diagram-image-loading-text">이미지를 불러오는 중...</div>
+                        </div>
+                        <!-- Tree Menu -->
+                        <div class="tree-menu">
+                            <div class="tree-menu-item expanded">
+                                <div class="tree-menu-toggle">
+                                    <span class="tree-menu-icon"></span>
+                                    <span class="tree-menu-label">Building</span>
+                                </div>
+                                <div class="tree-menu-children">
+                                    <div class="tree-menu-item expanded">
+                                        <div class="tree-menu-toggle">
+                                            <span class="tree-menu-icon"></span>
+                                            <span class="tree-menu-label">Zone: REF_CELL</span>
+                                        </div>
+                                        <div class="tree-menu-children">
+                                            <div class="tree-menu-item leaf">
+                                                <div class="tree-menu-toggle">
+                                                    <span class="tree-menu-icon"></span>
+                                                    <span class="tree-menu-label">Heating</span>
+                                                </div>
+                                            </div>
+                                            <div class="tree-menu-item leaf">
+                                                <div class="tree-menu-toggle">
+                                                    <span class="tree-menu-icon"></span>
+                                                    <span class="tree-menu-label">Cooling</span>
+                                                </div>
+                                            </div>
+                                            <div class="tree-menu-item leaf">
+                                                <div class="tree-menu-toggle">
+                                                    <span class="tree-menu-icon"></span>
+                                                    <span class="tree-menu-label">Gain/loss</span>
+                                                </div>
+                                            </div>
+                                            <div class="tree-menu-item leaf">
+                                                <div class="tree-menu-toggle">
+                                                    <span class="tree-menu-icon"></span>
+                                                    <span class="tree-menu-label">Ventilation</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="tree-menu-item">
+                                        <div class="tree-menu-toggle">
+                                            <span class="tree-menu-icon"></span>
+                                            <span class="tree-menu-label">Zone: TEST_CELL</span>
+                                        </div>
+                                        <div class="tree-menu-children">
+                                            <div class="tree-menu-item leaf">
+                                                <div class="tree-menu-toggle">
+                                                    <span class="tree-menu-icon"></span>
+                                                    <span class="tree-menu-label">Heating</span>
+                                                </div>
+                                            </div>
+                                            <div class="tree-menu-item leaf">
+                                                <div class="tree-menu-toggle">
+                                                    <span class="tree-menu-icon"></span>
+                                                    <span class="tree-menu-label">Cooling</span>
+                                                </div>
+                                            </div>
+                                            <div class="tree-menu-item leaf">
+                                                <div class="tree-menu-toggle">
+                                                    <span class="tree-menu-icon"></span>
+                                                    <span class="tree-menu-label">Gain/loss</span>
+                                                </div>
+                                            </div>
+                                            <div class="tree-menu-item leaf">
+                                                <div class="tree-menu-toggle">
+                                                    <span class="tree-menu-icon"></span>
+                                                    <span class="tree-menu-label">Ventilation</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tree-menu-item">
+                                <div class="tree-menu-toggle">
+                                    <span class="tree-menu-icon"></span>
+                                    <span class="tree-menu-label">Schedule</span>
+                                </div>
+                            </div>
+                        </div>
+                        <img src="/img/Simulation.png" alt="Simulation 다이어그램" class="diagram-image" id="simulation-diagram-image" usemap="#image-map">
+                        <map name="image-map" id="image-map">
+                            <area target="" alt="" title="" href="#" coords="1670,276,2206,548" shape="rect"></area>
+                            
+                            <area target="" alt="" title="" href="#" coords="1680,674,2213,937" shape="rect"></area>
+                            
+                            <area target="" alt="" title="" href="#" coords="85,1219,1028,2053" shape="rect"></area>
+                        </map>
+                    </div>
+                </div>
+
+                <!-- 시뮬레이션 설정 -->
+                <div class="simulation-settings">
+                    <h3>시뮬레이션 설정</h3>
+
+                    <!-- 날짜 범위 설정 -->
+                    <div class="date-range-section">
+                        <div class="date-range-container">
+                            <label for="simulation-start-date">시작날짜</label>
+                            <input type="date" id="simulation-start-date" name="simulation-start-date">
+                            <span class="date-range-separator">~</span>
+                            <label for="simulation-end-date">종료날짜</label>
+                            <input type="date" id="simulation-end-date" name="simulation-end-date">
+                        </div>
+                    </div>
+
+                    <!-- 파라미터 정보 바 -->
+                    <div class="simulation-params-bar">
+                        <span class="params-pin-icon">📌</span>
+                        <span>Time step: 1분 | 냉방: 8월~9월 | 난방: 1월~2월 | 주중 운전</span>
+                    </div>
+                    <table class="settings-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 120px;">Zone</th>
+                                <th style="width: 150px;">기기발열 [kJ/h·m²]</th>
+                                <th style="width: 150px;">조명발열 [kJ/h·m²]</th>
+                                <th style="width: 150px;">외기도입량 [m³/m²·h]</th>
+                                <th style="width: 120px;">설정온도 [°C]</th>
+                                <th style="width: 130px;">사용시간</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="cell-row-label" style="background-color: #1a1a1a;">REF_CELL</td>
+                                <td>
+                                    <div class="param-value" id="ref-equipment">50.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="ref-lighting">23.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="ref-ventilation">6</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="ref-temperature">26</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="ref-time-display">07:00-18:00</div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="cell-row-label" style="background-color: #1a1a1a;">TEST_CELL</td>
+                                <td>
+                                    <div class="param-value" id="test-equipment-display">50.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="test-lighting-display">23.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="test-ventilation-display">6</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="test-temperature-display">26</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="test-time-display">07:00-18:00</div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="cell-row-label" style="background-color: #1a1a1a;">최적화 CELL</td>
+                                <td>
+                                    <div class="param-value" id="opt-equipment-display">50.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="opt-lighting-display">23.4</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="opt-ventilation-display">6</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="opt-temperature-display">26</div>
+                                </td>
+                                <td>
+                                    <div class="param-value" id="opt-time-display">07:00-18:00</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- 버튼 영역 (오른쪽 하단) -->
+                    <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                        <button class="btn btn-gray" id="analyze-energy-btn">
+                            분석하기 (에너지 사용량)
+                        </button>
+                        <button class="btn btn-gray" id="send-control-signal-btn">
+                            제어신호 송출
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BIM 데이터 추출 팝업 -->
+    <div class="bim-extract-popup-overlay" id="bim-extract-popup">
+        <div class="bim-extract-popup">
+            <div class="bim-extract-popup-header">
+                <span>BIM 데이터 추출</span>
+                <button class="bim-extract-popup-close" id="bim-extract-close-btn">×</button>
+            </div>
+            <div class="bim-extract-popup-body">
+                <!-- 3단계 진행 UI -->
+                <div class="bim-extract-progress-container" id="bim-extract-progress-container">
+                    <div class="bim-extract-progress-content">
+                        <div class="bim-extract-progress-message" id="bim-extract-progress-message">
+                            BIM 데이터를 추출하는 중입니다.
+                        </div>
+                        <div class="bim-extract-progress">
+                            <div class="bim-extract-progress-step">
+                                <div class="bim-extract-progress-circle" id="step-shape">V</div>
+                                <div class="bim-extract-progress-label">형상정보</div>
+                            </div>
+                            <div class="bim-extract-progress-step">
+                                <div class="bim-extract-progress-circle" id="step-passive"></div>
+                                <div class="bim-extract-progress-label">패시브 속성</div>
+                            </div>
+                            <div class="bim-extract-progress-step">
+                                <div class="bim-extract-progress-circle" id="step-active"></div>
+                                <div class="bim-extract-progress-label">액티브 속성</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 텍스트 에디터 -->
+                <div class="bim-extract-editor-container" id="bim-extract-editor-container" style="display: none;">
+                    <textarea class="bim-extract-editor" id="bim-extract-editor" readonly></textarea>
+                </div>
+            </div>
+            <div class="bim-extract-popup-footer">
+                <button class="bim-extract-popup-confirm-btn" id="bim-extract-confirm-btn" disabled>확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 제어신호 송출 경고 팝업 -->
+    <div class="bim-extract-popup-overlay" id="control-signal-popup">
+        <div class="bim-extract-popup">
+            <div class="bim-extract-popup-header">Warning message</div>
+            <div class="bim-extract-popup-content">
+                <div class="bim-extract-popup-icon">!</div>
+                <div class="bim-extract-popup-message" style="line-height: 1.6;">
+                    제어신호 송출에 실패하였습니다.
+                </div>
+            </div>
+            <div class="bim-extract-popup-footer">
+                <button class="bim-extract-popup-confirm-btn" id="control-signal-confirm-btn">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 시뮬레이션 매니저 팝업 -->
+    <div class="simulation-manager-popup-overlay" id="simulation-manager-popup">
+        <div class="simulation-manager-popup">
+            <div class="simulation-manager-popup-header">
+                <span class="simulation-manager-popup-title">"Simulation" Manager</span>
+                <div class="simulation-manager-popup-buttons">
+                    <button class="simulation-manager-popup-btn" id="simulation-manager-check-btn" title="확인">✓</button>
+                    <button class="simulation-manager-popup-btn" id="simulation-manager-close-btn" title="닫기">✕</button>
+                </div>
+            </div>
+            <div class="simulation-manager-popup-content">
+                <div class="simulation-manager-form-group">
+                    <label class="simulation-manager-label">simulation:</label>
+                    <select class="simulation-manager-select" id="simulation-manager-select">
+                        <option value="select">Select</option>
+                        <option value="heating">Heating energy consumption</option>
+                        <option value="cooling">Cooling energy consumption</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule 팝업 -->
+    <div class="schedule-popup-overlay" id="schedule-popup">
+        <div class="schedule-popup">
+            <div class="schedule-popup-header">
+                <div class="schedule-popup-icon">📅</div>
+                <span class="schedule-popup-title">Schedule</span>
+                <div class="schedule-popup-buttons">
+                    <button class="schedule-popup-btn" id="schedule-check-btn" title="확인">✓</button>
+                    <button class="schedule-popup-btn" id="schedule-close-btn" title="닫기">✕</button>
+                </div>
+            </div>
+            <div class="schedule-popup-content">
+                <!-- Zone: REF_CELL -->
+                <div class="schedule-zone-section">
+                    <div class="schedule-zone-title">Zone: REF_CELL</div>
+                    <div class="schedule-form-group">
+                        <label class="schedule-label">Hours of operation:</label>
+                        <div class="schedule-select-wrapper">
+                            <select class="schedule-select" id="schedule-ref-cell">
+                                <option value="07-16">07:00-16:00</option>
+                                <option value="07-18" selected>07:00-18:00 (default)</option>
+                                <option value="07-20">07:00-20:00</option>
+                            </select>
+                            <span class="schedule-edit-icon" title="편집">✏️</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="schedule-divider"></div>
+
+                <!-- Zone: TEST_CELL -->
+                <div class="schedule-zone-section">
+                    <div class="schedule-zone-title">Zone: TEST_CELL</div>
+                    <div class="schedule-form-group">
+                        <label class="schedule-label">Hours of operation:</label>
+                        <div class="schedule-select-wrapper">
+                            <select class="schedule-select" id="schedule-test-cell">
+                                <option value="07-16">07:00-16:00</option>
+                                <option value="07-18" selected>07:00-18:00 (default)</option>
+                                <option value="07-20">07:00-20:00</option>
+                            </select>
+                            <span class="schedule-edit-icon" title="편집">✏️</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zone 정보 팝업 -->
+    <div class="zone-info-popup-overlay" id="zone-info-popup">
+        <div class="zone-info-popup">
+            <div class="zone-info-popup-header">
+                <span class="zone-info-popup-title" id="zone-info-popup-title">Zone: REF_CELL</span>
+                <div class="zone-info-popup-buttons">
+                    <button class="zone-info-popup-btn" id="zone-info-check-btn" title="확인">✓</button>
+                    <button class="zone-info-popup-btn" id="zone-info-close-btn" title="닫기">✕</button>
+                </div>
+            </div>
+            <div class="zone-info-popup-content">
+                <div class="zone-info-section">
+                    <div class="zone-info-field">
+                        <span class="zone-info-field-label">volume:</span>
+                        <div class="zone-info-field-value">
+                            <input type="number" class="zone-info-field-input" id="zone-volume" value="151.20" step="0.01">
+                            <span class="zone-info-field-unit">m³</span>
+                        </div>
+                    </div>
+                    <div class="zone-info-field">
+                        <span class="zone-info-field-label">Capacitance:</span>
+                        <div class="zone-info-field-value">
+                            <input type="number" class="zone-info-field-input" id="zone-capacitance" value="181.44" step="0.01">
+                            <span class="zone-info-field-unit">kJ/K</span>
+                        </div>
+                    </div>
+                    <div class="zone-info-field">
+                        <span class="zone-info-field-label">ref. floor area:</span>
+                        <div class="zone-info-field-value">
+                            <input type="number" class="zone-info-field-input" id="zone-floor-area" value="54.00" step="0.01">
+                            <span class="zone-info-field-unit">m²</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="zone-info-menu-group">
+                    <div class="zone-info-menu-title">Airnode Regime Data</div>
+                    <div class="zone-info-menu-container">
+                        <div class="zone-info-menu-left">
+                            <div class="zone-info-menu-item disabled" data-type="heating" id="zone-menu-heating">
+                                <div class="zone-info-menu-icon">
+                                    <span class="icon-overlay icon-sun">☀️</span>
+                                    <span class="icon-overlay icon-temp">🌡️</span>
+                                </div>
+                                <span class="zone-info-menu-label">Heating</span>
+                            </div>
+                            <div class="zone-info-menu-item disabled" data-type="cooling" id="zone-menu-cooling">
+                                <div class="zone-info-menu-icon">
+                                    <span class="icon-overlay icon-snow">❄️</span>
+                                    <span class="icon-overlay icon-temp">🌡️</span>
+                                </div>
+                                <span class="zone-info-menu-label">Cooling</span>
+                            </div>
+                        </div>
+                        <div class="zone-info-menu-right">
+                            <div class="zone-info-menu-item" data-type="gain" id="zone-menu-gain">
+                                <div class="zone-info-menu-icon">🕯️</div>
+                                <span class="zone-info-menu-label">Gain/losses</span>
+                            </div>
+                            <div class="zone-info-menu-item" data-type="ventilation" id="zone-menu-ventilation">
+                                <div class="zone-info-menu-icon">💨</div>
+                                <span class="zone-info-menu-label">Ventilation</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heating Type Manager 팝업 -->
+    <div class="type-manager-popup-overlay" id="heating-type-popup">
+        <div class="type-manager-popup">
+            <div class="type-manager-popup-header">
+                <span class="type-manager-popup-icon">
+                    <span class="icon-overlay icon-sun">☀️</span>
+                <span class="icon-overlay icon-temp">🌡️</span>
+                </span>
+                <span class="type-manager-popup-title">"Heating Type" Manager</span>
+                <div class="type-manager-popup-buttons">
+                    <button class="type-manager-popup-btn" id="heating-type-check-btn" title="확인">✓</button>
+                    <button class="type-manager-popup-btn" id="heating-type-close-btn" title="닫기">✕</button>
+                </div>
+            </div>
+            <div class="type-manager-popup-content">
+                <div class="type-manager-section-title">Room Temperature Control</div>
+                <div class="type-manager-section-subtitle">온도 설정을 선택하세요</div>
+                <div class="type-manager-form-group">
+                    <label class="type-manager-label">set temperature:</label>
+                    <div class="type-manager-select-wrapper">
+                        <select class="type-manager-select" id="heating-type-select">
+                            <option value="select">Select</option>
+                            <option value="18">18</option>
+                            <option value="20" selected>20 (default)</option>
+                            <option value="22">22</option>
+                        </select>
+                        <span class="type-manager-unit">°C</span>
+                        <span class="type-manager-edit-icon" title="편집">✏️</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cooling Type Manager 팝업 -->
+    <div class="type-manager-popup-overlay" id="cooling-type-popup">
+        <div class="type-manager-popup">
+            <div class="type-manager-popup-header">
+                <span class="type-manager-popup-icon">
+                    <span class="icon-overlay icon-snow">❄️</span>
+                <span class="icon-overlay icon-temp">🌡️</span>
+                </span>
+                <span class="type-manager-popup-title">"Cooling Type" Manager</span>
+                <div class="type-manager-popup-buttons">
+                    <button class="type-manager-popup-btn" id="cooling-type-check-btn" title="확인">✓</button>
+                    <button class="type-manager-popup-btn" id="cooling-type-close-btn" title="닫기">✕</button>
+                </div>
+            </div>
+            <div class="type-manager-popup-content">
+                <div class="type-manager-section-title">Room Temperature Control</div>
+                <div class="type-manager-section-subtitle">온도 설정을 선택하세요</div>
+                <div class="type-manager-form-group">
+                    <label class="type-manager-label">set temperature:</label>
+                    <div class="type-manager-select-wrapper">
+                        <select class="type-manager-select" id="cooling-type-select">
+                            <option value="select">Select</option>
+                            <option value="18">18</option>
+                            <option value="20" selected>20 (default)</option>
+                            <option value="22">22</option>
+                        </select>
+                        <span class="type-manager-unit">°C</span>
+                        <span class="type-manager-edit-icon" title="편집">✏️</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gain/losses Type Manager 팝업 -->
+    <div class="type-manager-popup-overlay" id="gain-type-popup">
+        <div class="type-manager-popup">
+            <div class="type-manager-popup-header">
+                <span class="type-manager-popup-icon">🕯️</span>
+                <span class="type-manager-popup-title">"Gain/loss Type" Manager</span>
+                <div class="type-manager-popup-buttons">
+                    <button class="type-manager-popup-btn" id="gain-type-check-btn" title="확인">✓</button>
+                    <button class="type-manager-popup-btn" id="gain-type-close-btn" title="닫기">✕</button>
+                </div>
+            </div>
+            <div class="type-manager-popup-content">
+                <!-- electrical equipment 섹션 -->
+                <div class="type-manager-subsection">
+                    <div class="type-manager-section-title">electrical equipment</div>
+                    <div class="type-manager-form-group">
+                        <label class="type-manager-label">set gain/loss:</label>
+                        <div class="type-manager-select-wrapper">
+                            <select class="type-manager-select" id="gain-type-electrical-select">
+                                <option value="select">Select</option>
+                                <option value="35.3">35.3</option>
+                                <option value="50.4" selected>50.4 (default)</option>
+                                <option value="65.5">65.5</option>
+                            </select>
+                            <span class="type-manager-unit">kJ/h·m²</span>
+                            <span class="type-manager-edit-icon" title="편집">✏️</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 구분선 -->
+                <div class="type-manager-divider"></div>
+
+                <!-- lights 섹션 -->
+                <div class="type-manager-subsection">
+                    <div class="type-manager-section-title">lights</div>
+                    <div class="type-manager-form-group">
+                        <label class="type-manager-label">set gain/loss:</label>
+                        <div class="type-manager-select-wrapper">
+                            <select class="type-manager-select" id="gain-type-lights-select">
+                                <option value="select">Select</option>
+                                <option value="16.4">16.4</option>
+                                <option value="23.4" selected>23.4 (default)</option>
+                                <option value="30.4">30.4</option>
+                            </select>
+                            <span class="type-manager-unit">kJ/h·m²</span>
+                            <span class="type-manager-edit-icon" title="편집">✏️</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ventilation Type Manager 팝업 -->
+    <div class="type-manager-popup-overlay" id="ventilation-type-popup">
+        <div class="type-manager-popup">
+            <div class="type-manager-popup-header">
+                <span class="type-manager-popup-icon">💨</span>
+                <span class="type-manager-popup-title">"Ventilation Type" Manager</span>
+                <div class="type-manager-popup-buttons">
+                    <button class="type-manager-popup-btn" id="ventilation-type-check-btn" title="확인">✓</button>
+                    <button class="type-manager-popup-btn" id="ventilation-type-close-btn" title="닫기">✕</button>
+                </div>
+            </div>
+            <div class="type-manager-popup-content">
+                <div class="type-manager-section-title" style="border-bottom: 1px solid #555555; padding-bottom: 10px; margin-bottom: 15px;">Supply air flow</div>
+                <div class="type-manager-form-group">
+                    <label class="type-manager-label">Volume flow rate related to reference floor area:</label>
+                    <div class="type-manager-select-wrapper">
+                        <select class="type-manager-select" id="ventilation-type-select">
+                            <option value="select">Select</option>
+                            <option value="3">3</option>
+                            <option value="6" selected>6 (default)</option>
+                            <option value="9">9</option>
+                        </select>
+                        <span class="type-manager-unit">m³/m²·h</span>
+                        <span class="type-manager-edit-icon" title="편집">✏️</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script async src="https://unpkg.com/es-module-shims@1.8.2/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/": "https://unpkg.com/three@0.160.0/", "web-ifc": "/js/web-ifc-api.js" } }
+    </script>
+    <script type="module" src="/js/simulator-v1-dark.js"></script>
+    <script>
+        // 헤더 버튼 이벤트 연결
+        document.addEventListener('DOMContentLoaded', function() {
+            // BIM 불러오기 버튼 - 파일 불러오기 기능
+            const headerLoadBimBtn = document.getElementById('header-load-bim-btn');
+            const loadIfcBtn = document.getElementById('load-ifc-btn');
+
+            if (headerLoadBimBtn && loadIfcBtn) {
+                headerLoadBimBtn.addEventListener('click', function() {
+                    loadIfcBtn.click();
+                });
+            }
+
+            // BIM 데이터 추출 버튼 - 팝업 표시 및 데이터 추출
+            const headerExtractBimBtn = document.getElementById('header-extract-bim-btn');
+            const bimExtractPopup = document.getElementById('bim-extract-popup');
+            const bimExtractProgressContainer = document.getElementById('bim-extract-progress-container');
+            const bimExtractProgressMessage = document.getElementById('bim-extract-progress-message');
+            const bimExtractEditorContainer = document.getElementById('bim-extract-editor-container');
+            const bimExtractEditor = document.getElementById('bim-extract-editor');
+            const bimExtractConfirmBtn = document.getElementById('bim-extract-confirm-btn');
+            const bimExtractCloseBtn = document.getElementById('bim-extract-close-btn');
+            const stepShape = document.getElementById('step-shape');
+            const stepPassive = document.getElementById('step-passive');
+            const stepActive = document.getElementById('step-active');
+
+            // BIM 데이터 추출 함수
+            async function extractBIMData() {
+                const extractedData = {
+                    timestamp: new Date().toISOString(),
+                    models: [],
+                    summary: {
+                        totalModels: 0,
+                        totalElements: 0
+                    }
+                };
+
+                try {
+                    // ifcLoader 접근 시도 (window 객체를 통해)
+                    let ifcLoader = null;
+                    if (window.ifcLoader) {
+                        ifcLoader = window.ifcLoader;
+                    } else if (window.simulator && window.simulator.ifcLoader) {
+                        ifcLoader = window.simulator.ifcLoader;
+                    }
+
+                    if (ifcLoader && ifcLoader.ifcManager) {
+                        const manager = ifcLoader.ifcManager;
+                        const state = manager.state;
+
+                        if (state && state.models) {
+                            extractedData.summary.totalModels = Object.keys(state.models).length;
+
+                            // 각 모델의 데이터 추출
+                            for (const modelID in state.models) {
+                                const model = state.models[modelID];
+                                if (!model) continue;
+
+                                const modelData = {
+                                    modelID: parseInt(modelID),
+                                    types: model.types || {},
+                                    jsonData: model.jsonData || {}
+                                };
+
+                                // 공간 구조 추출 시도
+                                try {
+                                    const spatialStructure = await manager.properties.getSpatialStructure(
+                                        parseInt(modelID),
+                                        true
+                                    );
+                                    modelData.spatialStructure = spatialStructure;
+
+                                    // 요소 개수 계산
+                                    if (spatialStructure && typeof spatialStructure === 'object') {
+                                        const countElements = (obj) => {
+                                            let count = 1; // 자기 자신
+                                            if (obj.children) {
+                                                obj.children.forEach(child => {
+                                                    count += countElements(child);
+                                                });
+                                            }
+                                            return count;
+                                        };
+                                        modelData.elementCount = countElements(spatialStructure);
+                                        extractedData.summary.totalElements += modelData.elementCount;
+                                    }
+                                } catch (e) {
+                                    modelData.spatialStructureError = e.message;
+                                }
+
+                                extractedData.models.push(modelData);
+                            }
+                        } else {
+                            extractedData.error = 'IFC 모델 상태를 찾을 수 없습니다.';
+                        }
+                    } else {
+                        extractedData.info = 'IFC Loader를 찾을 수 없습니다. 시뮬레이터에 모델이 로드되어 있는지 확인하세요.';
+                    }
+                } catch (error) {
+                    extractedData.error = `데이터 추출 중 오류 발생: ${error.message}`;
+                    extractedData.errorStack = error.stack;
+                }
+
+                return extractedData;
+            }
+
+            if (headerExtractBimBtn && bimExtractPopup) {
+                headerExtractBimBtn.addEventListener('click', async function() {
+                    // 팝업 표시
+                    bimExtractPopup.classList.add('show');
+
+                    // 초기 상태 설정
+                    bimExtractProgressContainer.style.display = 'flex';
+                    bimExtractEditorContainer.style.display = 'none';
+                    bimExtractConfirmBtn.disabled = true;
+                    bimExtractProgressMessage.textContent = 'BIM 데이터를 추출하는 중입니다.';
+
+                    // 진행 단계 초기화
+                    stepShape.classList.remove('completed');
+                    stepPassive.classList.remove('completed');
+                    stepActive.classList.remove('completed');
+                    stepShape.textContent = 'V';
+                    stepPassive.textContent = '';
+                    stepActive.textContent = '';
+
+                    // 1단계: 형상정보 (즉시 체크)
+                    setTimeout(function() {
+                        stepShape.classList.add('completed');
+                        stepShape.textContent = '';
+                    }, 500);
+
+                    // 2단계: 패시브 속성 (1.5초 후)
+                    setTimeout(function() {
+                        bimExtractProgressMessage.textContent = '패시브 속성을 추출하는 중입니다.';
+                        stepPassive.classList.add('completed');
+                        stepPassive.textContent = '';
+                    }, 1500);
+
+                    // 3단계: 액티브 속성 (3초 후)
+                    setTimeout(async function() {
+                        bimExtractProgressMessage.textContent = '액티브 속성을 추출하는 중입니다.';
+                        stepActive.classList.add('completed');
+                        stepActive.textContent = '';
+
+                        try {
+                            // 데이터 추출
+                            const extractedData = await extractBIMData();
+
+                            // 텍스트로 변환
+                            const textData = JSON.stringify(extractedData, null, 2);
+
+                            // 에디터에 표시
+                            bimExtractEditor.value = textData;
+
+                            // 진행 UI 숨기고 에디터 표시 (4.5초 후)
+                            setTimeout(() => {
+                                bimExtractProgressContainer.style.display = 'none';
+                                bimExtractEditorContainer.style.display = 'flex';
+                                bimExtractConfirmBtn.disabled = false;
+                            }, 500);
+                        } catch (error) {
+                            // 오류 발생 시 에러 메시지 표시
+                            const errorText = `데이터 추출 중 오류가 발생했습니다:\n\n${error.message}\n\n${error.stack || ''}`;
+                            bimExtractEditor.value = errorText;
+                            bimExtractProgressContainer.style.display = 'none';
+                            bimExtractEditorContainer.style.display = 'flex';
+                            bimExtractConfirmBtn.disabled = false;
+                        }
+                    }, 3000);
+                });
+            }
+
+            // 확인 버튼 클릭 시 팝업 닫기
+            if (bimExtractConfirmBtn) {
+                bimExtractConfirmBtn.addEventListener('click', function() {
+                    bimExtractPopup.classList.remove('show');
+                });
+            }
+
+            // 닫기 버튼 클릭 시 팝업 닫기
+            if (bimExtractCloseBtn) {
+                bimExtractCloseBtn.addEventListener('click', function() {
+                    bimExtractPopup.classList.remove('show');
+                });
+            }
+
+            // 팝업 외부 클릭 시 닫기
+            if (bimExtractPopup) {
+                bimExtractPopup.addEventListener('click', function(e) {
+                    if (e.target === bimExtractPopup) {
+                        bimExtractPopup.classList.remove('show');
+                    }
+                });
+            }
+
+            // 시뮬레이션 선택 버튼 - 팝업 표시
+            const headerSelectSimBtn = document.getElementById('header-select-sim-btn');
+            const simulationManagerPopup = document.getElementById('simulation-manager-popup');
+            const simulationManagerSelect = document.getElementById('simulation-manager-select');
+            const simulationManagerCheckBtn = document.getElementById('simulation-manager-check-btn');
+            const simulationManagerCloseBtn = document.getElementById('simulation-manager-close-btn');
+            const seasonButtons = document.querySelectorAll('.season-btn');
+
+            if (headerSelectSimBtn && simulationManagerPopup) {
+                headerSelectSimBtn.addEventListener('click', function() {
+                    // 팝업 표시
+                    simulationManagerPopup.classList.add('show');
+                    // 드롭다운 초기화
+                    simulationManagerSelect.value = 'select';
+                });
+            }
+
+            // 체크 버튼 클릭 시 여름/겨울 선택
+            if (simulationManagerCheckBtn) {
+                simulationManagerCheckBtn.addEventListener('click', function() {
+                    const selectedValue = simulationManagerSelect.value;
+                    const diagramImage = document.getElementById('simulation-diagram-image');
+                    const diagramImageLoading = document.getElementById('diagram-image-loading');
+
+                    if (selectedValue === 'select') {
+                        // Select 선택 시 아무것도 하지 않음
+                        simulationManagerPopup.classList.remove('show');
+                        // 이미지 숨기기
+                        if (diagramImage) {
+                            diagramImage.classList.remove('show');
+                        }
+                        // 로딩바 숨기기
+                        if (diagramImageLoading) {
+                            diagramImageLoading.style.display = 'none';
+                        }
+                        return;
+                    }
+
+                    // Heating energy consumption → 겨울 선택
+                    if (selectedValue === 'heating') {
+                        seasonButtons.forEach(function(btn) {
+                            if (btn.dataset.season === 'winter') {
+                                btn.classList.add('active');
+                                btn.click(); // 시뮬레이션 로직도 트리거
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    // Cooling energy consumption → 여름 선택
+                    if (selectedValue === 'cooling') {
+                        seasonButtons.forEach(function(btn) {
+                            if (btn.dataset.season === 'summer') {
+                                btn.classList.add('active');
+                                btn.click(); // 시뮬레이션 로직도 트리거
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    // 시뮬레이션 선택 시 이미지 표시
+                    if (diagramImage && (selectedValue === 'heating' || selectedValue === 'cooling')) {
+                        // 먼저 이미지 숨기기
+                        diagramImage.classList.remove('show');
+
+                        // 로딩바 표시
+                        if (diagramImageLoading) {
+                            diagramImageLoading.style.display = 'flex';
+                        }
+
+                        // 이미지 로드 확인
+                        if (diagramImage.complete && diagramImage.naturalHeight !== 0) {
+                            // 이미 캐시된 이미지인 경우 즉시 표시
+                            setTimeout(function() {
+                                if (diagramImageLoading) {
+                                    diagramImageLoading.style.display = 'none';
+                                }
+                                diagramImage.classList.add('show');
+                            }, 300);
+                        } else {
+                            // 이미지 로드 대기
+                            diagramImage.onload = function() {
+                                if (diagramImageLoading) {
+                                    diagramImageLoading.style.display = 'none';
+                                }
+                                diagramImage.classList.add('show');
+                            };
+                            diagramImage.onerror = function() {
+                                if (diagramImageLoading) {
+                                    diagramImageLoading.style.display = 'none';
+                                }
+                            };
+
+                            // 이미지 src 다시 설정하여 로드 트리거 (캐시 우회)
+                            const imageSrc = diagramImage.src;
+                            diagramImage.src = '';
+                            diagramImage.src = imageSrc;
+                        }
+                    }
+
+                    // 팝업 닫기
+                    simulationManagerPopup.classList.remove('show');
+                });
+            }
+
+            // 닫기 버튼 클릭 시 팝업 닫기
+            if (simulationManagerCloseBtn) {
+                simulationManagerCloseBtn.addEventListener('click', function() {
+                    simulationManagerPopup.classList.remove('show');
+                });
+            }
+
+            // 팝업 외부 클릭 시 닫기
+            if (simulationManagerPopup) {
+                simulationManagerPopup.addEventListener('click', function(e) {
+                    if (e.target === simulationManagerPopup) {
+                        simulationManagerPopup.classList.remove('show');
+                    }
+                });
+            }
+
+            // Tree Menu 확장/축소 기능
+            const treeMenuToggles = document.querySelectorAll('.tree-menu-toggle');
+            treeMenuToggles.forEach(function(toggle) {
+                toggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const menuItem = this.parentElement;
+                    const label = this.querySelector('.tree-menu-label');
+
+                    // Zone 항목 클릭 시 팝업 표시
+                    if (label && (label.textContent.trim() === 'Zone: REF_CELL' || label.textContent.trim() === 'Zone: TEST_CELL')) {
+                        const zoneInfoPopup = document.getElementById('zone-info-popup');
+                        const zoneInfoTitle = document.getElementById('zone-info-popup-title');
+
+                        if (zoneInfoPopup && zoneInfoTitle) {
+                            // Zone 이름 설정
+                            let zoneName = label.textContent.trim();
+                            zoneInfoTitle.textContent = zoneName;
+
+                            // 현재 선택된 Zone 추적 (Zone: REF_CELL 또는 Zone: TEST_CELL 형식에서 REF_CELL 또는 TEST_CELL 추출)
+                            if (zoneName === 'Zone: REF_CELL') {
+                                currentSelectedZone = 'REF_CELL';
+                            } else if (zoneName === 'Zone: TEST_CELL') {
+                                currentSelectedZone = 'TEST_CELL';
+                            }
+
+                            // Zone별 초기값 설정
+                            if (zoneName === 'Zone: REF_CELL') {
+                                document.getElementById('zone-volume').value = '151.20';
+                                document.getElementById('zone-capacitance').value = '181.44';
+                                document.getElementById('zone-floor-area').value = '54.00';
+                            } else if (zoneName === 'Zone: TEST_CELL') {
+                                document.getElementById('zone-volume').value = '151.20';
+                                document.getElementById('zone-capacitance').value = '181.44';
+                                document.getElementById('zone-floor-area').value = '54.00';
+                            }
+
+                            // 메뉴 아이템 활성 상태 초기화
+                            document.querySelectorAll('.zone-info-menu-item').forEach(function(item) {
+                                item.classList.remove('active');
+                            });
+
+                            // 모든 Type Manager 팝업 닫기
+                            document.querySelectorAll('.type-manager-popup-overlay').forEach(function(popup) {
+                                popup.classList.remove('show');
+                            });
+
+                            // 팝업 표시
+                            zoneInfoPopup.classList.add('show');
+                        }
+                        return;
+                    }
+
+                    // Schedule 항목 클릭 시 팝업 표시
+                    if (label && label.textContent.trim() === 'Schedule') {
+                        const schedulePopup = document.getElementById('schedule-popup');
+                        if (schedulePopup) {
+                            // 현재 설정된 시간을 팝업에 반영
+                            const refTimeSelect = document.getElementById('ref-time');
+                            const testTimeSelect = document.getElementById('test-time');
+                            const scheduleRefCell = document.getElementById('schedule-ref-cell');
+                            const scheduleTestCell = document.getElementById('schedule-test-cell');
+
+                            if (refTimeSelect && scheduleRefCell) {
+                                scheduleRefCell.value = refTimeSelect.value;
+                            }
+                            if (testTimeSelect && scheduleTestCell) {
+                                scheduleTestCell.value = testTimeSelect.value;
+                            }
+
+                            schedulePopup.classList.add('show');
+                        }
+                        return;
+                    }
+
+                    // leaf 항목이 아닌 경우에만 토글
+                    if (!menuItem.classList.contains('leaf')) {
+                        menuItem.classList.toggle('expanded');
+                    }
+                });
+            });
+
+            // 현재 선택된 Zone 추적
+            let currentSelectedZone = null; // 'REF_CELL' or 'TEST_CELL'
+
+            // 시뮬레이션 설정 테이블 업데이트 함수
+            function updateSimulationTable(zone, field, value) {
+                if (zone === 'REF_CELL') {
+                    const refFields = {
+                        'equipment': 'ref-equipment',
+                        'lighting': 'ref-lighting',
+                        'ventilation': 'ref-ventilation',
+                        'temperature': 'ref-temperature',
+                        'time': 'ref-time-display'
+                    };
+                    const fieldId = refFields[field];
+                    if (fieldId) {
+                        const element = document.getElementById(fieldId);
+                        if (element) {
+                            element.textContent = value;
+                        }
+                    }
+                } else if (zone === 'TEST_CELL') {
+                    const testFields = {
+                        'equipment': 'test-equipment-display',
+                        'lighting': 'test-lighting-display',
+                        'ventilation': 'test-ventilation-display',
+                        'temperature': 'test-temperature-display',
+                        'time': 'test-time-display'
+                    };
+                    const fieldId = testFields[field];
+                    if (fieldId) {
+                        const element = document.getElementById(fieldId);
+                        if (element) {
+                            element.textContent = value;
+                        }
+                    }
+                }
+            }
+
+            // Zone 정보 팝업 표시 함수 (재사용)
+            function showZoneInfoPopup(zoneName) {
+                const zoneInfoPopup = document.getElementById('zone-info-popup');
+                const zoneInfoTitle = document.getElementById('zone-info-popup-title');
+
+                if (zoneInfoPopup && zoneInfoTitle) {
+                    // Zone 이름 설정 및 현재 Zone 저장
+                    zoneInfoTitle.textContent = 'Zone: ' + zoneName;
+                    currentSelectedZone = zoneName; // 'REF_CELL' or 'TEST_CELL'
+
+                    // Zone별 초기값 설정
+                    if (zoneName === 'REF_CELL') {
+                        document.getElementById('zone-volume').value = '151.20';
+                        document.getElementById('zone-capacitance').value = '181.44';
+                        document.getElementById('zone-floor-area').value = '54.00';
+                    } else if (zoneName === 'TEST_CELL') {
+                        document.getElementById('zone-volume').value = '151.20';
+                        document.getElementById('zone-capacitance').value = '181.44';
+                        document.getElementById('zone-floor-area').value = '54.00';
+                    }
+
+                    // 메뉴 아이템 활성 상태 초기화
+                    document.querySelectorAll('.zone-info-menu-item').forEach(function(item) {
+                        item.classList.remove('active');
+                    });
+
+                    // 모든 Type Manager 팝업 닫기
+                    document.querySelectorAll('.type-manager-popup-overlay').forEach(function(popup) {
+                        popup.classList.remove('show');
+                    });
+
+                    // 팝업 표시
+                    zoneInfoPopup.classList.add('show');
+                }
+            }
+
+            // 이미지에 직접 클릭 이벤트 추가 (이미지맵 대체 방법 - 더 안정적)
+            const diagramImage = document.getElementById('simulation-diagram-image');
+            if (diagramImage) {
+                diagramImage.addEventListener('click', function(e) {
+                    const rect = this.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    // 이미지의 실제 크기에 맞춰 좌표 조정 (이미지가 스케일링된 경우 대비)
+                    const img = this;
+                    const scaleX = img.naturalWidth / rect.width;
+                    const scaleY = img.naturalHeight / rect.height;
+                    const actualX = x * scaleX;
+                    const actualY = y * scaleY;
+
+                    console.log('Image clicked at:', x, y, 'Actual:', actualX, actualY); // 디버깅용
+
+                    // 첫 번째 영역: Simulation Manager (13,117,458,495)
+                    if (actualX >= 13 && actualX <= 458 && actualY >= 117 && actualY <= 495) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const simulationManagerPopup = document.getElementById('simulation-manager-popup');
+                        const simulationManagerSelect = document.getElementById('simulation-manager-select');
+                        if (simulationManagerPopup) {
+                            simulationManagerPopup.classList.add('show');
+                            if (simulationManagerSelect) {
+                                simulationManagerSelect.value = 'select';
+                            }
+                        }
+                        return;
+                    }
+                    // 두 번째 영역: Schedule (100,1224,973,2035)
+                    if (actualX >= 100 && actualX <= 973 && actualY >= 1224 && actualY <= 2035) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const schedulePopup = document.getElementById('schedule-popup');
+                        if (schedulePopup) {
+                            const refTimeSelect = document.getElementById('ref-time');
+                            const testTimeSelect = document.getElementById('test-time');
+                            const scheduleRefCell = document.getElementById('schedule-ref-cell');
+                            const scheduleTestCell = document.getElementById('schedule-test-cell');
+
+                            if (refTimeSelect && scheduleRefCell) {
+                                scheduleRefCell.value = refTimeSelect.value;
+                            }
+                            if (testTimeSelect && scheduleTestCell) {
+                                scheduleTestCell.value = testTimeSelect.value;
+                            }
+
+                            schedulePopup.classList.add('show');
+                        }
+                        return;
+                    }
+                    // 세 번째 영역: Zone: REF_CELL (1686,278,2085,543)
+                    if (actualX >= 1686 && actualX <= 2085 && actualY >= 278 && actualY <= 543) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showZoneInfoPopup('REF_CELL');
+                        return;
+                    }
+                    // 네 번째 영역: Zone: TEST_CELL (1696,652,2100,964)
+                    if (actualX >= 1696 && actualX <= 2100 && actualY >= 652 && actualY <= 964) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showZoneInfoPopup('TEST_CELL');
+                        return;
+                    }
+                });
+
+                // 이미지에 마우스 호버 이벤트 추가 (커서 변경)
+                diagramImage.addEventListener('mousemove', function(e) {
+                    const rect = this.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    // 이미지의 실제 크기에 맞춰 좌표 조정 (이미지가 스케일링된 경우 대비)
+                    const img = this;
+                    const scaleX = img.naturalWidth / rect.width;
+                    const scaleY = img.naturalHeight / rect.height;
+                    const actualX = x * scaleX;
+                    const actualY = y * scaleY;
+
+                    // 클릭 가능한 영역 확인 (이미지 맵 좌표 기준)
+                    const isInArea1 = actualX >= 1670 && actualX <= 2206 && actualY >= 276 && actualY <= 548;
+                    const isInArea2 = actualX >= 1680 && actualX <= 2213 && actualY >= 674 && actualY <= 937;
+                    const isInArea3 = actualX >= 85 && actualX <= 1028 && actualY >= 1219 && actualY <= 2053;
+                    const isInSchedule = actualX >= 100 && actualX <= 973 && actualY >= 1224 && actualY <= 2035;
+                    const isInRefCell = actualX >= 1686 && actualX <= 2085 && actualY >= 278 && actualY <= 543;
+                    const isInTestCell = actualX >= 1696 && actualX <= 2100 && actualY >= 652 && actualY <= 964;
+
+                    if (isInArea1 || isInArea2 || isInArea3 || isInSchedule || isInRefCell || isInTestCell) {
+                        this.style.cursor = 'pointer';
+                    } else {
+                        this.style.cursor = 'default';
+                    }
+                });
+
+                // 마우스가 이미지를 벗어나면 커서 초기화
+                diagramImage.addEventListener('mouseleave', function(e) {
+                    this.style.cursor = 'default';
+                });
+            }
+
+            // Schedule 팝업 이벤트 핸들러
+            const schedulePopup = document.getElementById('schedule-popup');
+            const scheduleCheckBtn = document.getElementById('schedule-check-btn');
+            const scheduleCloseBtn = document.getElementById('schedule-close-btn');
+
+            // 확인 버튼 클릭 시 시뮬레이션 설정 테이블 업데이트
+            if (scheduleCheckBtn) {
+                scheduleCheckBtn.addEventListener('click', function() {
+                    const scheduleRefCell = document.getElementById('schedule-ref-cell');
+                    const scheduleTestCell = document.getElementById('schedule-test-cell');
+                    const refTimeSelect = document.getElementById('ref-time');
+                    const testTimeSelect = document.getElementById('test-time');
+
+                    if (scheduleRefCell && refTimeSelect) {
+                        refTimeSelect.value = scheduleRefCell.value;
+                        // change 이벤트 트리거하여 다른 로직도 업데이트
+                        refTimeSelect.dispatchEvent(new Event('change'));
+                    }
+
+                    if (scheduleTestCell && testTimeSelect) {
+                        testTimeSelect.value = scheduleTestCell.value;
+                        // change 이벤트 트리거하여 다른 로직도 업데이트
+                        testTimeSelect.dispatchEvent(new Event('change'));
+                    }
+
+                    // 팝업 닫기
+                    if (schedulePopup) {
+                        schedulePopup.classList.remove('show');
+                    }
+                });
+            }
+
+            // 닫기 버튼 클릭 시 팝업 닫기
+            if (scheduleCloseBtn) {
+                scheduleCloseBtn.addEventListener('click', function() {
+                    if (schedulePopup) {
+                        schedulePopup.classList.remove('show');
+                    }
+                });
+            }
+
+            // 팝업 외부 클릭 시 닫기
+            if (schedulePopup) {
+                schedulePopup.addEventListener('click', function(e) {
+                    if (e.target === schedulePopup) {
+                        schedulePopup.classList.remove('show');
+                    }
+                });
+            }
+
+            // Zone 정보 팝업 메뉴 아이템 클릭 이벤트
+            const zoneMenuItems = document.querySelectorAll('.zone-info-menu-item');
+            const typeManagerPopups = {
+                'heating': document.getElementById('heating-type-popup'),
+                'cooling': document.getElementById('cooling-type-popup'),
+                'gain': document.getElementById('gain-type-popup'),
+                'ventilation': document.getElementById('ventilation-type-popup')
+            };
+
+            // 토글 형식 아이템 (Heating, Cooling)
+            const toggleItems = ['heating', 'cooling'];
+            // 클릭 시 팝업 표시 아이템 (Gain/losses, Ventilation)
+            const popupItems = ['gain', 'ventilation'];
+
+            // Heating, Cooling 초기 상태 설정 (둘 다 disabled인 경우 Heating을 기본 활성화)
+            const heatingItem = document.getElementById('zone-menu-heating');
+            const coolingItem = document.getElementById('zone-menu-cooling');
+            if (heatingItem && coolingItem) {
+                const heatingDisabled = heatingItem.classList.contains('disabled');
+                const coolingDisabled = coolingItem.classList.contains('disabled');
+
+                // 둘 다 disabled인 경우 Heating을 기본 활성화 (팝업은 표시하지 않음)
+                if (heatingDisabled && coolingDisabled) {
+                    heatingItem.classList.remove('disabled');
+                    heatingItem.classList.add('active');
+                    // Cooling은 disabled 상태 유지 (상호 배타적)
+                    coolingItem.classList.add('disabled');
+                    // 초기 상태에서는 팝업을 표시하지 않음
+                }
+            }
+
+            zoneMenuItems.forEach(function(menuItem) {
+                menuItem.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    const targetPopup = typeManagerPopups[type];
+
+                    // 토글 형식 아이템 처리 (Heating, Cooling) - 상호 배타적 동작
+                    if (toggleItems.includes(type)) {
+                        // 현재 클릭한 아이템이 이미 활성화되어 있으면 아무것도 하지 않음
+                        if (this.classList.contains('active')) {
+                            return;
+                        }
+
+                        // 클릭한 아이템 활성화
+                        this.classList.remove('disabled');
+                        this.classList.add('active');
+
+                        // 활성화 시 팝업 표시
+                        if (targetPopup) {
+                            targetPopup.classList.add('show');
+                        }
+
+                        // 다른 토글 아이템 비활성화
+                        toggleItems.forEach(function(toggleType) {
+                            if (toggleType !== type) {
+                                const otherItem = document.getElementById('zone-menu-' + toggleType);
+                                if (otherItem) {
+                                    otherItem.classList.remove('active');
+                                    otherItem.classList.add('disabled');
+                                }
+                                const otherPopup = typeManagerPopups[toggleType];
+                                if (otherPopup) {
+                                    otherPopup.classList.remove('show');
+                                }
+                            }
+                        });
+                    }
+                    // 클릭 시 팝업 표시 아이템 처리 (Gain/losses, Ventilation)
+                    else if (popupItems.includes(type)) {
+                        // disabled 상태의 아이템은 클릭 불가
+                        if (this.classList.contains('disabled')) {
+                            return;
+                        }
+                        // 다른 메뉴 아이템의 활성 상태 제거 (같은 타입만)
+                        popupItems.forEach(function(popupType) {
+                            if (popupType !== type) {
+                                const otherItem = document.getElementById('zone-menu-' + popupType);
+                                if (otherItem) {
+                                    otherItem.classList.remove('active');
+                                }
+                                const otherPopup = typeManagerPopups[popupType];
+                                if (otherPopup) {
+                                    otherPopup.classList.remove('show');
+                                }
+                            }
+                        });
+
+                        // 현재 메뉴 아이템 토글 및 팝업 표시
+                        if (this.classList.contains('active')) {
+                            // 이미 활성화되어 있으면 닫기
+                            this.classList.remove('active');
+                            if (targetPopup) {
+                                targetPopup.classList.remove('show');
+                            }
+                        } else {
+                            // 활성화 및 팝업 표시
+                            this.classList.add('active');
+                            if (targetPopup) {
+                                targetPopup.classList.add('show');
+                            }
+                        }
+                    }
+                });
+            });
+
+            // Zone 정보 팝업 이벤트 핸들러
+            const zoneInfoPopup = document.getElementById('zone-info-popup');
+            const zoneInfoCheckBtn = document.getElementById('zone-info-check-btn');
+            const zoneInfoCloseBtn = document.getElementById('zone-info-close-btn');
+
+            // Zone 정보 팝업 확인 버튼
+            if (zoneInfoCheckBtn) {
+                zoneInfoCheckBtn.addEventListener('click', function() {
+                    if (zoneInfoPopup) {
+                        zoneInfoPopup.classList.remove('show');
+                    }
+                    // 모든 Type Manager 팝업도 닫기
+                    Object.values(typeManagerPopups).forEach(function(popup) {
+                        if (popup) {
+                            popup.classList.remove('show');
+                        }
+                    });
+                    // 메뉴 아이템 활성 상태 제거
+                    zoneMenuItems.forEach(function(item) {
+                        item.classList.remove('active');
+                    });
+                });
+            }
+
+            // Zone 정보 팝업 닫기 버튼
+            if (zoneInfoCloseBtn) {
+                zoneInfoCloseBtn.addEventListener('click', function() {
+                    if (zoneInfoPopup) {
+                        zoneInfoPopup.classList.remove('show');
+                    }
+                    // 모든 Type Manager 팝업도 닫기
+                    Object.values(typeManagerPopups).forEach(function(popup) {
+                        if (popup) {
+                            popup.classList.remove('show');
+                        }
+                    });
+                    // 메뉴 아이템 활성 상태 제거
+                    zoneMenuItems.forEach(function(item) {
+                        item.classList.remove('active');
+                    });
+                });
+            }
+
+            // Zone 정보 팝업 외부 클릭 시 닫기
+            if (zoneInfoPopup) {
+                zoneInfoPopup.addEventListener('click', function(e) {
+                    if (e.target === zoneInfoPopup) {
+                        zoneInfoPopup.classList.remove('show');
+                        // 모든 Type Manager 팝업도 닫기
+                        Object.values(typeManagerPopups).forEach(function(popup) {
+                            if (popup) {
+                                popup.classList.remove('show');
+                            }
+                        });
+                        // 메뉴 아이템 활성 상태 제거
+                        zoneMenuItems.forEach(function(item) {
+                            item.classList.remove('active');
+                        });
+                    }
+                });
+            }
+
+            // Type Manager 팝업 이벤트 핸들러 (공통)
+            function setupTypeManagerPopup(popupId, checkBtnId, closeBtnId, selectId, menuItemId) {
+                const popup = document.getElementById(popupId);
+                const checkBtn = document.getElementById(checkBtnId);
+                const closeBtn = document.getElementById(closeBtnId);
+                const select = document.getElementById(selectId);
+                const menuItem = document.getElementById(menuItemId);
+
+                if (checkBtn) {
+                    checkBtn.addEventListener('click', function() {
+                        if (select) {
+                            const selectedValue = select.value;
+                            // 설정 적용 로직 추가 가능
+                            console.log(`${popupId} 설정 적용:`, selectedValue);
+                        }
+                        if (popup) {
+                            popup.classList.remove('show');
+                        }
+                        if (menuItem) {
+                            menuItem.classList.remove('active');
+                        }
+                    });
+                }
+
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        if (popup) {
+                            popup.classList.remove('show');
+                        }
+                        if (menuItem) {
+                            menuItem.classList.remove('active');
+                        }
+                    });
+                }
+
+                // 팝업 외부 클릭 시 닫기
+                if (popup) {
+                    popup.addEventListener('click', function(e) {
+                        if (e.target === popup) {
+                            popup.classList.remove('show');
+                            if (menuItem) {
+                                menuItem.classList.remove('active');
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Heating Type Manager 팝업 확인 버튼
+            const heatingCheckBtn = document.getElementById('heating-type-check-btn');
+            const heatingSelect = document.getElementById('heating-type-select');
+            const heatingPopup = document.getElementById('heating-type-popup');
+            const heatingMenuItem = document.getElementById('zone-menu-heating');
+            const heatingCloseBtn = document.getElementById('heating-type-close-btn');
+
+            if (heatingCheckBtn) {
+                heatingCheckBtn.addEventListener('click', function() {
+                    if (currentSelectedZone && heatingSelect && heatingSelect.value !== 'select') {
+                        updateSimulationTable(currentSelectedZone, 'temperature', heatingSelect.value);
+                    }
+                    if (heatingPopup) {
+                        heatingPopup.classList.remove('show');
+                    }
+                    if (heatingMenuItem) {
+                        heatingMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (heatingCloseBtn) {
+                heatingCloseBtn.addEventListener('click', function() {
+                    if (heatingPopup) {
+                        heatingPopup.classList.remove('show');
+                    }
+                    if (heatingMenuItem) {
+                        heatingMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (heatingPopup) {
+                heatingPopup.addEventListener('click', function(e) {
+                    if (e.target === heatingPopup) {
+                        heatingPopup.classList.remove('show');
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('active');
+                        }
+                    }
+                });
+            }
+
+            // Cooling Type Manager 팝업 확인 버튼
+            const coolingCheckBtn = document.getElementById('cooling-type-check-btn');
+            const coolingSelect = document.getElementById('cooling-type-select');
+            const coolingPopup = document.getElementById('cooling-type-popup');
+            const coolingMenuItem = document.getElementById('zone-menu-cooling');
+            const coolingCloseBtn = document.getElementById('cooling-type-close-btn');
+
+            if (coolingCheckBtn) {
+                coolingCheckBtn.addEventListener('click', function() {
+                    if (currentSelectedZone && coolingSelect && coolingSelect.value !== 'select') {
+                        updateSimulationTable(currentSelectedZone, 'temperature', coolingSelect.value);
+                    }
+                    if (coolingPopup) {
+                        coolingPopup.classList.remove('show');
+                    }
+                    if (coolingMenuItem) {
+                        coolingMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (coolingCloseBtn) {
+                coolingCloseBtn.addEventListener('click', function() {
+                    if (coolingPopup) {
+                        coolingPopup.classList.remove('show');
+                    }
+                    if (coolingMenuItem) {
+                        coolingMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (coolingPopup) {
+                coolingPopup.addEventListener('click', function(e) {
+                    if (e.target === coolingPopup) {
+                        coolingPopup.classList.remove('show');
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('active');
+                        }
+                    }
+                });
+            }
+
+            // Gain/loss Type Manager 팝업 설정 (두 개의 select 처리)
+            const gainPopup = document.getElementById('gain-type-popup');
+            const gainCheckBtn = document.getElementById('gain-type-check-btn');
+            const gainCloseBtn = document.getElementById('gain-type-close-btn');
+            const gainElectricalSelect = document.getElementById('gain-type-electrical-select');
+            const gainLightsSelect = document.getElementById('gain-type-lights-select');
+            const gainMenuItem = document.getElementById('zone-menu-gain');
+
+            if (gainCheckBtn) {
+                gainCheckBtn.addEventListener('click', function() {
+                    if (currentSelectedZone && gainElectricalSelect && gainLightsSelect) {
+                        const electricalValue = gainElectricalSelect.value;
+                        const lightsValue = gainLightsSelect.value;
+                        if (electricalValue !== 'select') {
+                            updateSimulationTable(currentSelectedZone, 'equipment', electricalValue);
+                        }
+                        if (lightsValue !== 'select') {
+                            updateSimulationTable(currentSelectedZone, 'lighting', lightsValue);
+                        }
+                        console.log('Gain/loss Type 설정 적용:', {
+                            electrical: electricalValue,
+                            lights: lightsValue
+                        });
+                    }
+                    if (gainPopup) {
+                        gainPopup.classList.remove('show');
+                    }
+                    if (gainMenuItem) {
+                        gainMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (gainCloseBtn) {
+                gainCloseBtn.addEventListener('click', function() {
+                    if (gainPopup) {
+                        gainPopup.classList.remove('show');
+                    }
+                    if (gainMenuItem) {
+                        gainMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (gainPopup) {
+                gainPopup.addEventListener('click', function(e) {
+                    if (e.target === gainPopup) {
+                        gainPopup.classList.remove('show');
+                        if (gainMenuItem) {
+                            gainMenuItem.classList.remove('active');
+                        }
+                    }
+                });
+            }
+
+            // Ventilation Type Manager 팝업 확인 버튼
+            const ventilationCheckBtn = document.getElementById('ventilation-type-check-btn');
+            const ventilationSelect = document.getElementById('ventilation-type-select');
+            const ventilationPopup = document.getElementById('ventilation-type-popup');
+            const ventilationMenuItem = document.getElementById('zone-menu-ventilation');
+            const ventilationCloseBtn = document.getElementById('ventilation-type-close-btn');
+
+            if (ventilationCheckBtn) {
+                ventilationCheckBtn.addEventListener('click', function() {
+                    if (currentSelectedZone && ventilationSelect && ventilationSelect.value !== 'select') {
+                        updateSimulationTable(currentSelectedZone, 'ventilation', ventilationSelect.value);
+                    }
+                    if (ventilationPopup) {
+                        ventilationPopup.classList.remove('show');
+                    }
+                    if (ventilationMenuItem) {
+                        ventilationMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (ventilationCloseBtn) {
+                ventilationCloseBtn.addEventListener('click', function() {
+                    if (ventilationPopup) {
+                        ventilationPopup.classList.remove('show');
+                    }
+                    if (ventilationMenuItem) {
+                        ventilationMenuItem.classList.remove('active');
+                    }
+                });
+            }
+
+            if (ventilationPopup) {
+                ventilationPopup.addEventListener('click', function(e) {
+                    if (e.target === ventilationPopup) {
+                        ventilationPopup.classList.remove('show');
+                        if (ventilationMenuItem) {
+                            ventilationMenuItem.classList.remove('active');
+                        }
+                    }
+                });
+            }
+
+            // 분석하기 (에너지 사용량) 버튼 - 재생 버튼 클릭 효과
+            const analyzeEnergyBtn = document.getElementById('analyze-energy-btn');
+            const playBtn = document.getElementById('play-btn');
+            if (analyzeEnergyBtn && playBtn) {
+                analyzeEnergyBtn.addEventListener('click', function() {
+                    playBtn.click();
+                });
+            }
+
+            // 제어신호 송출 버튼 - 경고 팝업 표시
+            const sendControlSignalBtn = document.getElementById('send-control-signal-btn');
+            const controlSignalPopup = document.getElementById('control-signal-popup');
+            const controlSignalConfirmBtn = document.getElementById('control-signal-confirm-btn');
+
+            if (sendControlSignalBtn && controlSignalPopup) {
+                sendControlSignalBtn.addEventListener('click', function() {
+                    controlSignalPopup.classList.add('show');
+                });
+            }
+
+            // 확인 버튼 클릭 시 팝업 닫기
+            if (controlSignalConfirmBtn && controlSignalPopup) {
+                controlSignalConfirmBtn.addEventListener('click', function() {
+                    controlSignalPopup.classList.remove('show');
+                });
+            }
+
+            // 팝업 외부 클릭 시 닫기
+            if (controlSignalPopup) {
+                controlSignalPopup.addEventListener('click', function(e) {
+                    if (e.target === controlSignalPopup) {
+                        controlSignalPopup.classList.remove('show');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
+
+</html>
