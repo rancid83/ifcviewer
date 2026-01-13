@@ -1,0 +1,16 @@
+{
+  "sheetName": "Case63_Winter",
+  "totalFrames": 83521,
+  "numChunks": 59,
+  "chunkSize": 1440,
+  "startTime": "2026-01-01 00:00:00",
+  "endTime": "2025-02-28 00:00:00",
+  "minEnergyTest": -106331.33889640232,
+  "maxEnergyTest": 2064.7976996061943,
+  "avgEnergyTest": -765.9722072153853,
+  "minEnergyRef": -106331.33889640232,
+  "maxEnergyRef": 2064.7976996061943,
+  "avgEnergyRef": -765.9722072153853,
+  "season": "winter",
+  "startDate": "2026-01-01"
+}

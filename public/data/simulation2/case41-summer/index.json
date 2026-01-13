@@ -1,0 +1,16 @@
+{
+  "sheetName": "Case41_Summer",
+  "totalFrames": 83521,
+  "numChunks": 59,
+  "chunkSize": 1440,
+  "startTime": "2025-08-01 00:00:00",
+  "endTime": "2025-09-28 00:00:00",
+  "minEnergyTest": -12927.606387240494,
+  "maxEnergyTest": 4311.709300259883,
+  "avgEnergyTest": 482.57760989862544,
+  "minEnergyRef": -12927.606387240494,
+  "maxEnergyRef": 4311.709300259883,
+  "avgEnergyRef": 482.57760989862544,
+  "season": "summer",
+  "startDate": "2025-08-01"
+}

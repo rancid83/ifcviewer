@@ -43,6 +43,13 @@ app.get('/simulator-white', (req, res) => {
     });
 });
 
+// 시뮬레이터 라우트 v2 (복사본)
+app.get('/simulator-v2', (req, res) => {
+    res.render('simulator-v2', {
+        title: '건물 에너지 분석 시뮬레이터 v2'
+    });
+});
+
 // 시간 슬라이더 테스트 라우트
 app.get('/time-slider', (req, res) => {
     res.render('time-slider', {
