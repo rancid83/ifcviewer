@@ -2910,7 +2910,7 @@
                         return;
                     }
 
-                    // Heating energy consumption → 겨울 선택
+                    // Heating energy consumption → 겨울 선택 및 Zone 정보 팝업의 heating 버튼 활성화
                     if (selectedValue === 'heating') {
                         seasonButtons.forEach(function(btn) {
                             if (btn.dataset.season === 'winter') {
@@ -2920,9 +2920,39 @@
                                 btn.classList.remove('active');
                             }
                         });
+
+                        // Zone 정보 팝업의 heating 버튼 활성화, cooling 버튼 비활성화
+                        const heatingMenuItem = document.getElementById('zone-menu-heating');
+                        const coolingMenuItem = document.getElementById('zone-menu-cooling');
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('disabled');
+                            heatingMenuItem.classList.add('active');
+                        }
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('active');
+                            coolingMenuItem.classList.add('disabled');
+                        }
+
+                        // 날짜 기간 설정: 난방 기간 (1월~2월)
+                        const startDateInput = document.getElementById('start-date-input');
+                        const endDateInput = document.getElementById('end-date-input');
+                        const simulationStartDate = document.getElementById('simulation-start-date');
+                        const simulationEndDate = document.getElementById('simulation-end-date');
+                        if (startDateInput) {
+                            startDateInput.value = '2025-01-01';
+                        }
+                        if (endDateInput) {
+                            endDateInput.value = '2025-02-28';
+                        }
+                        if (simulationStartDate) {
+                            simulationStartDate.value = '2025-01-01';
+                        }
+                        if (simulationEndDate) {
+                            simulationEndDate.value = '2025-02-28';
+                        }
                     }
 
-                    // Cooling energy consumption → 여름 선택
+                    // Cooling energy consumption → 여름 선택 및 Zone 정보 팝업의 cooling 버튼 활성화
                     if (selectedValue === 'cooling') {
                         seasonButtons.forEach(function(btn) {
                             if (btn.dataset.season === 'summer') {
@@ -2932,6 +2962,36 @@
                                 btn.classList.remove('active');
                             }
                         });
+
+                        // Zone 정보 팝업의 cooling 버튼 활성화, heating 버튼 비활성화
+                        const heatingMenuItem = document.getElementById('zone-menu-heating');
+                        const coolingMenuItem = document.getElementById('zone-menu-cooling');
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('disabled');
+                            coolingMenuItem.classList.add('active');
+                        }
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('active');
+                            heatingMenuItem.classList.add('disabled');
+                        }
+
+                        // 날짜 기간 설정: 냉방 기간 (8월~9월)
+                        const startDateInput = document.getElementById('start-date-input');
+                        const endDateInput = document.getElementById('end-date-input');
+                        const simulationStartDate = document.getElementById('simulation-start-date');
+                        const simulationEndDate = document.getElementById('simulation-end-date');
+                        if (startDateInput) {
+                            startDateInput.value = '2025-08-01';
+                        }
+                        if (endDateInput) {
+                            endDateInput.value = '2025-09-30';
+                        }
+                        if (simulationStartDate) {
+                            simulationStartDate.value = '2025-08-01';
+                        }
+                        if (simulationEndDate) {
+                            simulationEndDate.value = '2025-09-30';
+                        }
                     }
 
                     // 시뮬레이션 선택 시 이미지 표시
