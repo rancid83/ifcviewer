@@ -1723,6 +1723,76 @@
             background-color: #555555;
             margin: 25px 0;
         }
+        
+        /* 로딩 팝업 스타일 */
+        .loading-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        }
+        
+        .loading-popup-overlay.show {
+            display: flex;
+        }
+        
+        .loading-popup {
+            background-color: #1a1a1a;
+            border-radius: 12px;
+            padding: 40px 50px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 1px solid #333333;
+            min-width: 300px;
+            text-align: center;
+        }
+        
+        .loading-popup-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #333333;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .loading-file-name {
+            color: #9ca3af;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .loading-success {
+            color: #10b981;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
     </style>
 </head>
 
@@ -2397,6 +2467,17 @@
                         <span class="type-manager-edit-icon" title="편집">✏️</span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 로딩 팝업 -->
+    <div class="loading-popup-overlay" id="loading-popup">
+        <div class="loading-popup">
+            <div class="loading-popup-content">
+                <div class="loading-spinner" id="loading-spinner"></div>
+                <p class="loading-text" id="loading-text">로딩중입니다...</p>
+                <p class="loading-file-name" id="loading-file-name"></p>
             </div>
         </div>
     </div>

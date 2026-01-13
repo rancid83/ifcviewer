@@ -672,9 +672,65 @@ loadIFCBtn.addEventListener('click', () => {
 ifcFileInput.addEventListener('change', async(event) => {
     const file = event.target.files[0];
     if (file) {
+        // 파일 확장자 검증
+        if (!file.name.toLowerCase().endsWith('.ifc')) {
+            // 로딩 팝업 표시 후 즉시 에러 메시지 표시
+            showLoadingPopup(file.name);
+            setTimeout(() => {
+                hideLoadingPopup(false, 'IFC 파일만 업로드할 수 있습니다.');
+            }, 100);
+            event.target.value = ''; // 입력 초기화
+            return;
+        }
         await loadIFCFile(file, true);
     }
+    // 파일 입력 초기화 (같은 파일을 다시 선택할 수 있도록)
+    event.target.value = '';
 });
+
+// 로딩 팝업 제어 함수
+function showLoadingPopup(fileName = '') {
+    const loadingPopup = document.getElementById('loading-popup');
+    const loadingText = document.getElementById('loading-text');
+    const loadingFileName = document.getElementById('loading-file-name');
+    const loadingSpinner = document.getElementById('loading-spinner');
+
+    if (loadingPopup) {
+        loadingText.textContent = '로딩중입니다...';
+        loadingFileName.textContent = fileName ? `파일: ${fileName}` : '';
+        loadingSpinner.style.display = 'block';
+        loadingText.className = 'loading-text';
+        loadingPopup.classList.add('show');
+    }
+}
+
+function hideLoadingPopup(success = true, message = '') {
+    const loadingPopup = document.getElementById('loading-popup');
+    const loadingText = document.getElementById('loading-text');
+    const loadingSpinner = document.getElementById('loading-spinner');
+
+    if (loadingPopup && loadingText) {
+        // 줄바꿈 문자를 <br> 태그로 변환
+        const formattedMessage = (message || (success ? '로드 완료!' : '로드 실패')).replace(/\n/g, '<br>');
+
+        if (success) {
+            loadingText.innerHTML = formattedMessage;
+            loadingText.className = 'loading-success';
+            loadingSpinner.style.display = 'none';
+        } else {
+            loadingText.innerHTML = formattedMessage;
+            loadingText.className = 'loading-text';
+            loadingSpinner.style.display = 'none';
+        }
+
+        // 3초 후 자동으로 닫기
+        setTimeout(() => {
+            if (loadingPopup) {
+                loadingPopup.classList.remove('show');
+            }
+        }, 3000);
+    }
+}
 
 // IFC 파일 로드 함수 (Promise로 래핑)
 async function loadIFCFile(file, showAlert = true) {
@@ -687,6 +743,11 @@ async function loadIFCFile(file, showAlert = true) {
     }
 
     const url = URL.createObjectURL(file);
+
+    // 로딩 팝업 표시
+    if (showAlert) {
+        showLoadingPopup(file.name);
+    }
 
     return new Promise((resolve, reject) => {
         try {
@@ -724,9 +785,9 @@ async function loadIFCFile(file, showAlert = true) {
                     // UI 상태 업데이트
                     updateIFCModelStatus(true, modelID);
 
-                    // 수동 로드일 때만 alert 표시
+                    // 로딩 팝업 업데이트 (성공 메시지 표시 후 3초 후 자동 닫기)
                     if (showAlert) {
-                        alert(`IFC 파일이 성공적으로 로드되었습니다!\n파일명: ${file.name}`);
+                        hideLoadingPopup(true, `IFC 파일이 성공적으로 로드되었습니다!\n파일명: ${file.name}`);
                     }
 
                     URL.revokeObjectURL(url);
@@ -747,8 +808,9 @@ async function loadIFCFile(file, showAlert = true) {
                 (error) => {
                     updateIFCModelStatus(false);
 
+                    // 로딩 팝업 업데이트 (실패 메시지 표시 후 3초 후 자동 닫기)
                     if (showAlert) {
-                        alert(`IFC 파일 로드에 실패했습니다.\n\n에러: ${error.message}`);
+                        hideLoadingPopup(false, `IFC 파일 로드에 실패했습니다.\n\n에러: ${error.message}`);
                     }
                     URL.revokeObjectURL(url);
                     reject(error);
@@ -756,8 +818,9 @@ async function loadIFCFile(file, showAlert = true) {
             );
         } catch (error) {
             console.error('IFC 파일 처리 중 오류:', error);
+            // 로딩 팝업 업데이트 (오류 메시지 표시 후 3초 후 자동 닫기)
             if (showAlert) {
-                alert('IFC 파일 처리 중 오류가 발생했습니다.');
+                hideLoadingPopup(false, 'IFC 파일 처리 중 오류가 발생했습니다.');
             }
             URL.revokeObjectURL(url);
             reject(error);
