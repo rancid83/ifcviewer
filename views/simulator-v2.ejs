@@ -1119,6 +1119,63 @@
             background-color: #005a9e;
             border-color: #005a9e;
         }
+        /* 제어신호 송출 팝업 전용 스타일 */
+        
+        #control-signal-popup.bim-extract-popup-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        #control-signal-popup .bim-extract-popup {
+            width: 90%;
+            max-width: 500px;
+            height: auto;
+            max-height: 400px;
+        }
+        
+        #control-signal-popup .bim-extract-popup-header {
+            background-color: #ffffff;
+            color: #000000;
+            text-align: center;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid #cccccc;
+        }
+        
+        #control-signal-popup .bim-extract-popup-content {
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background-color: #1e1e1e;
+        }
+        
+        #control-signal-popup .bim-extract-popup-icon {
+            font-size: 48px;
+            color: #fbbf24;
+            font-weight: bold;
+            margin-bottom: 20px;
+            line-height: 1;
+        }
+        
+        #control-signal-popup .bim-extract-popup-message {
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        #control-signal-popup .bim-extract-popup-footer {
+            background-color: #252526;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
         /* 시뮬레이션 매니저 팝업 스타일 */
         
         .simulation-manager-popup-overlay {
@@ -1610,7 +1667,8 @@
         
         .zone-info-menu-item.disabled {
             opacity: 0.5;
-            cursor: pointer;
+            cursor: not-allowed;
+            pointer-events: none;
         }
         
         .zone-info-menu-item.disabled .zone-info-menu-icon {
@@ -1981,7 +2039,10 @@
         <!-- 좌측 패널: 분석 결과 보기 -->
         <div class="panel panel-left">
             <div class="panel-header">
-                <span class="header-title">Building Information Model</span>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <span class="header-title">Building Information Model</span>
+                    <span id="bim-file-indicator" style="font-size: 11px; color: #9ca3af; font-weight: 400; display: none;"></span>
+                </div>
                 <div class="header-buttons" style="display: none;">
                     <button class="btn btn-dark" id="load-ifc-btn">
                         📂 파일 불러오기 (IFC)
@@ -2099,7 +2160,10 @@
         <!-- 우측 패널: 분석 설정 하기 -->
         <div class="panel panel-right">
             <div class="panel-header">
-                <span class="header-title">Energy Simulation</span>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <span class="header-title">Energy Simulation</span>
+                    <span id="simulation-type-indicator" style="font-size: 11px; color: #9ca3af; font-weight: 400; display: none;"></span>
+                </div>
                 <div class="header-buttons" style="display: none;">
                     <button class="btn btn-dark" id="analyze-btn">
                         🔬 분석 하기 (에너지 사용량)
@@ -2155,7 +2219,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="tree-menu-item">
+                                    <div class="tree-menu-item expanded">
                                         <div class="tree-menu-toggle">
                                             <span class="tree-menu-icon"></span>
                                             <span class="tree-menu-label">Zone: TEST_CELL</span>
@@ -2356,8 +2420,8 @@
         <div class="bim-extract-popup">
             <div class="bim-extract-popup-header">Warning message</div>
             <div class="bim-extract-popup-content">
-                <div class="bim-extract-popup-icon">!</div>
-                <div class="bim-extract-popup-message" style="line-height: 1.6;">
+                <div class="bim-extract-popup-icon">⚠</div>
+                <div class="bim-extract-popup-message">
                     제어신호 송출에 실패하였습니다.
                 </div>
             </div>
@@ -2872,6 +2936,41 @@
                 });
             }
 
+            // 트리 메뉴의 Heating/Cooling 항목 표시/숨김 처리 함수
+            function updateTreeMenuVisibility(type) {
+                // 모든 Zone의 Heating/Cooling 항목 찾기
+                const treeMenuItems = document.querySelectorAll('.tree-menu-item');
+
+                treeMenuItems.forEach(function(item) {
+                    const label = item.querySelector('.tree-menu-label');
+                    if (label) {
+                        const labelText = label.textContent.trim();
+
+                        // Heating 또는 Cooling 항목인 경우
+                        if (labelText === 'Heating' || labelText === 'Cooling') {
+                            if (type === 'heating') {
+                                // Heating 선택 시: Heating은 보이고, Cooling은 숨김
+                                if (labelText === 'Heating') {
+                                    item.style.display = '';
+                                } else if (labelText === 'Cooling') {
+                                    item.style.display = 'none';
+                                }
+                            } else if (type === 'cooling') {
+                                // Cooling 선택 시: Cooling은 보이고, Heating은 숨김
+                                if (labelText === 'Cooling') {
+                                    item.style.display = '';
+                                } else if (labelText === 'Heating') {
+                                    item.style.display = 'none';
+                                }
+                            } else {
+                                // select 또는 기타: 모두 보임
+                                item.style.display = '';
+                            }
+                        }
+                    }
+                });
+            }
+
             // 시뮬레이션 선택 버튼 - 팝업 표시
             const headerSelectSimBtn = document.getElementById('header-select-sim-btn');
             const simulationManagerPopup = document.getElementById('simulation-manager-popup');
@@ -2880,12 +2979,19 @@
             const simulationManagerCloseBtn = document.getElementById('simulation-manager-close-btn');
             const seasonButtons = document.querySelectorAll('.season-btn');
 
+            // 마지막 선택된 시뮬레이션 타입 저장 (최초에는 null)
+            let lastSelectedSimulationType = null;
+
             if (headerSelectSimBtn && simulationManagerPopup) {
                 headerSelectSimBtn.addEventListener('click', function() {
                     // 팝업 표시
                     simulationManagerPopup.classList.add('show');
-                    // 드롭다운 초기화
-                    simulationManagerSelect.value = 'select';
+                    // 마지막 선택값이 있으면 복원, 없으면 'select'로 초기화
+                    if (lastSelectedSimulationType) {
+                        simulationManagerSelect.value = lastSelectedSimulationType;
+                    } else {
+                        simulationManagerSelect.value = 'select';
+                    }
                 });
             }
 
@@ -2907,7 +3013,29 @@
                         if (diagramImageLoading) {
                             diagramImageLoading.style.display = 'none';
                         }
+                        // 트리 메뉴의 Heating/Cooling 모두 보이게 처리
+                        updateTreeMenuVisibility('select');
+                        // Select 선택 시에는 저장하지 않음 (null 유지)
                         return;
+                    }
+
+                    // heating 또는 cooling 선택 시 마지막 선택값 저장
+                    if (selectedValue === 'heating' || selectedValue === 'cooling') {
+                        lastSelectedSimulationType = selectedValue;
+                    }
+
+                    // 헤더에 시뮬레이션 타입 표시 업데이트
+                    const simulationTypeIndicator = document.getElementById('simulation-type-indicator');
+                    if (simulationTypeIndicator) {
+                        if (selectedValue === 'heating') {
+                            simulationTypeIndicator.textContent = 'Heating energy consumption';
+                            simulationTypeIndicator.style.display = 'block';
+                        } else if (selectedValue === 'cooling') {
+                            simulationTypeIndicator.textContent = 'Cooling energy consumption';
+                            simulationTypeIndicator.style.display = 'block';
+                        } else {
+                            simulationTypeIndicator.style.display = 'none';
+                        }
                     }
 
                     // Heating energy consumption → 겨울 선택 및 Zone 정보 팝업의 heating 버튼 활성화
@@ -2933,6 +3061,9 @@
                             coolingMenuItem.classList.add('disabled');
                         }
 
+                        // 트리 메뉴의 Heating/Cooling 표시/숨김 처리
+                        updateTreeMenuVisibility('heating');
+
                         // 날짜 기간 설정: 난방 기간 (1월~2월)
                         const startDateInput = document.getElementById('start-date-input');
                         const endDateInput = document.getElementById('end-date-input');
@@ -2940,15 +3071,27 @@
                         const simulationEndDate = document.getElementById('simulation-end-date');
                         if (startDateInput) {
                             startDateInput.value = '2025-01-01';
+                            startDateInput.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
                         }
                         if (endDateInput) {
                             endDateInput.value = '2025-02-28';
+                            endDateInput.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
                         }
                         if (simulationStartDate) {
                             simulationStartDate.value = '2025-01-01';
+                            simulationStartDate.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
                         }
                         if (simulationEndDate) {
                             simulationEndDate.value = '2025-02-28';
+                            simulationEndDate.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
                         }
 
                         // 날짜 설정 후 적용 버튼 자동 클릭
@@ -2983,6 +3126,9 @@
                             heatingMenuItem.classList.add('disabled');
                         }
 
+                        // 트리 메뉴의 Heating/Cooling 표시/숨김 처리
+                        updateTreeMenuVisibility('cooling');
+
                         // 날짜 기간 설정: 냉방 기간 (8월~9월)
                         const startDateInput = document.getElementById('start-date-input');
                         const endDateInput = document.getElementById('end-date-input');
@@ -2990,15 +3136,27 @@
                         const simulationEndDate = document.getElementById('simulation-end-date');
                         if (startDateInput) {
                             startDateInput.value = '2025-08-01';
+                            startDateInput.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
                         }
                         if (endDateInput) {
                             endDateInput.value = '2025-09-30';
+                            endDateInput.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
                         }
                         if (simulationStartDate) {
                             simulationStartDate.value = '2025-08-01';
+                            simulationStartDate.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
                         }
                         if (simulationEndDate) {
                             simulationEndDate.value = '2025-09-30';
+                            simulationEndDate.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
                         }
 
                         // 날짜 설정 후 적용 버튼 자동 클릭
@@ -3342,16 +3500,87 @@
                     const refTimeSelect = document.getElementById('ref-time');
                     const testTimeSelect = document.getElementById('test-time');
 
-                    if (scheduleRefCell && refTimeSelect) {
-                        refTimeSelect.value = scheduleRefCell.value;
-                        // change 이벤트 트리거하여 다른 로직도 업데이트
-                        refTimeSelect.dispatchEvent(new Event('change'));
+                    // select의 value를 시간 표시 형식으로 변환하는 함수 (07-16 -> 07:00-16:00)
+                    function formatTimeFromValue(selectElement) {
+                        if (!selectElement || !selectElement.value) return '';
+                        const value = selectElement.value;
+                        const parts = value.split('-');
+                        if (parts.length === 2) {
+                            return parts[0] + ':00-' + parts[1] + ':00';
+                        }
+                        return '';
                     }
 
-                    if (scheduleTestCell && testTimeSelect) {
-                        testTimeSelect.value = scheduleTestCell.value;
-                        // change 이벤트 트리거하여 다른 로직도 업데이트
-                        testTimeSelect.dispatchEvent(new Event('change'));
+                    // select의 선택된 옵션 텍스트 가져오기 함수 (백업용)
+                    function getSelectedOptionText(selectElement) {
+                        if (!selectElement) return '';
+                        const selectedOption = selectElement.options[selectElement.selectedIndex];
+                        if (selectedOption) {
+                            // "(default)" 같은 부분 제거
+                            let text = selectedOption.textContent.replace(/\s*\(.*?\)\s*/g, '').trim();
+                            return text;
+                        }
+                        return '';
+                    }
+
+                    // REF_CELL 처리
+                    if (scheduleRefCell) {
+                        // ref-time select 업데이트
+                        if (refTimeSelect) {
+                            refTimeSelect.value = scheduleRefCell.value;
+                            refTimeSelect.dispatchEvent(new Event('change'));
+                        }
+
+                        // 시뮬레이션 설정 테이블의 사용시간 표시 업데이트
+                        let timeDisplay = formatTimeFromValue(scheduleRefCell);
+                        if (!timeDisplay) {
+                            timeDisplay = getSelectedOptionText(scheduleRefCell);
+                        }
+
+                        if (timeDisplay) {
+                            // 직접 요소를 찾아서 업데이트
+                            const refTimeDisplayElement = document.getElementById('ref-time-display');
+                            if (refTimeDisplayElement) {
+                                refTimeDisplayElement.textContent = timeDisplay;
+                                console.log('REF_CELL 시간 업데이트:', timeDisplay);
+                            } else {
+                                console.warn('ref-time-display 요소를 찾을 수 없습니다.');
+                            }
+                            // updateSimulationTable도 호출
+                            if (typeof updateSimulationTable === 'function') {
+                                updateSimulationTable('REF_CELL', 'time', timeDisplay);
+                            }
+                        }
+                    }
+
+                    // TEST_CELL 처리
+                    if (scheduleTestCell) {
+                        // test-time select 업데이트
+                        if (testTimeSelect) {
+                            testTimeSelect.value = scheduleTestCell.value;
+                            testTimeSelect.dispatchEvent(new Event('change'));
+                        }
+
+                        // 시뮬레이션 설정 테이블의 사용시간 표시 업데이트
+                        let timeDisplay = formatTimeFromValue(scheduleTestCell);
+                        if (!timeDisplay) {
+                            timeDisplay = getSelectedOptionText(scheduleTestCell);
+                        }
+
+                        if (timeDisplay) {
+                            // 직접 요소를 찾아서 업데이트
+                            const testTimeDisplayElement = document.getElementById('test-time-display');
+                            if (testTimeDisplayElement) {
+                                testTimeDisplayElement.textContent = timeDisplay;
+                                console.log('TEST_CELL 시간 업데이트:', timeDisplay);
+                            } else {
+                                console.warn('test-time-display 요소를 찾을 수 없습니다.');
+                            }
+                            // updateSimulationTable도 호출
+                            if (typeof updateSimulationTable === 'function') {
+                                updateSimulationTable('TEST_CELL', 'time', timeDisplay);
+                            }
+                        }
                     }
 
                     // 팝업 닫기
@@ -3417,6 +3646,11 @@
 
                     // 토글 형식 아이템 처리 (Heating, Cooling) - 상호 배타적 동작
                     if (toggleItems.includes(type)) {
+                        // disabled 상태의 아이템은 클릭 불가
+                        if (this.classList.contains('disabled')) {
+                            return;
+                        }
+
                         // 현재 클릭한 아이템이 이미 활성화되어 있으면 아무것도 하지 않음
                         if (this.classList.contains('active')) {
                             return;

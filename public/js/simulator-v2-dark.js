@@ -785,6 +785,13 @@ async function loadIFCFile(file, showAlert = true) {
                     // UI 상태 업데이트
                     updateIFCModelStatus(true, modelID);
 
+                    // 헤더에 BIM 파일명 표시 업데이트
+                    const bimFileIndicator = document.getElementById('bim-file-indicator');
+                    if (bimFileIndicator) {
+                        bimFileIndicator.textContent = file.name;
+                        bimFileIndicator.style.display = 'block';
+                    }
+
                     // 로딩 팝업 업데이트 (성공 메시지 표시 후 3초 후 자동 닫기)
                     if (showAlert) {
                         hideLoadingPopup(true, `IFC 파일이 성공적으로 로드되었습니다!\n파일명: ${file.name}`);

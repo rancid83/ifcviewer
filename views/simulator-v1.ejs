@@ -1119,6 +1119,63 @@
             background-color: #005a9e;
             border-color: #005a9e;
         }
+        /* 제어신호 송출 팝업 전용 스타일 */
+        
+        #control-signal-popup.bim-extract-popup-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        #control-signal-popup .bim-extract-popup {
+            width: 90%;
+            max-width: 500px;
+            height: auto;
+            max-height: 400px;
+        }
+        
+        #control-signal-popup .bim-extract-popup-header {
+            background-color: #ffffff;
+            color: #000000;
+            text-align: center;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid #cccccc;
+        }
+        
+        #control-signal-popup .bim-extract-popup-content {
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background-color: #1e1e1e;
+        }
+        
+        #control-signal-popup .bim-extract-popup-icon {
+            font-size: 48px;
+            color: #fbbf24;
+            font-weight: bold;
+            margin-bottom: 20px;
+            line-height: 1;
+        }
+        
+        #control-signal-popup .bim-extract-popup-message {
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        #control-signal-popup .bim-extract-popup-footer {
+            background-color: #252526;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
         /* 시뮬레이션 매니저 팝업 스타일 */
         
         .simulation-manager-popup-overlay {
@@ -1870,6 +1927,80 @@
             background-color: #555555;
             margin: 25px 0;
         }
+        /* 로딩 팝업 스타일 */
+        
+        .loading-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        }
+        
+        .loading-popup-overlay.show {
+            display: flex;
+        }
+        
+        .loading-popup {
+            background-color: #1a1a1a;
+            border-radius: 12px;
+            padding: 40px 50px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 1px solid #333333;
+            min-width: 300px;
+            text-align: center;
+        }
+        
+        .loading-popup-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #333333;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .loading-text {
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .loading-file-name {
+            color: #9ca3af;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .loading-success {
+            color: #10b981;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
     </style>
 </head>
 
@@ -1907,7 +2038,10 @@
         <!-- 좌측 패널: 분석 결과 보기 -->
         <div class="panel panel-left">
             <div class="panel-header">
-                <span class="header-title">Building Information Model</span>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <span class="header-title">Building Information Model</span>
+                    <span id="bim-file-indicator" style="font-size: 11px; color: #9ca3af; font-weight: 400; display: none;"></span>
+                </div>
                 <div class="header-buttons" style="display: none;">
                     <button class="btn btn-dark" id="load-ifc-btn">
                         📂 파일 불러오기 (IFC)
@@ -2025,7 +2159,10 @@
         <!-- 우측 패널: 분석 설정 하기 -->
         <div class="panel panel-right">
             <div class="panel-header">
-                <span class="header-title">Energy Simulation</span>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <span class="header-title">Energy Simulation</span>
+                    <span id="simulation-type-indicator" style="font-size: 11px; color: #9ca3af; font-weight: 400; display: none;"></span>
+                </div>
                 <div class="header-buttons" style="display: none;">
                     <button class="btn btn-dark" id="analyze-btn">
                         🔬 분석 하기 (에너지 사용량)
@@ -2081,7 +2218,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="tree-menu-item">
+                                    <div class="tree-menu-item expanded">
                                         <div class="tree-menu-toggle">
                                             <span class="tree-menu-icon"></span>
                                             <span class="tree-menu-label">Zone: TEST_CELL</span>
@@ -2282,8 +2419,8 @@
         <div class="bim-extract-popup">
             <div class="bim-extract-popup-header">Warning message</div>
             <div class="bim-extract-popup-content">
-                <div class="bim-extract-popup-icon">!</div>
-                <div class="bim-extract-popup-message" style="line-height: 1.6;">
+                <div class="bim-extract-popup-icon">⚠</div>
+                <div class="bim-extract-popup-message">
                     제어신호 송출에 실패하였습니다.
                 </div>
             </div>
@@ -2587,6 +2724,17 @@
         </div>
     </div>
 
+    <!-- 로딩 팝업 -->
+    <div class="loading-popup-overlay" id="loading-popup">
+        <div class="loading-popup">
+            <div class="loading-popup-content">
+                <div class="loading-spinner" id="loading-spinner"></div>
+                <p class="loading-text" id="loading-text">로딩중입니다...</p>
+                <p class="loading-file-name" id="loading-file-name"></p>
+            </div>
+        </div>
+    </div>
+
     <script async src="https://unpkg.com/es-module-shims@1.8.2/dist/es-module-shims.js"></script>
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/": "https://unpkg.com/three@0.160.0/", "web-ifc": "/js/web-ifc-api.js" } }
@@ -2787,6 +2935,41 @@
                 });
             }
 
+            // 트리 메뉴의 Heating/Cooling 항목 표시/숨김 처리 함수
+            function updateTreeMenuVisibility(type) {
+                // 모든 Zone의 Heating/Cooling 항목 찾기
+                const treeMenuItems = document.querySelectorAll('.tree-menu-item');
+
+                treeMenuItems.forEach(function(item) {
+                    const label = item.querySelector('.tree-menu-label');
+                    if (label) {
+                        const labelText = label.textContent.trim();
+
+                        // Heating 또는 Cooling 항목인 경우
+                        if (labelText === 'Heating' || labelText === 'Cooling') {
+                            if (type === 'heating') {
+                                // Heating 선택 시: Heating은 보이고, Cooling은 숨김
+                                if (labelText === 'Heating') {
+                                    item.style.display = '';
+                                } else if (labelText === 'Cooling') {
+                                    item.style.display = 'none';
+                                }
+                            } else if (type === 'cooling') {
+                                // Cooling 선택 시: Cooling은 보이고, Heating은 숨김
+                                if (labelText === 'Cooling') {
+                                    item.style.display = '';
+                                } else if (labelText === 'Heating') {
+                                    item.style.display = 'none';
+                                }
+                            } else {
+                                // select 또는 기타: 모두 보임
+                                item.style.display = '';
+                            }
+                        }
+                    }
+                });
+            }
+
             // 시뮬레이션 선택 버튼 - 팝업 표시
             const headerSelectSimBtn = document.getElementById('header-select-sim-btn');
             const simulationManagerPopup = document.getElementById('simulation-manager-popup');
@@ -2795,12 +2978,19 @@
             const simulationManagerCloseBtn = document.getElementById('simulation-manager-close-btn');
             const seasonButtons = document.querySelectorAll('.season-btn');
 
+            // 마지막 선택된 시뮬레이션 타입 저장 (최초에는 null)
+            let lastSelectedSimulationType = null;
+
             if (headerSelectSimBtn && simulationManagerPopup) {
                 headerSelectSimBtn.addEventListener('click', function() {
                     // 팝업 표시
                     simulationManagerPopup.classList.add('show');
-                    // 드롭다운 초기화
-                    simulationManagerSelect.value = 'select';
+                    // 마지막 선택값이 있으면 복원, 없으면 'select'로 초기화
+                    if (lastSelectedSimulationType) {
+                        simulationManagerSelect.value = lastSelectedSimulationType;
+                    } else {
+                        simulationManagerSelect.value = 'select';
+                    }
                 });
             }
 
@@ -2822,7 +3012,29 @@
                         if (diagramImageLoading) {
                             diagramImageLoading.style.display = 'none';
                         }
+                        // 트리 메뉴의 Heating/Cooling 모두 보이게 처리
+                        updateTreeMenuVisibility('select');
+                        // Select 선택 시에는 저장하지 않음 (null 유지)
                         return;
+                    }
+
+                    // heating 또는 cooling 선택 시 마지막 선택값 저장
+                    if (selectedValue === 'heating' || selectedValue === 'cooling') {
+                        lastSelectedSimulationType = selectedValue;
+                    }
+
+                    // 헤더에 시뮬레이션 타입 표시 업데이트
+                    const simulationTypeIndicator = document.getElementById('simulation-type-indicator');
+                    if (simulationTypeIndicator) {
+                        if (selectedValue === 'heating') {
+                            simulationTypeIndicator.textContent = 'Heating energy consumption';
+                            simulationTypeIndicator.style.display = 'block';
+                        } else if (selectedValue === 'cooling') {
+                            simulationTypeIndicator.textContent = 'Cooling energy consumption';
+                            simulationTypeIndicator.style.display = 'block';
+                        } else {
+                            simulationTypeIndicator.style.display = 'none';
+                        }
                     }
 
                     // Heating energy consumption → 겨울 선택
@@ -2835,6 +3047,47 @@
                                 btn.classList.remove('active');
                             }
                         });
+
+                        // 트리 메뉴의 Heating/Cooling 표시/숨김 처리
+                        updateTreeMenuVisibility('heating');
+
+                        // 날짜 기간 설정: 난방 기간 (1월~2월)
+                        const startDateInput = document.getElementById('start-date-input');
+                        const endDateInput = document.getElementById('end-date-input');
+                        const simulationStartDate = document.getElementById('simulation-start-date');
+                        const simulationEndDate = document.getElementById('simulation-end-date');
+                        if (startDateInput) {
+                            startDateInput.value = '2025-01-01';
+                            startDateInput.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
+                        }
+                        if (endDateInput) {
+                            endDateInput.value = '2025-02-28';
+                            endDateInput.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
+                        }
+                        if (simulationStartDate) {
+                            simulationStartDate.value = '2025-01-01';
+                            simulationStartDate.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
+                        }
+                        if (simulationEndDate) {
+                            simulationEndDate.value = '2025-02-28';
+                            simulationEndDate.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
+                        }
+
+                        // 날짜 설정 후 적용 버튼 자동 클릭
+                        setTimeout(function() {
+                            const applyDateRangeBtn = document.getElementById('apply-date-range-btn');
+                            if (applyDateRangeBtn) {
+                                applyDateRangeBtn.click();
+                            }
+                        }, 100);
                     }
 
                     // Cooling energy consumption → 여름 선택
@@ -2847,6 +3100,47 @@
                                 btn.classList.remove('active');
                             }
                         });
+
+                        // 트리 메뉴의 Heating/Cooling 표시/숨김 처리
+                        updateTreeMenuVisibility('cooling');
+
+                        // 날짜 기간 설정: 냉방 기간 (8월~9월)
+                        const startDateInput = document.getElementById('start-date-input');
+                        const endDateInput = document.getElementById('end-date-input');
+                        const simulationStartDate = document.getElementById('simulation-start-date');
+                        const simulationEndDate = document.getElementById('simulation-end-date');
+                        if (startDateInput) {
+                            startDateInput.value = '2025-08-01';
+                            startDateInput.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
+                        }
+                        if (endDateInput) {
+                            endDateInput.value = '2025-09-30';
+                            endDateInput.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
+                        }
+                        if (simulationStartDate) {
+                            simulationStartDate.value = '2025-08-01';
+                            simulationStartDate.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
+                        }
+                        if (simulationEndDate) {
+                            simulationEndDate.value = '2025-09-30';
+                            simulationEndDate.dispatchEvent(new Event('change', {
+                                bubbles: true
+                            }));
+                        }
+
+                        // 날짜 설정 후 적용 버튼 자동 클릭
+                        setTimeout(function() {
+                            const applyDateRangeBtn = document.getElementById('apply-date-range-btn');
+                            if (applyDateRangeBtn) {
+                                applyDateRangeBtn.click();
+                            }
+                        }, 100);
                     }
 
                     // 시뮬레이션 선택 시 이미지 표시
@@ -3026,6 +3320,21 @@
                             element.textContent = value;
                         }
                     }
+                } else if (zone === 'OPT_CELL') {
+                    const optFields = {
+                        'equipment': 'opt-equipment-display',
+                        'lighting': 'opt-lighting-display',
+                        'ventilation': 'opt-ventilation-display',
+                        'temperature': 'opt-temperature-display',
+                        'time': 'opt-time-display'
+                    };
+                    const fieldId = optFields[field];
+                    if (fieldId) {
+                        const element = document.getElementById(fieldId);
+                        if (element) {
+                            element.textContent = value;
+                        }
+                    }
                 }
             }
 
@@ -3181,16 +3490,87 @@
                     const refTimeSelect = document.getElementById('ref-time');
                     const testTimeSelect = document.getElementById('test-time');
 
-                    if (scheduleRefCell && refTimeSelect) {
-                        refTimeSelect.value = scheduleRefCell.value;
-                        // change 이벤트 트리거하여 다른 로직도 업데이트
-                        refTimeSelect.dispatchEvent(new Event('change'));
+                    // select의 value를 시간 표시 형식으로 변환하는 함수 (07-16 -> 07:00-16:00)
+                    function formatTimeFromValue(selectElement) {
+                        if (!selectElement || !selectElement.value) return '';
+                        const value = selectElement.value;
+                        const parts = value.split('-');
+                        if (parts.length === 2) {
+                            return parts[0] + ':00-' + parts[1] + ':00';
+                        }
+                        return '';
                     }
 
-                    if (scheduleTestCell && testTimeSelect) {
-                        testTimeSelect.value = scheduleTestCell.value;
-                        // change 이벤트 트리거하여 다른 로직도 업데이트
-                        testTimeSelect.dispatchEvent(new Event('change'));
+                    // select의 선택된 옵션 텍스트 가져오기 함수 (백업용)
+                    function getSelectedOptionText(selectElement) {
+                        if (!selectElement) return '';
+                        const selectedOption = selectElement.options[selectElement.selectedIndex];
+                        if (selectedOption) {
+                            // "(default)" 같은 부분 제거
+                            let text = selectedOption.textContent.replace(/\s*\(.*?\)\s*/g, '').trim();
+                            return text;
+                        }
+                        return '';
+                    }
+
+                    // REF_CELL 처리
+                    if (scheduleRefCell) {
+                        // ref-time select 업데이트
+                        if (refTimeSelect) {
+                            refTimeSelect.value = scheduleRefCell.value;
+                            refTimeSelect.dispatchEvent(new Event('change'));
+                        }
+
+                        // 시뮬레이션 설정 테이블의 사용시간 표시 업데이트
+                        let timeDisplay = formatTimeFromValue(scheduleRefCell);
+                        if (!timeDisplay) {
+                            timeDisplay = getSelectedOptionText(scheduleRefCell);
+                        }
+
+                        if (timeDisplay) {
+                            // 직접 요소를 찾아서 업데이트
+                            const refTimeDisplayElement = document.getElementById('ref-time-display');
+                            if (refTimeDisplayElement) {
+                                refTimeDisplayElement.textContent = timeDisplay;
+                                console.log('REF_CELL 시간 업데이트:', timeDisplay);
+                            } else {
+                                console.warn('ref-time-display 요소를 찾을 수 없습니다.');
+                            }
+                            // updateSimulationTable도 호출
+                            if (typeof updateSimulationTable === 'function') {
+                                updateSimulationTable('REF_CELL', 'time', timeDisplay);
+                            }
+                        }
+                    }
+
+                    // TEST_CELL 처리
+                    if (scheduleTestCell) {
+                        // test-time select 업데이트
+                        if (testTimeSelect) {
+                            testTimeSelect.value = scheduleTestCell.value;
+                            testTimeSelect.dispatchEvent(new Event('change'));
+                        }
+
+                        // 시뮬레이션 설정 테이블의 사용시간 표시 업데이트
+                        let timeDisplay = formatTimeFromValue(scheduleTestCell);
+                        if (!timeDisplay) {
+                            timeDisplay = getSelectedOptionText(scheduleTestCell);
+                        }
+
+                        if (timeDisplay) {
+                            // 직접 요소를 찾아서 업데이트
+                            const testTimeDisplayElement = document.getElementById('test-time-display');
+                            if (testTimeDisplayElement) {
+                                testTimeDisplayElement.textContent = timeDisplay;
+                                console.log('TEST_CELL 시간 업데이트:', timeDisplay);
+                            } else {
+                                console.warn('test-time-display 요소를 찾을 수 없습니다.');
+                            }
+                            // updateSimulationTable도 호출
+                            if (typeof updateSimulationTable === 'function') {
+                                updateSimulationTable('TEST_CELL', 'time', timeDisplay);
+                            }
+                        }
                     }
 
                     // 팝업 닫기
@@ -3650,6 +4030,226 @@
                     if (e.target === controlSignalPopup) {
                         controlSignalPopup.classList.remove('show');
                     }
+                });
+            }
+
+            // ========== 최적화 CELL 기능 추가 ==========
+
+            // 기간별 최적화 케이스 찾기 함수
+            async function findOptimizationCase(startDate, endDate, season) {
+                try {
+                    // simulation2 폴더의 manifest.json 사용 (더 많은 케이스 데이터)
+                    const manifestPath = '/data/simulation2/manifest.json';
+                    const manifestResponse = await fetch(manifestPath);
+
+                    if (!manifestResponse.ok) {
+                        console.warn('simulation2 manifest를 찾을 수 없어 simulation manifest 사용');
+                        // simulation 폴더로 fallback
+                        const fallbackPath = '/data/simulation/manifest.json';
+                        const fallbackResponse = await fetch(fallbackPath);
+                        if (!fallbackResponse.ok) {
+                            throw new Error('시뮬레이션 manifest 파일을 찾을 수 없습니다.');
+                        }
+                        const manifest = await fallbackResponse.json();
+                        return await findOptimizationCaseFromManifest(manifest, season, '/data/simulation');
+                    }
+
+                    const manifest = await manifestResponse.json();
+                    return await findOptimizationCaseFromManifest(manifest, season, '/data/simulation2');
+                } catch (error) {
+                    console.error('최적화 케이스 찾기 실패:', error);
+                    return null;
+                }
+            }
+
+            // manifest에서 최적화 케이스 찾기
+            async function findOptimizationCaseFromManifest(manifest, season, basePath) {
+                // season에 맞는 케이스 필터링
+                const seasonKey = season.charAt(0).toUpperCase() + season.slice(1); // Summer 또는 Winter
+                const seasonCases = Object.entries(manifest.sheets)
+                    .filter(([key, value]) => key.includes(seasonKey))
+                    .map(([key, value]) => ({
+                        name: key,
+                        folder: value
+                    }));
+
+                if (seasonCases.length === 0) {
+                    console.warn(`해당 season(${season})에 맞는 케이스를 찾을 수 없습니다.`);
+                    return null;
+                }
+
+                // 각 케이스의 index.json 로드하여 avgEnergyTest 비교
+                const caseDataPromises = seasonCases.map(async({
+                    name,
+                    folder
+                }) => {
+                    try {
+                        const indexPath = `${basePath}/${folder}/index.json`;
+                        const indexResponse = await fetch(indexPath);
+                        if (!indexResponse.ok) {
+                            console.warn(`케이스 ${folder}의 index.json을 로드할 수 없습니다.`);
+                            return null;
+                        }
+                        const index = await indexResponse.json();
+                        return {
+                            name,
+                            folder,
+                            avgEnergyTest: index.avgEnergyTest || 0,
+                            avgEnergyRef: index.avgEnergyRef || 0,
+                            startTime: index.startTime,
+                            endTime: index.endTime,
+                            season: index.season
+                        };
+                    } catch (error) {
+                        console.warn(`케이스 ${folder} 로드 실패:`, error);
+                        return null;
+                    }
+                });
+
+                const caseData = (await Promise.all(caseDataPromises)).filter(c => c !== null);
+
+                if (caseData.length === 0) {
+                    console.warn('로드된 케이스 데이터가 없습니다.');
+                    return null;
+                }
+
+                // avgEnergyTest가 최소인 케이스 찾기 (최적화 케이스)
+                const optimizationCase = caseData.reduce((min, current) => {
+                    // avgEnergyTest가 낮을수록 에너지 사용량이 적으므로 최적
+                    return current.avgEnergyTest < min.avgEnergyTest ? current : min;
+                });
+
+                console.log('최적화 케이스 발견:', optimizationCase);
+                return optimizationCase;
+            }
+
+            // 케이스별 파라미터 메타데이터 캐시
+            let caseParametersCache = null;
+
+            // 케이스별 파라미터 메타데이터 로드 (나중에 확장 가능)
+            async function loadCaseParametersMetadata() {
+                if (caseParametersCache) {
+                    return caseParametersCache;
+                }
+
+                try {
+                    // 메타데이터 파일이 있으면 로드 (없으면 null 반환)
+                    const metadataPath = '/data/simulation2/case-parameters.json';
+                    const response = await fetch(metadataPath);
+                    if (response.ok) {
+                        caseParametersCache = await response.json();
+                        return caseParametersCache;
+                    }
+                } catch (error) {
+                    console.log('케이스 파라미터 메타데이터 파일이 없습니다. 기본값을 사용합니다.');
+                }
+
+                return null;
+            }
+
+            // 케이스 이름에서 파라미터 추출
+            async function getCaseParameters(caseName, caseData) {
+                // 기본값
+                const defaultParams = {
+                    equipment: 50.4,
+                    lighting: 23.4,
+                    ventilation: 6,
+                    temperature: 26,
+                    time: '07:00-18:00'
+                };
+
+                // 메타데이터 로드 시도
+                const metadata = await loadCaseParametersMetadata();
+                if (metadata && metadata[caseName]) {
+                    return metadata[caseName];
+                }
+
+                // 케이스 번호 추출 (Case81_Summer -> 81, Case01_Summer -> 1)
+                const caseMatch = caseName.match(/Case0?(\d+)/);
+                if (caseMatch) {
+                    const caseNum = parseInt(caseMatch[1]);
+
+                    // 케이스 데이터에서 Tset 추출 시도 (simulation2 데이터에 있음)
+                    let temperature = defaultParams.temperature;
+                    if (caseData && caseData.season) {
+                        // season에 따라 기본 온도 조정
+                        temperature = caseData.season === 'summer' ? 26 : 20;
+                    }
+
+                    // 케이스 번호에 따라 파라미터 조정 (간단한 추정 로직)
+                    // 실제로는 메타데이터 파일에서 가져와야 함
+                    return {
+                        equipment: (defaultParams.equipment + (caseNum % 20) * 0.5).toFixed(1),
+                        lighting: (defaultParams.lighting + (caseNum % 15) * 0.3).toFixed(1),
+                        ventilation: defaultParams.ventilation,
+                        temperature: temperature,
+                        time: defaultParams.time
+                    };
+                }
+
+                return defaultParams;
+            }
+
+            // 최적화 CELL 업데이트 함수
+            async function updateOptimizationCell(startDate, endDate) {
+                try {
+                    // season 결정 (날짜 기반)
+                    const start = new Date(startDate);
+                    const month = start.getMonth() + 1; // 1-12
+                    const season = (month >= 6 && month <= 9) ? 'summer' : 'winter';
+
+                    console.log(`최적화 케이스 찾기 시작: ${startDate} ~ ${endDate}, season: ${season}`);
+
+                    // 최적화 케이스 찾기
+                    const optCase = await findOptimizationCase(startDate, endDate, season);
+
+                    if (!optCase) {
+                        console.warn('최적화 케이스를 찾을 수 없습니다.');
+                        return;
+                    }
+
+                    // 케이스 파라미터 가져오기
+                    const params = await getCaseParameters(optCase.name, optCase);
+
+                    // 최적화 CELL 업데이트
+                    updateSimulationTable('OPT_CELL', 'equipment', params.equipment);
+                    updateSimulationTable('OPT_CELL', 'lighting', params.lighting);
+                    updateSimulationTable('OPT_CELL', 'ventilation', params.ventilation);
+                    updateSimulationTable('OPT_CELL', 'temperature', params.temperature);
+                    updateSimulationTable('OPT_CELL', 'time', params.time);
+
+                    console.log('최적화 CELL 업데이트 완료:', {
+                        case: optCase.name,
+                        avgEnergyTest: optCase.avgEnergyTest,
+                        params: params
+                    });
+                } catch (error) {
+                    console.error('최적화 CELL 업데이트 실패:', error);
+                }
+            }
+
+            // 기간 적용 버튼 이벤트 핸들러
+            const applyDateRangeBtn = document.getElementById('apply-date-range-btn');
+            if (applyDateRangeBtn) {
+                applyDateRangeBtn.addEventListener('click', async function() {
+                    const startDateInput = document.getElementById('start-date-input');
+                    const endDateInput = document.getElementById('end-date-input');
+
+                    if (!startDateInput || !endDateInput) {
+                        console.warn('날짜 입력 필드를 찾을 수 없습니다.');
+                        return;
+                    }
+
+                    const startDate = startDateInput.value;
+                    const endDate = endDateInput.value;
+
+                    if (!startDate || !endDate) {
+                        console.warn('시작일 또는 종료일이 설정되지 않았습니다.');
+                        return;
+                    }
+
+                    // 최적화 CELL 업데이트
+                    await updateOptimizationCell(startDate, endDate);
                 });
             }
         });
