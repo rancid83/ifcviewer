@@ -2950,6 +2950,14 @@
                         if (simulationEndDate) {
                             simulationEndDate.value = '2025-02-28';
                         }
+
+                        // 날짜 설정 후 적용 버튼 자동 클릭
+                        setTimeout(function() {
+                            const applyDateRangeBtn = document.getElementById('apply-date-range-btn');
+                            if (applyDateRangeBtn) {
+                                applyDateRangeBtn.click();
+                            }
+                        }, 100);
                     }
 
                     // Cooling energy consumption → 여름 선택 및 Zone 정보 팝업의 cooling 버튼 활성화
@@ -2992,6 +3000,14 @@
                         if (simulationEndDate) {
                             simulationEndDate.value = '2025-09-30';
                         }
+
+                        // 날짜 설정 후 적용 버튼 자동 클릭
+                        setTimeout(function() {
+                            const applyDateRangeBtn = document.getElementById('apply-date-range-btn');
+                            if (applyDateRangeBtn) {
+                                applyDateRangeBtn.click();
+                            }
+                        }, 100);
                     }
 
                     // 시뮬레이션 선택 시 이미지 표시
