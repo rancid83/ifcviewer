@@ -3379,6 +3379,42 @@
                         popup.classList.remove('show');
                     });
 
+                    // 현재 선택된 시뮬레이션 타입에 따라 버튼 활성화
+                    const heatingMenuItem = document.getElementById('zone-menu-heating');
+                    const coolingMenuItem = document.getElementById('zone-menu-cooling');
+
+                    if (lastSelectedSimulationType === 'heating') {
+                        // Heating 선택 시: heating 버튼 활성화, cooling 버튼 비활성화
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('disabled');
+                            heatingMenuItem.classList.add('active');
+                        }
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('active');
+                            coolingMenuItem.classList.add('disabled');
+                        }
+                    } else if (lastSelectedSimulationType === 'cooling') {
+                        // Cooling 선택 시: cooling 버튼 활성화, heating 버튼 비활성화
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('disabled');
+                            coolingMenuItem.classList.add('active');
+                        }
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('active');
+                            heatingMenuItem.classList.add('disabled');
+                        }
+                    } else {
+                        // 시뮬레이션이 선택되지 않은 경우: 둘 다 disabled 상태 유지
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('active');
+                            heatingMenuItem.classList.add('disabled');
+                        }
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('active');
+                            coolingMenuItem.classList.add('disabled');
+                        }
+                    }
+
                     // 팝업 표시
                     zoneInfoPopup.classList.add('show');
                 }

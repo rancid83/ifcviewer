@@ -1667,7 +1667,8 @@
         
         .zone-info-menu-item.disabled {
             opacity: 0.5;
-            cursor: pointer;
+            cursor: not-allowed;
+            pointer-events: none;
         }
         
         .zone-info-menu-item.disabled .zone-info-menu-icon {
@@ -3037,7 +3038,7 @@
                         }
                     }
 
-                    // Heating energy consumption → 겨울 선택
+                    // Heating energy consumption → 겨울 선택 및 Zone 정보 팝업의 heating 버튼 활성화
                     if (selectedValue === 'heating') {
                         seasonButtons.forEach(function(btn) {
                             if (btn.dataset.season === 'winter') {
@@ -3047,6 +3048,18 @@
                                 btn.classList.remove('active');
                             }
                         });
+
+                        // Zone 정보 팝업의 heating 버튼 활성화, cooling 버튼 비활성화
+                        const heatingMenuItem = document.getElementById('zone-menu-heating');
+                        const coolingMenuItem = document.getElementById('zone-menu-cooling');
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('disabled');
+                            heatingMenuItem.classList.add('active');
+                        }
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('active');
+                            coolingMenuItem.classList.add('disabled');
+                        }
 
                         // 트리 메뉴의 Heating/Cooling 표시/숨김 처리
                         updateTreeMenuVisibility('heating');
@@ -3090,7 +3103,7 @@
                         }, 100);
                     }
 
-                    // Cooling energy consumption → 여름 선택
+                    // Cooling energy consumption → 여름 선택 및 Zone 정보 팝업의 cooling 버튼 활성화
                     if (selectedValue === 'cooling') {
                         seasonButtons.forEach(function(btn) {
                             if (btn.dataset.season === 'summer') {
@@ -3100,6 +3113,18 @@
                                 btn.classList.remove('active');
                             }
                         });
+
+                        // Zone 정보 팝업의 cooling 버튼 활성화, heating 버튼 비활성화
+                        const heatingMenuItem = document.getElementById('zone-menu-heating');
+                        const coolingMenuItem = document.getElementById('zone-menu-cooling');
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('disabled');
+                            coolingMenuItem.classList.add('active');
+                        }
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('active');
+                            heatingMenuItem.classList.add('disabled');
+                        }
 
                         // 트리 메뉴의 Heating/Cooling 표시/숨김 처리
                         updateTreeMenuVisibility('cooling');
@@ -3369,6 +3394,42 @@
                         popup.classList.remove('show');
                     });
 
+                    // 현재 선택된 시뮬레이션 타입에 따라 버튼 활성화
+                    const heatingMenuItem = document.getElementById('zone-menu-heating');
+                    const coolingMenuItem = document.getElementById('zone-menu-cooling');
+
+                    if (lastSelectedSimulationType === 'heating') {
+                        // Heating 선택 시: heating 버튼 활성화, cooling 버튼 비활성화
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('disabled');
+                            heatingMenuItem.classList.add('active');
+                        }
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('active');
+                            coolingMenuItem.classList.add('disabled');
+                        }
+                    } else if (lastSelectedSimulationType === 'cooling') {
+                        // Cooling 선택 시: cooling 버튼 활성화, heating 버튼 비활성화
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('disabled');
+                            coolingMenuItem.classList.add('active');
+                        }
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('active');
+                            heatingMenuItem.classList.add('disabled');
+                        }
+                    } else {
+                        // 시뮬레이션이 선택되지 않은 경우: 둘 다 disabled 상태 유지
+                        if (heatingMenuItem) {
+                            heatingMenuItem.classList.remove('active');
+                            heatingMenuItem.classList.add('disabled');
+                        }
+                        if (coolingMenuItem) {
+                            coolingMenuItem.classList.remove('active');
+                            coolingMenuItem.classList.add('disabled');
+                        }
+                    }
+
                     // 팝업 표시
                     zoneInfoPopup.classList.add('show');
                 }
@@ -3636,6 +3697,11 @@
 
                     // 토글 형식 아이템 처리 (Heating, Cooling) - 상호 배타적 동작
                     if (toggleItems.includes(type)) {
+                        // disabled 상태의 아이템은 클릭 불가
+                        if (this.classList.contains('disabled')) {
+                            return;
+                        }
+
                         // 현재 클릭한 아이템이 이미 활성화되어 있으면 아무것도 하지 않음
                         if (this.classList.contains('active')) {
                             return;
