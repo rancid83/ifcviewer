@@ -116,6 +116,16 @@
             background-color: #1a1a1a;
         }
         
+        .header-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: auto;
+        }
+        
+        .header-btn:disabled:hover {
+            background-color: transparent;
+        }
+        
         .header-btn-icon {
             width: 24px;
             height: 24px;
@@ -236,6 +246,18 @@
             background-color: #4b5563;
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
+        }
+        
+        .btn-gray:disabled,
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-gray:disabled:hover,
+        .btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
         }
         /* IFC 뷰어 섹션 */
         
@@ -802,6 +824,68 @@
         
         .settings-table tr:last-child td {
             border-bottom: none;
+        }
+        
+        /* 일자별 최적화 설정온도 테이블 영역 (스크롤) */
+        .optimization-temperature-wrap {
+            margin-top: 16px;
+            border: 1px solid #333333;
+            border-radius: 6px;
+            background-color: #0d0d0d;
+            max-height: 360px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+        .optimization-temperature-wrap::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .optimization-temperature-wrap::-webkit-scrollbar-track {
+            background: #0d0d0d;
+        }
+        .optimization-temperature-wrap::-webkit-scrollbar-thumb {
+            background: #333333;
+            border-radius: 3px;
+        }
+        .optimization-temperature-wrap::-webkit-scrollbar-thumb:hover {
+            background: #444444;
+        }
+        .optimization-temperature-table {
+            width: 100%;
+            min-width: 320px;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .optimization-temperature-table th {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            padding: 8px 10px;
+            text-align: center;
+            font-weight: 600;
+            border-bottom: 1px solid #333333;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .optimization-temperature-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #2a2a2a;
+            text-align: center;
+            color: #e0e0e0;
+            background-color: #0d0d0d;
+        }
+        .optimization-temperature-table tbody tr:hover td {
+            background-color: #1a1a1a;
+        }
+        .optimization-temperature-table .col-date {
+            min-width: 90px;
+            text-align: left;
+            padding-left: 12px;
+        }
+        .optimization-temperature-table .opt-energy-hint {
+            font-size: 10px;
+            color: #888;
+            font-weight: 400;
         }
         
         .param-label {
@@ -1947,6 +2031,11 @@
         .loading-popup-overlay.show {
             display: flex;
         }
+        /* 최적화 시뮬레이션 중: 배경(TEST_CELL)이 보이도록 오버레이 투명·블러 없음 */
+        .loading-popup-overlay.optimization-loading {
+            background-color: rgba(0, 0, 0, 0.25);
+            backdrop-filter: none;
+        }
         
         .loading-popup {
             background-color: #1a1a1a;
@@ -2020,13 +2109,13 @@
                 </span>
                 <span>BIM 불러오기</span>
             </button>
-            <button class="header-btn" id="header-extract-bim-btn">
+            <button class="header-btn" id="header-extract-bim-btn" disabled title="IFC 파일을 먼저 로드해 주세요.">
                 <span class="header-btn-icon">
                     <img src="/img/bim-extract-icon.png" alt="BIM 데이터 추출">
                 </span>
                 <span>BIM 데이터 추출</span>
             </button>
-            <button class="header-btn" id="header-select-sim-btn">
+            <button class="header-btn" id="header-select-sim-btn" disabled title="IFC 파일을 먼저 로드해 주세요.">
                 <span class="header-btn-icon">
                     <img src="/img/simulation-select-icon.png" alt="시뮬레이션 선택">
                 </span>
@@ -2125,6 +2214,9 @@
                                 <option value="200">200x</option>
                                 <option value="300">300x</option>
                             </select>
+                            <button id="apply-color-to-elements-test-btn" type="button" class="control-btn" style="margin-left:8px; padding:6px 12px; font-size:12px; background:#374151; color:#e5e7eb;" title="TEST_CELL(346,1997,404,381)에 applyColorToElements 호출 테스트">
+                                색상 테스트
+                            </button>
                         </div>
                     </div>
 
@@ -2339,35 +2431,37 @@
                                     <div class="param-value" id="test-time-display">07:00-18:00</div>
                                 </td>
                             </tr>
-                            <tr>
-                                <td class="cell-row-label" style="background-color: #1a1a1a;">최적화 CELL</td>
-                                <td>
-                                    <div class="param-value" id="opt-equipment-display">50.4</div>
-                                </td>
-                                <td>
-                                    <div class="param-value" id="opt-lighting-display">23.4</div>
-                                </td>
-                                <td>
-                                    <div class="param-value" id="opt-ventilation-display">6</div>
-                                </td>
-                                <td>
-                                    <div class="param-value" id="opt-temperature-display">26</div>
-                                </td>
-                                <td>
-                                    <div class="param-value" id="opt-time-display">07:00-18:00</div>
-                                </td>
-                            </tr>
                         </tbody>
                     </table>
 
                     <!-- 버튼 영역 (오른쪽 하단) -->
-                    <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
-                        <button class="btn btn-gray" id="analyze-energy-btn">
+                    <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-gray" id="analyze-energy-btn" disabled title="IFC 파일을 먼저 로드해 주세요.">
                             분석하기 (에너지 사용량)
                         </button>
-                        <button class="btn btn-gray" id="send-control-signal-btn">
+                        <button class="btn btn-gray" id="optimize-temperature-btn" disabled title="IFC 파일을 먼저 로드해 주세요.">
+                            최적화하기 (설정온도)
+                        </button>
+                        <button class="btn btn-gray" id="send-control-signal-btn" disabled title="IFC 파일을 먼저 로드해 주세요.">
                             제어신호 송출
                         </button>
+                    </div>
+
+                    <!-- 일자별 최적화 설정온도 테이블 -->
+                    <div class="optimization-temperature-wrap" id="optimization-temperature-wrap">
+                        <table class="optimization-temperature-table" id="optimization-temperature-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-date">일시</th>
+                                    <th>07~10시 [°C]</th>
+                                    <th>10~14시 [°C]</th>
+                                    <th id="optimization-header-14-end">14~18시 [°C]</th>
+                                </tr>
+                            </thead>
+                            <tbody id="optimization-temperature-tbody">
+                                <!-- 일자별 최적화 온도 데이터가 여기 채워짐 -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -2849,6 +2943,11 @@
 
             if (headerExtractBimBtn && bimExtractPopup) {
                 headerExtractBimBtn.addEventListener('click', async function() {
+                    // BIM 불러오기 없이 추출 시도 시 경고
+                    if (!window.bimLoaded) {
+                        alert('BIM 모델을 먼저 불러와 주세요.\n\n"BIM 불러오기" 버튼을 눌러 IFC 파일을 선택한 후, 데이터 추출을 진행해 주세요.');
+                        return;
+                    }
                     // 팝업 표시
                     bimExtractPopup.classList.add('show');
 
@@ -3345,21 +3444,6 @@
                             element.textContent = value;
                         }
                     }
-                } else if (zone === 'OPT_CELL') {
-                    const optFields = {
-                        'equipment': 'opt-equipment-display',
-                        'lighting': 'opt-lighting-display',
-                        'ventilation': 'opt-ventilation-display',
-                        'temperature': 'opt-temperature-display',
-                        'time': 'opt-time-display'
-                    };
-                    const fieldId = optFields[field];
-                    if (fieldId) {
-                        const element = document.getElementById(fieldId);
-                        if (element) {
-                            element.textContent = value;
-                        }
-                    }
                 }
             }
 
@@ -3580,6 +3664,11 @@
                         if (refTimeSelect) {
                             refTimeSelect.value = scheduleRefCell.value;
                             refTimeSelect.dispatchEvent(new Event('change'));
+                        }
+
+                        // 최적화 설정온도 테이블 헤더(14~끝시)를 REF_CELL 사용시간 끝 기준으로 갱신
+                        if (typeof updateOptimizationTableHeaderEndTime === 'function') {
+                            updateOptimizationTableHeaderEndTime();
                         }
 
                         // 시뮬레이션 설정 테이블의 사용시간 표시 업데이트
@@ -4072,6 +4161,192 @@
                 });
             }
 
+            // REF_CELL 사용시간 끝 시각 기준으로 최적화 설정온도 테이블 헤더(14~끝시) 갱신
+            function updateOptimizationTableHeaderEndTime() {
+                const scheduleRefCell = document.getElementById('schedule-ref-cell');
+                const headerEl = document.getElementById('optimization-header-14-end');
+                if (!scheduleRefCell || !headerEl) return;
+                const value = scheduleRefCell.value || '07-18';
+                const parts = value.split('-');
+                const endHour = parts.length === 2 ? parts[1] : '18';
+                headerEl.textContent = '14~' + endHour + '시 [°C]';
+            }
+
+            // 페이지 로드 시 최적화 테이블 헤더를 REF_CELL 사용시간에 맞춤
+            updateOptimizationTableHeaderEndTime();
+
+            // 최적화하기 (설정온도) 버튼 - 일자별 최적화 온도 테이블 갱신
+            const optimizeTemperatureBtn = document.getElementById('optimize-temperature-btn');
+            const optimizationTbody = document.getElementById('optimization-temperature-tbody');
+            const startDateInput = document.getElementById('start-date-input');
+            const endDateInput = document.getElementById('end-date-input');
+
+            function formatDateYMD(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
+
+            window._optimizationResultCases = null;
+            window.setOptimizationResultCases = function(obj) {
+                window._optimizationResultCases = obj || null;
+                var wrap = document.getElementById('optimization-apply-wrap');
+                if (wrap) wrap.style.display = (obj && (obj.best07_10 || obj.best10_14 || obj.best14_end)) ? 'block' : 'none';
+            };
+
+            if (optimizeTemperatureBtn && optimizationTbody) {
+                optimizeTemperatureBtn.addEventListener('click', async function() {
+                    let startStr = startDateInput ? startDateInput.value : '';
+                    let endStr = endDateInput ? endDateInput.value : '';
+                    if (!startStr || !endStr) {
+                        alert('기간을 설정해 주세요.\n상단 기간(시작일 ~ 종료일)을 선택한 뒤 적용 버튼을 누르거나, 날짜를 직접 입력해 주세요.');
+                        return;
+                    }
+                    const start = new Date(startStr);
+                    const end = new Date(endStr);
+                    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+                        alert('올바른 기간을 입력해 주세요.');
+                        return;
+                    }
+                    var month = start.getMonth() + 1;
+                    var season = (month >= 6 && month <= 9) ? 'summer' : 'winter';
+                    const loadingPopup = document.getElementById('loading-popup');
+                    const loadingText = document.getElementById('loading-text');
+                    const loadingSpinner = document.getElementById('loading-spinner');
+                    if (loadingPopup && loadingText) {
+                        loadingPopup.classList.add('show', 'optimization-loading');
+                        loadingText.textContent = '최적화 시나리오 시뮬레이션 중... (1/4)';
+                        loadingText.className = 'loading-text';
+                        if (loadingSpinner) loadingSpinner.style.display = 'block';
+                    }
+                    try {
+                        if (typeof window.runOptimizationSimulationSteps === 'function') {
+                            await window.runOptimizationSimulationSteps(season, function(step, total) {
+                                if (loadingText) loadingText.textContent = '최적화 시나리오 시뮬레이션 중... (' + step + '/' + total + ')';
+                            });
+                        }
+                        const summaryRes = await fetch('/data/simulation2/case-summary.json');
+                        if (!summaryRes.ok) {
+                            throw new Error('케이스 요약 데이터를 불러올 수 없습니다.');
+                        }
+                        const summary = await summaryRes.json();
+                        const cases = summary.cases || {};
+                        const bySeason = summary.bySeason || { summer: [], winter: [] };
+                        const seasonCases = (bySeason[season] || []).map(function(k) { return cases[k]; }).filter(Boolean);
+                        if (seasonCases.length === 0) {
+                            throw new Error('해당 시즌(' + season + ') 케이스가 없습니다.');
+                        }
+                        const scheduleRef = document.getElementById('schedule-ref-cell');
+                        const endHour = scheduleRef && scheduleRef.value ? scheduleRef.value.split('-')[1] : '18';
+                        const slotEndKey = endHour === '20' ? '14-20' : '14-18';
+                        function bestCaseForSlot(slotKey) {
+                            var best = null;
+                            var bestAvg = null;
+                            seasonCases.forEach(function(c) {
+                                var slot = (c.slotEnergy && c.slotEnergy[slotKey]) ? c.slotEnergy[slotKey] : (c.slotEnergy && c.slotEnergy['14-18']) ? c.slotEnergy['14-18'] : null;
+                                if (!slot) return;
+                                var avg = slot.avg;
+                                if (bestAvg === null || (season === 'summer' ? avg < bestAvg : avg > bestAvg)) {
+                                    bestAvg = avg;
+                                    best = c;
+                                }
+                            });
+                            return best;
+                        }
+                        var best07_10 = bestCaseForSlot('07-10');
+                        var best10_14 = bestCaseForSlot('10-14');
+                        var best14_end = bestCaseForSlot(slotEndKey);
+                        var hasDaily = seasonCases.some(function(c) { return c.dailySlotEnergy && c.dailySlotEnergy.length; });
+                        function getBestCaseForDate(dateStr) {
+                            if (!hasDaily) return null;
+                            var dayTotals = [];
+                            seasonCases.forEach(function(c) {
+                                var daily = c.dailySlotEnergy;
+                                if (!daily || !daily.length) return;
+                                var dayEntry = daily.find(function(d) { return d.date === dateStr; });
+                                if (!dayEntry || !dayEntry.slotEnergy) return;
+                                var se = dayEntry.slotEnergy;
+                                var total = (se['07-10'] || 0) + (se['10-14'] || 0) + (se[slotEndKey] || se['14-18'] || 0);
+                                dayTotals.push({ case: c, total: total, slotEnergy: se });
+                            });
+                            if (dayTotals.length === 0) return null;
+                            dayTotals.sort(function(a, b) { return (season === 'summer' ? a.total - b.total : b.total - a.total); });
+                            return dayTotals[0];
+                        }
+                        var rows = [];
+                        var cur = new Date(start);
+                        cur.setHours(0, 0, 0, 0);
+                        var endDay = new Date(end);
+                        endDay.setHours(0, 0, 0, 0);
+                        while (cur <= endDay) {
+                            var dateStr = formatDateYMD(cur);
+                            var dayBest = getBestCaseForDate(dateStr);
+                            var cell1, cell2, cell3;
+                            if (dayBest) {
+                                var c = dayBest.case;
+                                var se = dayBest.slotEnergy;
+                                var t1 = (c.TsetBySlot && c.TsetBySlot['07-10'] != null) ? c.TsetBySlot['07-10'] : '—';
+                                var t2 = (c.TsetBySlot && c.TsetBySlot['10-14'] != null) ? c.TsetBySlot['10-14'] : '—';
+                                var t3 = (c.TsetBySlot && c.TsetBySlot[slotEndKey] != null) ? c.TsetBySlot[slotEndKey] : '—';
+                                var e1 = (se['07-10'] != null) ? Number(se['07-10']).toFixed(1) : '';
+                                var e2 = (se['10-14'] != null) ? Number(se['10-14']).toFixed(1) : '';
+                                var e3 = (se[slotEndKey] != null || se['14-18'] != null) ? Number(se[slotEndKey] || se['14-18']).toFixed(1) : '';
+                                cell1 = t1;
+                                cell2 = t2;
+                                cell3 = t3;
+                            } else {
+                                var t1 = (best07_10 && best07_10.TsetBySlot && best07_10.TsetBySlot['07-10'] != null) ? best07_10.TsetBySlot['07-10'] : '—';
+                                var t2 = (best10_14 && best10_14.TsetBySlot && best10_14.TsetBySlot['10-14'] != null) ? best10_14.TsetBySlot['10-14'] : '—';
+                                var t3 = (best14_end && best14_end.TsetBySlot && best14_end.TsetBySlot[slotEndKey] != null) ? best14_end.TsetBySlot[slotEndKey] : '—';
+                                cell1 = t1;
+                                cell2 = t2;
+                                cell3 = t3;
+                            }
+                            rows.push('<tr><td class="col-date">' + dateStr + '</td><td>' + cell1 + '</td><td>' + cell2 + '</td><td>' + cell3 + '</td></tr>');
+                            cur.setDate(cur.getDate() + 1);
+                        }
+                        optimizationTbody.innerHTML = rows.join('');
+                        if (window.setOptimizationResultCases) {
+                            window.setOptimizationResultCases({ best07_10: best07_10 ? best07_10.caseName : null, best10_14: best10_14 ? best10_14.caseName : null, best14_end: best14_end ? best14_end.caseName : null });
+                        }
+                    } catch (err) {
+                        console.error('최적화 실패:', err);
+                        alert('최적화 중 오류가 발생했습니다.\n\n' + (err.message || err));
+                    } finally {
+                        if (loadingPopup && loadingText) {
+                            loadingText.textContent = '최적화 완료';
+                            loadingText.className = 'loading-success';
+                            if (loadingSpinner) loadingSpinner.style.display = 'none';
+                            loadingPopup.classList.remove('optimization-loading');
+                            setTimeout(function() { loadingPopup.classList.remove('show'); }, 1500);
+                        }
+                    }
+                });
+            }
+
+            (function() {
+                var applyBtn = document.getElementById('apply-optimization-result-btn');
+                var testCaseSelect = document.getElementById('test-case');
+                if (!applyBtn || !testCaseSelect) return;
+                function caseNameToSelectValue(caseName) {
+                    if (!caseName || typeof caseName !== 'string') return null;
+                    var m = caseName.match(/Case(\d+)_(Summer|Winter)/i);
+                    return m ? 'case' + String(parseInt(m[1], 10)).padStart(2, '0') : null;
+                }
+                applyBtn.addEventListener('click', function() {
+                    var obj = window._optimizationResultCases;
+                    var caseName = (obj && obj.best07_10) || (obj && obj.best10_14) || (obj && obj.best14_end) || null;
+                    var value = caseNameToSelectValue(caseName);
+                    if (value && testCaseSelect.querySelector('option[value="' + value + '"]')) {
+                        testCaseSelect.value = value;
+                        testCaseSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    } else if (caseName) {
+                        alert('선택한 케이스(' + caseName + ')가 현재 시즌 드롭다운에 없습니다.');
+                    }
+                });
+            })();
+
             // 제어신호 송출 버튼 - 경고 팝업 표시
             const sendControlSignalBtn = document.getElementById('send-control-signal-btn');
             const controlSignalPopup = document.getElementById('control-signal-popup');
@@ -4096,226 +4371,6 @@
                     if (e.target === controlSignalPopup) {
                         controlSignalPopup.classList.remove('show');
                     }
-                });
-            }
-
-            // ========== 최적화 CELL 기능 추가 ==========
-
-            // 기간별 최적화 케이스 찾기 함수
-            async function findOptimizationCase(startDate, endDate, season) {
-                try {
-                    // simulation2 폴더의 manifest.json 사용 (더 많은 케이스 데이터)
-                    const manifestPath = '/data/simulation2/manifest.json';
-                    const manifestResponse = await fetch(manifestPath);
-
-                    if (!manifestResponse.ok) {
-                        console.warn('simulation2 manifest를 찾을 수 없어 simulation manifest 사용');
-                        // simulation 폴더로 fallback
-                        const fallbackPath = '/data/simulation/manifest.json';
-                        const fallbackResponse = await fetch(fallbackPath);
-                        if (!fallbackResponse.ok) {
-                            throw new Error('시뮬레이션 manifest 파일을 찾을 수 없습니다.');
-                        }
-                        const manifest = await fallbackResponse.json();
-                        return await findOptimizationCaseFromManifest(manifest, season, '/data/simulation');
-                    }
-
-                    const manifest = await manifestResponse.json();
-                    return await findOptimizationCaseFromManifest(manifest, season, '/data/simulation2');
-                } catch (error) {
-                    console.error('최적화 케이스 찾기 실패:', error);
-                    return null;
-                }
-            }
-
-            // manifest에서 최적화 케이스 찾기
-            async function findOptimizationCaseFromManifest(manifest, season, basePath) {
-                // season에 맞는 케이스 필터링
-                const seasonKey = season.charAt(0).toUpperCase() + season.slice(1); // Summer 또는 Winter
-                const seasonCases = Object.entries(manifest.sheets)
-                    .filter(([key, value]) => key.includes(seasonKey))
-                    .map(([key, value]) => ({
-                        name: key,
-                        folder: value
-                    }));
-
-                if (seasonCases.length === 0) {
-                    console.warn(`해당 season(${season})에 맞는 케이스를 찾을 수 없습니다.`);
-                    return null;
-                }
-
-                // 각 케이스의 index.json 로드하여 avgEnergyTest 비교
-                const caseDataPromises = seasonCases.map(async({
-                    name,
-                    folder
-                }) => {
-                    try {
-                        const indexPath = `${basePath}/${folder}/index.json`;
-                        const indexResponse = await fetch(indexPath);
-                        if (!indexResponse.ok) {
-                            console.warn(`케이스 ${folder}의 index.json을 로드할 수 없습니다.`);
-                            return null;
-                        }
-                        const index = await indexResponse.json();
-                        return {
-                            name,
-                            folder,
-                            avgEnergyTest: index.avgEnergyTest || 0,
-                            avgEnergyRef: index.avgEnergyRef || 0,
-                            startTime: index.startTime,
-                            endTime: index.endTime,
-                            season: index.season
-                        };
-                    } catch (error) {
-                        console.warn(`케이스 ${folder} 로드 실패:`, error);
-                        return null;
-                    }
-                });
-
-                const caseData = (await Promise.all(caseDataPromises)).filter(c => c !== null);
-
-                if (caseData.length === 0) {
-                    console.warn('로드된 케이스 데이터가 없습니다.');
-                    return null;
-                }
-
-                // avgEnergyTest가 최소인 케이스 찾기 (최적화 케이스)
-                const optimizationCase = caseData.reduce((min, current) => {
-                    // avgEnergyTest가 낮을수록 에너지 사용량이 적으므로 최적
-                    return current.avgEnergyTest < min.avgEnergyTest ? current : min;
-                });
-
-                console.log('최적화 케이스 발견:', optimizationCase);
-                return optimizationCase;
-            }
-
-            // 케이스별 파라미터 메타데이터 캐시
-            let caseParametersCache = null;
-
-            // 케이스별 파라미터 메타데이터 로드 (나중에 확장 가능)
-            async function loadCaseParametersMetadata() {
-                if (caseParametersCache) {
-                    return caseParametersCache;
-                }
-
-                try {
-                    // 메타데이터 파일이 있으면 로드 (없으면 null 반환)
-                    const metadataPath = '/data/simulation2/case-parameters.json';
-                    const response = await fetch(metadataPath);
-                    if (response.ok) {
-                        caseParametersCache = await response.json();
-                        return caseParametersCache;
-                    }
-                } catch (error) {
-                    console.log('케이스 파라미터 메타데이터 파일이 없습니다. 기본값을 사용합니다.');
-                }
-
-                return null;
-            }
-
-            // 케이스 이름에서 파라미터 추출
-            async function getCaseParameters(caseName, caseData) {
-                // 기본값
-                const defaultParams = {
-                    equipment: 50.4,
-                    lighting: 23.4,
-                    ventilation: 6,
-                    temperature: 26,
-                    time: '07:00-18:00'
-                };
-
-                // 메타데이터 로드 시도
-                const metadata = await loadCaseParametersMetadata();
-                if (metadata && metadata[caseName]) {
-                    return metadata[caseName];
-                }
-
-                // 케이스 번호 추출 (Case81_Summer -> 81, Case01_Summer -> 1)
-                const caseMatch = caseName.match(/Case0?(\d+)/);
-                if (caseMatch) {
-                    const caseNum = parseInt(caseMatch[1]);
-
-                    // 케이스 데이터에서 Tset 추출 시도 (simulation2 데이터에 있음)
-                    let temperature = defaultParams.temperature;
-                    if (caseData && caseData.season) {
-                        // season에 따라 기본 온도 조정
-                        temperature = caseData.season === 'summer' ? 26 : 20;
-                    }
-
-                    // 케이스 번호에 따라 파라미터 조정 (간단한 추정 로직)
-                    // 실제로는 메타데이터 파일에서 가져와야 함
-                    return {
-                        equipment: (defaultParams.equipment + (caseNum % 20) * 0.5).toFixed(1),
-                        lighting: (defaultParams.lighting + (caseNum % 15) * 0.3).toFixed(1),
-                        ventilation: defaultParams.ventilation,
-                        temperature: temperature,
-                        time: defaultParams.time
-                    };
-                }
-
-                return defaultParams;
-            }
-
-            // 최적화 CELL 업데이트 함수
-            async function updateOptimizationCell(startDate, endDate) {
-                try {
-                    // season 결정 (날짜 기반)
-                    const start = new Date(startDate);
-                    const month = start.getMonth() + 1; // 1-12
-                    const season = (month >= 6 && month <= 9) ? 'summer' : 'winter';
-
-                    console.log(`최적화 케이스 찾기 시작: ${startDate} ~ ${endDate}, season: ${season}`);
-
-                    // 최적화 케이스 찾기
-                    const optCase = await findOptimizationCase(startDate, endDate, season);
-
-                    if (!optCase) {
-                        console.warn('최적화 케이스를 찾을 수 없습니다.');
-                        return;
-                    }
-
-                    // 케이스 파라미터 가져오기
-                    const params = await getCaseParameters(optCase.name, optCase);
-
-                    // 최적화 CELL 업데이트
-                    updateSimulationTable('OPT_CELL', 'equipment', params.equipment);
-                    updateSimulationTable('OPT_CELL', 'lighting', params.lighting);
-                    updateSimulationTable('OPT_CELL', 'ventilation', params.ventilation);
-                    updateSimulationTable('OPT_CELL', 'temperature', params.temperature);
-                    updateSimulationTable('OPT_CELL', 'time', params.time);
-
-                    console.log('최적화 CELL 업데이트 완료:', {
-                        case: optCase.name,
-                        avgEnergyTest: optCase.avgEnergyTest,
-                        params: params
-                    });
-                } catch (error) {
-                    console.error('최적화 CELL 업데이트 실패:', error);
-                }
-            }
-
-            // 기간 적용 버튼 이벤트 핸들러
-            const applyDateRangeBtn = document.getElementById('apply-date-range-btn');
-            if (applyDateRangeBtn) {
-                applyDateRangeBtn.addEventListener('click', async function() {
-                    const startDateInput = document.getElementById('start-date-input');
-                    const endDateInput = document.getElementById('end-date-input');
-
-                    if (!startDateInput || !endDateInput) {
-                        console.warn('날짜 입력 필드를 찾을 수 없습니다.');
-                        return;
-                    }
-
-                    const startDate = startDateInput.value;
-                    const endDate = endDateInput.value;
-
-                    if (!startDate || !endDate) {
-                        console.warn('시작일 또는 종료일이 설정되지 않았습니다.');
-                        return;
-                    }
-
-                    // 최적화 CELL 업데이트
-                    await updateOptimizationCell(startDate, endDate);
                 });
             }
         });

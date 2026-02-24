@@ -112,6 +112,27 @@ let isUpdating = false;
 let pendingDOMUpdates = new Set();
 let domUpdateScheduled = false;
 
+// IFC 로드 여부에 따라 시뮬레이션/분석/최적화 등 버튼 활성·비활성
+const IFC_DEPENDENT_BUTTON_IDS = [
+    'header-extract-bim-btn',
+    'header-select-sim-btn',
+    'analyze-energy-btn',
+    'optimize-temperature-btn',
+    'send-control-signal-btn'
+];
+const IFC_REQUIRED_MESSAGE = 'IFC 파일을 먼저 로드해 주세요.';
+
+function setIFCDependentUIEnabled(isLoaded) {
+    IFC_DEPENDENT_BUTTON_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.disabled = !isLoaded;
+            el.title = isLoaded ? '' : IFC_REQUIRED_MESSAGE;
+            el.setAttribute('aria-disabled', isLoaded ? 'false' : 'true');
+        }
+    });
+}
+
 // IFC 모델 상태 UI 업데이트
 function updateIFCModelStatus(isLoaded, modelID = null) {
     const statusEl = document.getElementById('ifc-model-status');
@@ -128,6 +149,7 @@ function updateIFCModelStatus(isLoaded, modelID = null) {
             statusEl.style.borderColor = '#fca5a5';
         }
     }
+    setIFCDependentUIEnabled(!!(isLoaded && modelID !== null));
 }
 
 // ============================================
@@ -740,6 +762,7 @@ async function loadIFCFile(file, showAlert = true) {
         scene.remove(ifcModel);
         ifcModel = null;
         currentModelID = null;
+        if (typeof window !== 'undefined') window.bimLoaded = false;
     }
 
     const url = URL.createObjectURL(file);
@@ -784,6 +807,7 @@ async function loadIFCFile(file, showAlert = true) {
 
                     // UI 상태 업데이트
                     updateIFCModelStatus(true, modelID);
+                    if (typeof window !== 'undefined') window.bimLoaded = true;
 
                     // 헤더에 BIM 파일명 표시 업데이트
                     const bimFileIndicator = document.getElementById('bim-file-indicator');
@@ -814,6 +838,7 @@ async function loadIFCFile(file, showAlert = true) {
                 },
                 (error) => {
                     updateIFCModelStatus(false);
+                    if (typeof window !== 'undefined') window.bimLoaded = false;
 
                     // 로딩 팝업 업데이트 (실패 메시지 표시 후 3초 후 자동 닫기)
                     if (showAlert) {
@@ -1042,6 +1067,57 @@ function getColorStringFromAbsoluteValue(value, maxValue) {
     return `hsl(0, ${saturation}%, ${lightness}%)`;
 }
 
+// 부호 있는 값 기준 색상 (음수 = 파랑, 0 = 흰색, 양수 = 빨강) — Qsens_test용
+function getColorFromSignedValue(value, minValue, maxValue) {
+    if (value === 0) return new THREE.Color(0xffffff);
+
+    const maxAbs = Math.max(Math.abs(minValue), Math.abs(maxValue), 1);
+    const clamped = Math.max(-maxAbs, Math.min(maxAbs, value));
+    const normalized = clamped / maxAbs; // -1 ~ +1
+
+    let hue, saturation, lightness;
+    if (normalized < 0) {
+        hue = 240;
+        const intensity = Math.abs(normalized);
+        saturation = 50 + (intensity * 50);
+        lightness = 70 - (intensity * 30);
+    } else {
+        hue = 0;
+        const intensity = normalized;
+        saturation = 50 + (intensity * 50);
+        lightness = 70 - (intensity * 30);
+    }
+    return new THREE.Color(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+}
+
+// 레전드용 색상 문자열 (부호 있는 값)
+function getColorStringFromSignedValue(value, minValue, maxValue) {
+    if (value === 0) return 'hsl(0, 0%, 100%)';
+    const maxAbs = Math.max(Math.abs(minValue), Math.abs(maxValue), 1);
+    const clamped = Math.max(-maxAbs, Math.min(maxAbs, value));
+    const normalized = clamped / maxAbs;
+    let hue, saturation, lightness;
+    if (normalized < 0) {
+        hue = 240;
+        const intensity = Math.abs(normalized);
+        saturation = 50 + (intensity * 50);
+        lightness = 70 - (intensity * 30);
+    } else {
+        hue = 0;
+        const intensity = normalized;
+        saturation = 50 + (intensity * 50);
+        lightness = 70 - (intensity * 30);
+    }
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+}
+
+// 부호 있는 값 기준 투명도 (절대값이 클수록 불투명)
+function getOpacityFromSignedValue(value, minValue, maxValue) {
+    const maxAbs = Math.max(Math.abs(minValue), Math.abs(maxValue), 1);
+    const normalized = Math.min(1, Math.abs(value) / maxAbs);
+    return 0.9 - (normalized * 0.8);
+}
+
 // 값에 따른 투명도 계산 함수
 // 값이 0에 가까울수록 투명도 높음 (기존 색상 보임), 값이 클수록 투명도 낮음 (색상 진함)
 function getOpacityFromValue(value, minValue, maxValue) {
@@ -1185,6 +1261,82 @@ function createZoneLegend(zoneName, minValue, maxValue, labelColor) {
     return legendWrapper;
 }
 
+// Test Zone용 부호 있는 레전드 (음수=파랑, 0=흰색, 양수=빨강)
+function createZoneLegendSigned(minValue, maxValue, labelColor) {
+    const legendWrapper = document.createElement('div');
+    legendWrapper.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100%;
+        width: 100%;
+        min-height: 285px;
+    `;
+
+    const maxAbs = Math.max(Math.abs(minValue), Math.abs(maxValue), 1);
+    const redColor = getColorStringFromSignedValue(maxValue, minValue, maxValue);
+    const whiteColor = getColorStringFromSignedValue(0, minValue, maxValue);
+    const blueColor = getColorStringFromSignedValue(minValue, minValue, maxValue);
+    const gradientColors = [
+        `${redColor} 0%`,
+        `${whiteColor} 50%`,
+        `${blueColor} 100%`
+    ];
+
+    const gradientBarContainer = document.createElement('div');
+    gradientBarContainer.style.cssText = `
+        position: relative;
+        width: 20px;
+        height: 280px;
+        min-height: 280px;
+        flex-shrink: 0;
+        margin-bottom: 5px;
+    `;
+    const gradientBar = document.createElement('div');
+    gradientBar.style.cssText = `
+        width: 100%;
+        height: 100%;
+        min-height: 280px;
+        background: linear-gradient(to bottom, ${gradientColors.join(', ')});
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        position: relative;
+    `;
+    gradientBarContainer.appendChild(gradientBar);
+
+    const scaleContainer = document.createElement('div');
+    scaleContainer.style.cssText = `
+        position: absolute;
+        left: 100%;
+        top: 0;
+        bottom: 0;
+        width: 50px;
+        margin-left: 8px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    `;
+    const tickValues = [maxValue, maxValue * 0.5, 0, minValue * 0.5, minValue];
+    tickValues.forEach((value) => {
+        const tickContainer = document.createElement('div');
+        tickContainer.style.cssText = `display: flex; align-items: center;`;
+        const tickLabel = document.createElement('div');
+        tickLabel.textContent = value === 0 ? '0' : value.toFixed(0);
+        tickLabel.style.cssText = `font-size: 10px; color: #666; font-weight: 500; white-space: nowrap;`;
+        if (value === maxValue || value === minValue) {
+            const unitLabel = document.createElement('div');
+            unitLabel.textContent = ' kJ/h';
+            unitLabel.style.cssText = `font-size: 8px; color: #bbb; margin-left: 2px;`;
+            tickContainer.appendChild(unitLabel);
+        }
+        tickContainer.appendChild(tickLabel);
+        scaleContainer.appendChild(tickContainer);
+    });
+    gradientBarContainer.appendChild(scaleContainer);
+    legendWrapper.appendChild(gradientBarContainer);
+    return legendWrapper;
+}
+
 // 에너지 레전드 생성 (각 zone별로 분리)
 function createEnergyLegend() {
     const metadata = dataManager.currentMetadata;
@@ -1201,8 +1353,15 @@ function createEnergyLegend() {
 
     legendContainer.innerHTML = '';
 
-    // Test Zone 레전드만 생성
-    const testLegend = createZoneLegend('Test Zone', globalMinTestEnergy, globalMaxTestEnergy, '#e74c3c');
+    // 레전드는 항상 음수~0~양수 대칭 스케일로 표시 (파랑↔흰색↔빨강)
+    const legendMaxAbs = Math.max(
+        Math.abs(globalMinTestEnergy),
+        Math.abs(globalMaxTestEnergy),
+        1
+    );
+    const legendMin = -legendMaxAbs;
+    const legendMax = legendMaxAbs;
+    const testLegend = createZoneLegendSigned(legendMin, legendMax, '#e74c3c');
     legendContainer.appendChild(testLegend);
 
     debugLog(`✓ 레전드 생성 완료`);
@@ -3299,6 +3458,69 @@ async function updateVisualization(minute) {
     debugLog(`✅ updateVisualization 완료`);
 }
 
+// 최적화 로딩 시 (1/4)~(4/4): 데이터와 무관하게 TEST_CELL만 고정 범위로 역동적 색상 표시
+const OPTIMIZATION_STEP_CASES = ['case01', 'case21', 'case41', 'case61'];
+const OPTIMIZATION_STEP_DELAY_MS = 2000;
+const OPTIMIZATION_VIS_MINUTE = 5000;
+const OPTIMIZATION_TEST_RANGE = { min: 0, max: 10000 };
+const OPTIMIZATION_TEST_ZONE_CUSTOM_ID = 'optimization-test-zone';
+let lastOptimizationTestZoneMaterial = null;
+
+// 최적화 중 TEST_CELL만 단계별로 색상 적용 (데이터 무관, 흰색→빨강 역동적 변화)
+function applyOptimizationTestZoneColor(stepIndex, totalSteps) {
+    if (!ifcModel || currentModelID === null) return;
+    const { min: rMin, max: rMax } = OPTIMIZATION_TEST_RANGE;
+    const t = totalSteps > 1 ? (stepIndex + 1) / totalSteps : 1;
+    const value = rMin + (rMax - rMin) * t;
+    const testColor = getColorFromValue(value, rMin, rMax);
+    const testOpacity = getOpacityFromValue(value, rMin, rMax);
+    const testZoneElements = [346, 1997, 404, 381];
+    const material = getMaterial(testColor, testOpacity);
+    try {
+        if (lastOptimizationTestZoneMaterial) {
+            ifcLoader.ifcManager.removeSubset(currentModelID, lastOptimizationTestZoneMaterial, OPTIMIZATION_TEST_ZONE_CUSTOM_ID);
+        }
+        ifcLoader.ifcManager.createSubset({
+            modelID: currentModelID,
+            ids: testZoneElements,
+            material,
+            scene,
+            customID: OPTIMIZATION_TEST_ZONE_CUSTOM_ID,
+            removePrevious: false
+        });
+        lastOptimizationTestZoneMaterial = material;
+    } catch (e) {
+        if (DEBUG) console.warn('applyOptimizationTestZoneColor:', e);
+    }
+}
+
+window.runOptimizationSimulationSteps = async function(season, onStep) {
+    if (dataManager.currentSeason !== season) {
+        await dataManager.changeSeason(season);
+    }
+    const total = OPTIMIZATION_STEP_CASES.length;
+    const OPTIMIZATION_COLOR_INTERVAL_MS = 100;
+    let optimizationColorIntervalId = null;
+    if (ifcModel && currentModelID !== null) {
+        optimizationColorIntervalId = setInterval(applyRandomTestZoneColor, OPTIMIZATION_COLOR_INTERVAL_MS);
+    }
+    for (let i = 0; i < total; i++) {
+        if (typeof onStep === 'function') {
+            onStep(i + 1, total);
+        }
+        await dataManager.changeCase(OPTIMIZATION_STEP_CASES[i]);
+        if (i < total - 1) {
+            await new Promise(r => setTimeout(r, OPTIMIZATION_STEP_DELAY_MS));
+        }
+    }
+    if (optimizationColorIntervalId) {
+        clearInterval(optimizationColorIntervalId);
+        optimizationColorIntervalId = null;
+    }
+    createEnergyLegend();
+    await updateVisualization(OPTIMIZATION_VIS_MINUTE);
+};
+
 function updateIFCColors(frameData) {
     debugLog('🎨 updateIFCColors 호출됨');
     debugLog('   ifcModel:', ifcModel ? '존재' : '없음');
@@ -3316,11 +3538,11 @@ function updateIFCColors(frameData) {
     debugLog(`   testEnergy: ${testEnergy.toFixed(2)}, refEnergy: ${refEnergy.toFixed(2)}`);
 
     // 각 zone의 사용량 기준으로 색상 계산
-    const testColor = getColorFromValue(testEnergy, globalMinTestEnergy, globalMaxTestEnergy);
+    // Test zone: 부호 있는 색상(음수=파랑, 0=흰색, 양수=빨강) / Ref zone: 기존 절대값 기준
+    const testColor = getColorFromSignedValue(testEnergy, globalMinTestEnergy, globalMaxTestEnergy);
     const refColor = getColorFromValue(refEnergy, globalMinRefEnergy, globalMaxRefEnergy);
 
-    // 각 zone의 사용량 기준으로 투명도 계산
-    const testOpacity = getOpacityFromValue(testEnergy, globalMinTestEnergy, globalMaxTestEnergy);
+    const testOpacity = getOpacityFromSignedValue(testEnergy, globalMinTestEnergy, globalMaxTestEnergy);
     const refOpacity = getOpacityFromValue(refEnergy, globalMinRefEnergy, globalMaxRefEnergy);
 
     debugLog(`   Test Zone 색상: ${testColor.getHexString()}, 투명도: ${testOpacity.toFixed(2)}`);
@@ -3517,9 +3739,9 @@ function updateEnergyDisplay(frameData) {
     let energyDiffEl = document.getElementById('energy-diff');
     let energyDiffPercentEl = document.getElementById('energy-diff-percent');
 
-    // 에너지 값을 전체 소수점으로 표시 (정확한 차이 확인)
+    // 에너지 값을 전체 소수점으로 표시 (정확한 차이 확인). ref 사용량은 음수여도 양수로 표시
     if (testEnergyEl) testEnergyEl.textContent = testEnergy.toString();
-    if (refEnergyEl) refEnergyEl.textContent = refEnergy.toString();
+    if (refEnergyEl) refEnergyEl.textContent = (typeof refEnergy === 'number' && refEnergy < 0 ? Math.abs(refEnergy) : refEnergy).toString();
 
     const diff = testEnergy - refEnergy;
     const diffPercent = refEnergy !== 0 ? (diff / refEnergy * 100).toFixed(2) : '0';
@@ -4783,6 +5005,37 @@ function testTargetWalls() {
     alert(`Test Cell 벽 색상 테스트 완료!\n성공: ${successCount}/${testCellIds.length}`);
 }
 
+// TEST_CELL에 랜덤 색 적용 (색상 테스트 버튼 + 최적화 중 역동 표시용)
+function applyRandomTestZoneColor() {
+    if (!ifcModel || currentModelID === null) return;
+    const testZoneElements = [346, 1997, 404, 381];
+    const isDark = Math.random() > 0.5;
+    let r, g, b, opacity;
+    if (isDark) {
+        r = 0.4 + Math.random() * 0.6;
+        g = Math.random() * 0.2;
+        b = Math.random() * 0.2;
+        opacity = 0.15 + Math.random() * 0.25;
+    } else {
+        r = 0.85 + Math.random() * 0.15;
+        g = 0.6 + Math.random() * 0.4;
+        b = 0.6 + Math.random() * 0.4;
+        opacity = 0.5 + Math.random() * 0.45;
+    }
+    const color = new THREE.Color(r, g, b);
+    applyColorToElements(testZoneElements, color, opacity);
+    needsRender = true;
+}
+
+function testApplyColorToElements() {
+    if (!ifcModel || currentModelID === null) {
+        alert('IFC 모델을 먼저 로드해주세요.');
+        return;
+    }
+    applyRandomTestZoneColor();
+    console.log('applyColorToElements 테스트 (랜덤)');
+}
+
 // 테스트 버튼 이벤트 리스너
 function registerTestButtons() {
     const testColorBtn = document.getElementById('test-color-btn');
@@ -4791,6 +5044,12 @@ function registerTestButtons() {
     const applyManualIdBtn = document.getElementById('apply-manual-id-btn');
     const testTargetWallsBtn = document.getElementById('test-target-walls-btn');
     const checkIFCStatusBtn = document.getElementById('check-ifc-status-btn');
+    const applyColorTestBtn = document.getElementById('apply-color-to-elements-test-btn');
+
+    if (applyColorTestBtn) {
+        applyColorTestBtn.addEventListener('click', testApplyColorToElements);
+        console.log('✓ 색상 테스트(applyColorToElements) 버튼 등록');
+    }
 
     if (testColorBtn) {
         testColorBtn.addEventListener('click', applyTestColor);
@@ -4841,6 +5100,9 @@ window.addEventListener('resize', () => {
 // ============================================
 async function initializeSimulator() {
     console.log('🚀 시뮬레이터 초기화 시작...');
+
+    // IFC 로드 전에는 시뮬레이션 선택·분석·최적화 등 비활성화
+    setIFCDependentUIEnabled(false);
 
     // Test Zone 초기값 설정 (기본 케이스: ref)
     const defaultCase = 'case01';

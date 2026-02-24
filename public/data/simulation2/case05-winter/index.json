@@ -1,16 +1,16 @@
 {
   "sheetName": "Case05_Winter",
-  "totalFrames": 83521,
-  "numChunks": 59,
+  "totalFrames": 83460,
+  "numChunks": 58,
   "chunkSize": 1440,
-  "startTime": "2026-01-01 00:00:00",
+  "startTime": "2025-01-01 00:01:00",
   "endTime": "2025-02-28 00:00:00",
-  "minEnergyTest": -93320.6875717811,
-  "maxEnergyTest": 1228.4456520542067,
-  "avgEnergyTest": -667.8347560452978,
-  "minEnergyRef": -93320.6875717811,
-  "maxEnergyRef": 1228.4456520542067,
-  "avgEnergyRef": -667.8347560452978,
+  "minEnergyTest": -93320.6876,
+  "maxEnergyTest": 1228.4457,
+  "avgEnergyTest": -668.3228691636713,
+  "minEnergyRef": -93320.6876,
+  "maxEnergyRef": 1228.4457,
+  "avgEnergyRef": -668.3228691636713,
   "season": "winter",
-  "startDate": "2026-01-01"
+  "startDate": "2025-01-01"
 }

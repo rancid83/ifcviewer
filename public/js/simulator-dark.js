@@ -2034,8 +2034,9 @@ function updateEnergyDisplay(frameData) {
     let energyDiffPercentEl = document.getElementById('energy-diff-percent');
 
     // 에너지 값을 전체 소수점으로 표시 (정확한 차이 확인)
+    // ref 사용량은 음수여도 양수로 표시
     if (testEnergyEl) testEnergyEl.textContent = testEnergy.toString();
-    if (refEnergyEl) refEnergyEl.textContent = refEnergy.toString();
+    if (refEnergyEl) refEnergyEl.textContent = (typeof refEnergy === 'number' && refEnergy < 0 ? Math.abs(refEnergy) : refEnergy).toString();
 
     const diff = testEnergy - refEnergy;
     const diffPercent = refEnergy !== 0 ? (diff / refEnergy * 100).toFixed(2) : '0';
