@@ -2433,6 +2433,25 @@
                             </tr>
                         </tbody>
                     </table>
+                    <!-- REF_CELL 설정값 (로드된 케이스 패널 동기화용, heating/cooling만 입력으로 보관) -->
+                    <div id="ref-cell-settings-sync" style="display: none;" aria-hidden="true">
+                        <input type="number" id="ref-heating" value="20" step="0.5">
+                        <input type="number" id="ref-cooling" value="26" step="0.5">
+                    </div>
+                    <!-- TEST_CELL 설정값 (케이스 매칭/로드된 케이스 패널 동기화용) -->
+                    <div id="test-cell-settings-sync" style="display: none;" aria-hidden="true">
+                        <input type="number" id="test-human" value="22.3" step="0.1">
+                        <input type="number" id="test-equipment" value="50.4" step="0.1">
+                        <input type="number" id="test-lighting" value="23.4" step="0.1">
+                        <input type="number" id="test-outdoor" value="6" step="0.1">
+                        <input type="number" id="test-heating" value="20" step="0.5">
+                        <input type="number" id="test-cooling" value="26" step="0.5">
+                        <select id="test-time">
+                            <option value="07-16">07-16</option>
+                            <option value="07-18" selected>07-18</option>
+                            <option value="07-20">07-20</option>
+                        </select>
+                    </div>
 
                     <!-- 버튼 영역 (오른쪽 하단) -->
                     <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
@@ -2445,6 +2464,13 @@
                         <button class="btn btn-gray" id="send-control-signal-btn" disabled title="IFC 파일을 먼저 로드해 주세요.">
                             제어신호 송출
                         </button>
+                    </div>
+
+                    <!-- [DEBUG] REF/TEST 로드 케이스 표시 (제거 시 이 블록 전체 삭제) -->
+                    <div id="case-load-info-panel" style="display: none; margin-top:12px; padding:10px; background:#1a1a1a; border:1px solid #333; border-radius:6px; font-size:12px; color:#9ca3af;">
+                        <div style="font-weight:600; margin-bottom:6px; color:#e5e7eb;">로드된 케이스 (REF / TEST)</div>
+                        <div id="case-load-info-ref"></div>
+                        <div id="case-load-info-test" style="margin-top:4px;"></div>
                     </div>
 
                     <!-- Qsens 최소 케이스 기준 최적 설정온도 표시 -->
@@ -2751,38 +2777,17 @@
                 </div>
             </div>
             <div class="type-manager-popup-content">
-                <!-- electrical equipment 섹션 -->
+                <!-- electrical equipment & lights (기기발열·조명발열 쌍 선택) -->
                 <div class="type-manager-subsection">
-                    <div class="type-manager-section-title">electrical equipment</div>
+                    <div class="type-manager-section-title">electrical equipment &amp; lights</div>
                     <div class="type-manager-form-group">
                         <label class="type-manager-label">set gain/loss:</label>
                         <div class="type-manager-select-wrapper">
                             <select class="type-manager-select" id="gain-type-electrical-select">
-                                <option value="select">Select</option>
-                                <option value="35.3">35.3</option>
-                                <option value="50.4" selected>50.4 (default)</option>
-                                <option value="65.5">65.5</option>
-                            </select>
-                            <span class="type-manager-unit">kJ/h·m²</span>
-                            <span class="type-manager-edit-icon" title="편집">✏️</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 구분선 -->
-                <div class="type-manager-divider"></div>
-
-                <!-- lights 섹션 -->
-                <div class="type-manager-subsection">
-                    <div class="type-manager-section-title">lights</div>
-                    <div class="type-manager-form-group">
-                        <label class="type-manager-label">set gain/loss:</label>
-                        <div class="type-manager-select-wrapper">
-                            <select class="type-manager-select" id="gain-type-lights-select">
-                                <option value="select">Select</option>
-                                <option value="16.4">16.4</option>
-                                <option value="23.4" selected>23.4 (default)</option>
-                                <option value="30.4">30.4</option>
+                                <option value="">Select</option>
+                                <option value="50.4-23.4" selected>기기 50.4 / 조명 23.4 (default)</option>
+                                <option value="65.5-30.4">기기 65.5 / 조명 30.4</option>
+                                <option value="35.3-16.4">기기 35.3 / 조명 16.4</option>
                             </select>
                             <span class="type-manager-unit">kJ/h·m²</span>
                             <span class="type-manager-edit-icon" title="편집">✏️</span>
@@ -3406,6 +3411,32 @@
                         return;
                     }
 
+                    // Heating, Cooling, Gain/loss, Ventilation 클릭 시 해당 Type Manager 팝업 바로 표시
+                    const typeLabel = label ? label.textContent.trim() : '';
+                    const typePopupMap = {
+                        'Heating': 'heating-type-popup',
+                        'Cooling': 'cooling-type-popup',
+                        'Gain/loss': 'gain-type-popup',
+                        'Ventilation': 'ventilation-type-popup'
+                    };
+                    if (typePopupMap[typeLabel]) {
+                        // 클릭한 항목이 속한 Zone 설정 (REF_CELL / TEST_CELL)
+                        const zoneItem = menuItem.parentElement && menuItem.parentElement.parentElement;
+                        const zoneLabelEl = zoneItem && zoneItem.querySelector('.tree-menu-label');
+                        if (zoneLabelEl) {
+                            const zoneText = zoneLabelEl.textContent.trim();
+                            if (zoneText === 'Zone: REF_CELL') currentSelectedZone = 'REF_CELL';
+                            else if (zoneText === 'Zone: TEST_CELL') currentSelectedZone = 'TEST_CELL';
+                        }
+                        // 다른 Type Manager 팝업 닫기
+                        document.querySelectorAll('.type-manager-popup-overlay').forEach(function(popup) {
+                            popup.classList.remove('show');
+                        });
+                        const targetPopup = document.getElementById(typePopupMap[typeLabel]);
+                        if (targetPopup) targetPopup.classList.add('show');
+                        return;
+                    }
+
                     // leaf 항목이 아닌 경우에만 토글
                     if (!menuItem.classList.contains('leaf')) {
                         menuItem.classList.toggle('expanded');
@@ -3441,14 +3472,42 @@
                         'temperature': 'test-temperature-display',
                         'time': 'test-time-display'
                     };
+                    const testInputMap = {
+                        'equipment': 'test-equipment',
+                        'lighting': 'test-lighting',
+                        'ventilation': 'test-outdoor',
+                        'time': 'test-time'
+                    };
                     const fieldId = testFields[field];
                     if (fieldId) {
                         const element = document.getElementById(fieldId);
-                        if (element) {
-                            element.textContent = value;
+                        if (element) element.textContent = value;
+                    }
+                    var inputId = testInputMap[field];
+                    if (inputId) {
+                        var inputEl = document.getElementById(inputId);
+                        if (inputEl) {
+                            if (field === 'time' && typeof value === 'string' && value.indexOf(':') !== -1) {
+                                var m = value.match(/(\d{1,2}):\d{2}-(\d{1,2})/);
+                                if (m) inputEl.value = m[1] + '-' + m[2];
+                                else inputEl.value = value;
+                            } else {
+                                inputEl.value = value;
+                            }
                         }
                     }
                 }
+            }
+
+            function refreshCaseFromTestCellSettings() {
+                if (typeof loadCaseBySettings !== 'function') return;
+                loadCaseBySettings().then(function() {
+                    if (typeof updateCaseLoadInfo === 'function') updateCaseLoadInfo();
+                });
+            }
+            function refreshRefCaseFromSettings() {
+                if (typeof applyRefCaseFromSettings !== 'function') return;
+                applyRefCaseFromSettings();
             }
 
             // Zone 정보 팝업 표시 함수 (재사용)
@@ -3695,6 +3754,7 @@
                                 updateSimulationTable('REF_CELL', 'time', timeDisplay);
                             }
                         }
+                        if (typeof refreshRefCaseFromSettings === 'function') refreshRefCaseFromSettings();
                     }
 
                     // TEST_CELL 처리
@@ -3724,6 +3784,11 @@
                             if (typeof updateSimulationTable === 'function') {
                                 updateSimulationTable('TEST_CELL', 'time', timeDisplay);
                             }
+                        }
+                        if (typeof loadCaseBySettings === 'function') {
+                            loadCaseBySettings().then(function() {
+                                if (typeof updateCaseLoadInfo === 'function') updateCaseLoadInfo();
+                            });
                         }
                     }
 
@@ -3983,6 +4048,15 @@
                 heatingCheckBtn.addEventListener('click', function() {
                     if (currentSelectedZone && heatingSelect && heatingSelect.value !== 'select') {
                         updateSimulationTable(currentSelectedZone, 'temperature', heatingSelect.value);
+                        if (currentSelectedZone === 'TEST_CELL') {
+                            var heatingInput = document.getElementById('test-heating');
+                            if (heatingInput) heatingInput.value = heatingSelect.value;
+                            refreshCaseFromTestCellSettings();
+                        } else if (currentSelectedZone === 'REF_CELL') {
+                            var refHeatingInput = document.getElementById('ref-heating');
+                            if (refHeatingInput) refHeatingInput.value = heatingSelect.value;
+                            refreshRefCaseFromSettings();
+                        }
                     }
                     if (heatingPopup) {
                         heatingPopup.classList.remove('show');
@@ -4026,6 +4100,15 @@
                 coolingCheckBtn.addEventListener('click', function() {
                     if (currentSelectedZone && coolingSelect && coolingSelect.value !== 'select') {
                         updateSimulationTable(currentSelectedZone, 'temperature', coolingSelect.value);
+                        if (currentSelectedZone === 'TEST_CELL') {
+                            var coolingInput = document.getElementById('test-cooling');
+                            if (coolingInput) coolingInput.value = coolingSelect.value;
+                            refreshCaseFromTestCellSettings();
+                        } else if (currentSelectedZone === 'REF_CELL') {
+                            var refCoolingInput = document.getElementById('ref-cooling');
+                            if (refCoolingInput) refCoolingInput.value = coolingSelect.value;
+                            refreshRefCaseFromSettings();
+                        }
                     }
                     if (coolingPopup) {
                         coolingPopup.classList.remove('show');
@@ -4058,29 +4141,31 @@
                 });
             }
 
-            // Gain/loss Type Manager 팝업 설정 (두 개의 select 처리)
+            // Gain/loss Type Manager 팝업 설정 (기기발열·조명발열 쌍 선택)
             const gainPopup = document.getElementById('gain-type-popup');
             const gainCheckBtn = document.getElementById('gain-type-check-btn');
             const gainCloseBtn = document.getElementById('gain-type-close-btn');
             const gainElectricalSelect = document.getElementById('gain-type-electrical-select');
-            const gainLightsSelect = document.getElementById('gain-type-lights-select');
             const gainMenuItem = document.getElementById('zone-menu-gain');
 
             if (gainCheckBtn) {
                 gainCheckBtn.addEventListener('click', function() {
-                    if (currentSelectedZone && gainElectricalSelect && gainLightsSelect) {
-                        const electricalValue = gainElectricalSelect.value;
-                        const lightsValue = gainLightsSelect.value;
-                        if (electricalValue !== 'select') {
+                    if (currentSelectedZone && gainElectricalSelect) {
+                        const pairValue = gainElectricalSelect.value;
+                        if (pairValue && pairValue.indexOf('-') !== -1) {
+                            const parts = pairValue.split('-');
+                            const electricalValue = parts[0];
+                            const lightsValue = parts[1];
                             updateSimulationTable(currentSelectedZone, 'equipment', electricalValue);
-                        }
-                        if (lightsValue !== 'select') {
                             updateSimulationTable(currentSelectedZone, 'lighting', lightsValue);
+                            console.log('Gain/loss Type 설정 적용:', {
+                                equipment: electricalValue,
+                                lighting: lightsValue
+                            });
+                            refreshCaseFromTestCellSettings();
+                        } else if (currentSelectedZone === 'REF_CELL') {
+                            refreshRefCaseFromSettings();
                         }
-                        console.log('Gain/loss Type 설정 적용:', {
-                            electrical: electricalValue,
-                            lights: lightsValue
-                        });
                     }
                     if (gainPopup) {
                         gainPopup.classList.remove('show');
@@ -4124,6 +4209,11 @@
                 ventilationCheckBtn.addEventListener('click', function() {
                     if (currentSelectedZone && ventilationSelect && ventilationSelect.value !== 'select') {
                         updateSimulationTable(currentSelectedZone, 'ventilation', ventilationSelect.value);
+                        if (currentSelectedZone === 'TEST_CELL') {
+                            refreshCaseFromTestCellSettings();
+                        } else if (currentSelectedZone === 'REF_CELL') {
+                            refreshRefCaseFromSettings();
+                        }
                     }
                     if (ventilationPopup) {
                         ventilationPopup.classList.remove('show');

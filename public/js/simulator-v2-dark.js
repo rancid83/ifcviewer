@@ -679,16 +679,96 @@ class SimulationDataManager {
 
 const dataManager = new SimulationDataManager();
 
+// cases_data.json 캐시 및 Ref 케이스 키 (Case_01 -> case01)
+let casesDataCache = null;
+let refCaseKeyCache = null; // 'case01' (cases_data 기준 ref-case 또는 첫 L:Ref,OA:Ref,T:R)
+// [DEBUG] TEST_CELL 선택 경로: 'dropdown' | 'settings_match' | null (제거 시 이 변수 삭제)
+let lastTestCellSelectionSource = null;
+
+/** Case No. "Case_01" -> simulation2 폴더 키 "case01" */
+function caseNoToKey(caseNo) {
+    if (!caseNo || typeof caseNo !== 'string') return null;
+    const m = caseNo.trim().match(/Case_?(\d+)/i);
+    return m ? 'case' + String(parseInt(m[1], 10)).padStart(2, '0') : null;
+}
+
+/** cases_data.json 로드 (캐시) */
+async function getCasesData() {
+    if (Array.isArray(casesDataCache)) return casesDataCache;
+    try {
+        const res = await fetch('/data/cases_data.json');
+        if (!res.ok) return [];
+        casesDataCache = await res.json();
+        return Array.isArray(casesDataCache) ? casesDataCache : [];
+    } catch (e) {
+        console.warn('cases_data.json 로드 실패:', e);
+        return [];
+    }
+}
+
+/** cases_data에서 Ref 케이스 키 반환: "ref-case" 필드가 true인 행, 없으면 조합 설명 "L:Ref, OA:Ref, T:R" 첫 행 */
+function getRefCaseKeyFromCasesData(casesData) {
+    if (refCaseKeyCache) return refCaseKeyCache;
+    if (!Array.isArray(casesData) || casesData.length === 0) {
+        refCaseKeyCache = 'case01'; // 기본값
+        return refCaseKeyCache;
+    }
+    const refCase = casesData.find(row => row['ref-case'] === true || row['Ref Case'] === true);
+    if (refCase && refCase['Case No.']) {
+        refCaseKeyCache = caseNoToKey(refCase['Case No.']);
+        if (refCaseKeyCache) return refCaseKeyCache;
+    }
+    const refDesc = casesData.find(row => (row['조합 설명'] || '').trim() === 'L:Ref, OA:Ref, T:R');
+    if (refDesc && refDesc['Case No.']) {
+        refCaseKeyCache = caseNoToKey(refDesc['Case No.']);
+        if (refCaseKeyCache) return refCaseKeyCache;
+    }
+    refCaseKeyCache = 'case01';
+    return refCaseKeyCache;
+}
+
+// [DEBUG] REF_CELL / TEST_CELL 로드된 케이스·선택 기준 (패널 숨김, 콘솔 로그로 표시)
+function updateCaseLoadInfo() {
+    let refKey = refCaseKeyCache;
+    if (!refKey) {
+        getRefCaseKeyFromCasesData(Array.isArray(casesDataCache) ? casesDataCache : []);
+        refKey = refCaseKeyCache;
+    }
+    const season = dataManager.currentSeason || 'summer';
+    const refPath = refKey ? `${refKey}-${season}` : '-';
+    const refText = `REF_CELL: ${refPath} (기준: cases_data ref-case 또는 L:Ref,OA:Ref,T:R)`;
+
+    const testCase = dataManager.currentCase;
+    const testPath = testCase ? `${testCase}-${season}` : '-';
+    const src = lastTestCellSelectionSource === 'settings_match'
+        ? '선택 기준: 설정값 일치 (분석하기/입력 변경)'
+        : lastTestCellSelectionSource === 'dropdown'
+            ? '선택 기준: 드롭다운(케이스) 선택'
+            : '선택 기준: 초기/기타';
+    const testText = `TEST_CELL: ${testPath} (${src})`;
+
+    const refEl = document.getElementById('case-load-info-ref');
+    const testEl = document.getElementById('case-load-info-test');
+    if (refEl) refEl.textContent = refText;
+    if (testEl) testEl.textContent = testText;
+
+    console.log('[로드된 케이스 (REF / TEST)]', refText, testText);
+}
+
+// ref 데이터 로드 실패한 경로 재요청 방지 (404 반복 방지)
+const refZoneUnavailable = new Set(); // 'case01-summer' 등
+
 // ============================================
-// Ref Zone 기본 데이터 로드 함수
+// Ref Zone 기본 데이터 로드 함수 (simulation2 케이스 + cases_data 기준)
 // ============================================
 async function loadRefZoneDefaultData(season, frameIndex = 0) {
     try {
-        const refPath = season === 'summer' ? 'ref-summer' : 'ref-winter';
+        const casesData = await getCasesData();
+        const refKey = getRefCaseKeyFromCasesData(casesData);
+        const refPath = `${refKey}-${season}`; // e.g. case01-summer
         const cacheKey = `${refPath}-${frameIndex}`;
-        const chunkSize = 1440; // simulation 데이터와 동일한 chunk 크기
+        const chunkSize = 1440;
 
-        // 캐시 확인
         if (refZoneDefaultDataCache.has(cacheKey)) {
             const cached = refZoneDefaultDataCache.get(cacheKey);
             refZoneDefaultData = cached.data;
@@ -697,40 +777,45 @@ async function loadRefZoneDefaultData(season, frameIndex = 0) {
             return refZoneDefaultEnergy;
         }
 
-        // chunk-0.json에서 해당 프레임 로드 (필요시 다른 chunk도 로드 가능)
+        if (refZoneUnavailable.has(refPath)) {
+            refZoneDefaultEnergy = 0;
+            return 0;
+        }
+
         const chunkIndex = Math.floor(frameIndex / chunkSize);
-        const response = await fetch(`/data/simulation/${refPath}/chunk-${chunkIndex}.json`);
+        const response = await fetch(`/data/simulation2/${refPath}/chunk-${chunkIndex}.json`);
+        if (!response.ok) {
+            refZoneUnavailable.add(refPath);
+            refZoneDefaultEnergy = 0;
+            return 0;
+        }
         const chunk = await response.json();
 
         if (chunk && chunk.data && chunk.data.length > 0) {
             const localIndex = frameIndex % chunkSize;
-            const frameData = chunk.data[localIndex] || chunk.data[0]; // 인덱스 범위 초과 시 첫 번째 프레임 사용
-
-            // 해당 프레임의 Qsens_ref를 기본값으로 사용
-            refZoneDefaultEnergy = frameData.Qsens_ref || 0;
+            const frameData = chunk.data[localIndex] || chunk.data[0];
+            // simulation2 ref 케이스는 Qsens_ref가 0인 경우가 많음 → Ref zone에는 케이스 실제 에너지(Qsens_test) 사용
+            const qRef = frameData.Qsens_ref != null ? frameData.Qsens_ref : 0;
+            const qTest = frameData.Qsens_test != null ? frameData.Qsens_test : 0;
+            refZoneDefaultEnergy = (qRef !== 0 || qTest === 0) ? qRef : qTest;
             refZoneDefaultData = chunk;
 
-            // 캐시에 저장
             refZoneDefaultDataCache.set(cacheKey, {
                 data: chunk,
                 energy: refZoneDefaultEnergy
             });
-
-            // 캐시 크기 제한
             if (refZoneDefaultDataCache.size > 10) {
                 const firstKey = refZoneDefaultDataCache.keys().next().value;
                 refZoneDefaultDataCache.delete(firstKey);
             }
-
             debugLog(`✓ Ref zone 기본값 로드 완료 (${refPath}, 프레임 ${frameIndex}): ${refZoneDefaultEnergy}`);
             return refZoneDefaultEnergy;
         }
     } catch (error) {
         console.error(`Ref zone 기본 데이터 로드 실패 (${season}, 프레임 ${frameIndex}):`, error);
-        refZoneDefaultEnergy = 0; // 기본값으로 0 사용
+        refZoneDefaultEnergy = 0;
         return 0;
     }
-
     return 0;
 }
 
@@ -1205,10 +1290,10 @@ let globalMinTestEnergy = 0;
 let globalMaxRefEnergy = 0;
 let globalMinRefEnergy = 0;
 
-// Ref zone 기본값 (ref-summer/ref-winter 데이터에서 로드)
+// Ref zone 기본값 (simulation2 케이스 + cases_data.json ref-case / L:Ref,OA:Ref,T:R 기준)
 let refZoneDefaultData = null;
 let refZoneDefaultEnergy = 0; // 현재 프레임의 기본 에너지 값
-let refZoneDefaultDataCache = new Map(); // 시즌별 캐시
+let refZoneDefaultDataCache = new Map(); // (refPath-frameIndex) 캐시
 
 // 각 zone별 레전드 생성 함수 (세로형: 0 = 흰색, 최대값 = 빨강)
 function createZoneLegend(zoneName, minValue, maxValue, labelColor) {
@@ -1494,6 +1579,7 @@ seasonBtns.forEach(btn => {
 
             // 레전드 업데이트
             createEnergyLegend();
+            updateCaseLoadInfo();
         }
     });
 });
@@ -2497,6 +2583,9 @@ if (testCaseSelect) {
         // 데이터 매니저 케이스 변경
         await dataManager.changeCase(selectedCase);
 
+        lastTestCellSelectionSource = 'dropdown';
+        updateCaseLoadInfo();
+
         const metadata = dataManager.currentMetadata;
         if (metadata) {
             totalMinutes = metadata.totalFrames;
@@ -3338,6 +3427,37 @@ function findCaseBySettings(settings) {
     return null; // 일치하는 케이스가 없으면 null 반환
 }
 
+// REF_CELL 설정값 읽기 (로드된 케이스 패널 갱신용)
+function getRefCellSettings() {
+    const refEquip = document.getElementById('ref-equipment');
+    const refLight = document.getElementById('ref-lighting');
+    const refVent = document.getElementById('ref-ventilation');
+    const refHeat = document.getElementById('ref-heating');
+    const refCool = document.getElementById('ref-cooling');
+    const refTimeD = document.getElementById('ref-time-display');
+    let timeKey = '07-18';
+    if (refTimeD && refTimeD.textContent) {
+        const m = String(refTimeD.textContent).trim().match(/(\d{1,2}):\d{2}-(\d{1,2})/);
+        if (m) timeKey = m[1] + '-' + m[2];
+    }
+    return {
+        equipment: parseFloat(refEquip ? refEquip.textContent : 0) || 0,
+        lighting: parseFloat(refLight ? refLight.textContent : 0) || 0,
+        outdoor: parseFloat(refVent ? refVent.textContent : 0) || 0,
+        heating: parseFloat(refHeat && refHeat.value !== '' ? refHeat.value : 0) || 20,
+        cooling: parseFloat(refCool && refCool.value !== '' ? refCool.value : 0) || 26,
+        time: timeKey
+    };
+}
+
+// REF 설정값에 맞는 케이스로 refCaseKeyCache 갱신 후 패널 업데이트
+function applyRefCaseFromSettings() {
+    const settings = getRefCellSettings();
+    const key = findCaseBySettings(settings);
+    if (key) refCaseKeyCache = key;
+    updateCaseLoadInfo();
+}
+
 // TEST_CELL 설정값 읽기 함수
 function getTestCellSettings() {
     const equipmentEl = document.getElementById('test-equipment');
@@ -3364,6 +3484,7 @@ async function loadCaseBySettings() {
 
     if (matchedCase) {
         debugLog(`✓ 설정값과 일치하는 케이스 발견: ${matchedCase}`);
+        lastTestCellSelectionSource = 'settings_match';
 
         // 케이스 선택 드롭다운 업데이트
         const testCaseSelect = document.getElementById('test-case');
@@ -3393,11 +3514,19 @@ async function loadCaseBySettings() {
             updateInputColors(matchedCase);
         }
 
+        updateCaseLoadInfo();
         return matchedCase;
     } else {
         debugLog('⚠️ 설정값과 일치하는 케이스를 찾을 수 없습니다.');
         return null;
     }
+}
+
+// EJS 인라인 스크립트에서 호출할 수 있도록 전역에 노출
+// (ES 모듈 컨텍스트에서 window에 명시적으로 할당)
+if (typeof window !== 'undefined') {
+    window.loadCaseBySettings = loadCaseBySettings;
+    window.applyRefCaseFromSettings = applyRefCaseFromSettings;
 }
 
 // ============================================
@@ -3608,7 +3737,7 @@ function updateIFCColors(frameData) {
 
     // Test zone: simulation2에서 가져온 값 사용 (양수=빨강, 음수=파랑)
     const testEnergy = frameData.Qsens_test || 0;
-    // Ref zone: 기본값 유지 (simulation2의 Qsens_ref 대신 ref-summer/ref-winter 데이터 사용)
+    // Ref zone: cases_data 기준 ref 케이스의 simulation2 데이터(Qsens_ref) 사용
     const refEnergy = refZoneDefaultEnergy;
 
     debugLog(`   testEnergy: ${testEnergy.toFixed(2)}, refEnergy: ${refEnergy.toFixed(2)} (기본값)`);
@@ -3807,7 +3936,7 @@ function updateEnergyDisplay(frameData) {
     // DOM 업데이트는 이미 scheduleDOMUpdate로 래핑되어 있으므로 직접 실행
     // Test zone: simulation2에서 가져온 값 사용
     const testEnergy = frameData.Qsens_test || 0;
-    // Ref zone: 기본값 유지 (simulation2의 Qsens_ref 대신 ref-summer/ref-winter 데이터 사용)
+    // Ref zone: cases_data 기준 ref 케이스의 simulation2 데이터(Qsens_ref) 사용
     const refEnergy = refZoneDefaultEnergy;
 
     // 에너지 값 표시 (없으면 생성)
@@ -3975,6 +4104,8 @@ async function populateDateSelects() {
     // 날짜 범위 입력 필드 초기화 및 자동 적용
     const startDateInput = document.getElementById('start-date-input');
     const endDateInput = document.getElementById('end-date-input');
+    const simulationStartDate = document.getElementById('simulation-start-date');
+    const simulationEndDate = document.getElementById('simulation-end-date');
     if (startDateInput && endDateInput && availableDates.length > 0) {
         const firstDate = availableDates[0].toISOString().split('T')[0];
         const lastDate = availableDates[availableDates.length - 1].toISOString().split('T')[0];
@@ -3984,6 +4115,15 @@ async function populateDateSelects() {
         endDateInput.max = lastDate;
         startDateInput.value = firstDate;
         endDateInput.value = lastDate;
+        // 시뮬레이션 설정 날짜도 동일 범위로 제한 및 동기화
+        if (simulationStartDate && simulationEndDate) {
+            simulationStartDate.min = firstDate;
+            simulationStartDate.max = lastDate;
+            simulationEndDate.min = firstDate;
+            simulationEndDate.max = lastDate;
+            simulationStartDate.value = firstDate;
+            simulationEndDate.value = lastDate;
+        }
 
         // 날짜 범위 자동 적용
         dateRangeStart = new Date(firstDate);
@@ -4069,14 +4209,14 @@ async function onDateSelected() {
     }
 }
 
-// 날짜 범위 적용 함수
+// 날짜 범위 적용 함수 (성공 시 true, 실패 시 false 반환)
 async function applyDateRange() {
     const startDateInput = document.getElementById('start-date-input');
     const endDateInput = document.getElementById('end-date-input');
 
     if (!startDateInput || !endDateInput) {
         console.warn('⚠️ 날짜 범위 입력 필드를 찾을 수 없습니다.');
-        return;
+        return false;
     }
 
     const startDateStr = startDateInput.value;
@@ -4084,7 +4224,7 @@ async function applyDateRange() {
 
     if (!startDateStr || !endDateStr) {
         alert('시작일과 종료일을 모두 입력해주세요.');
-        return;
+        return false;
     }
 
     dateRangeStart = new Date(startDateStr);
@@ -4093,7 +4233,7 @@ async function applyDateRange() {
     // 유효성 검사
     if (dateRangeStart > dateRangeEnd) {
         alert('시작 날짜가 종료 날짜보다 늦을 수 없습니다.');
-        return;
+        return false;
     }
 
     // availableDates 범위 내에 있는지 확인
@@ -4103,7 +4243,7 @@ async function applyDateRange() {
 
         if (startDateStr < firstAvailableDate || endDateStr > lastAvailableDate) {
             alert(`날짜 범위는 ${firstAvailableDate} ~ ${lastAvailableDate} 사이여야 합니다.`);
-            return;
+            return false;
         }
     }
 
@@ -4153,6 +4293,7 @@ async function applyDateRange() {
     }
 
     console.log('✓ 날짜 범위가 적용되었습니다.');
+    return true;
 }
 
 // 날짜 범위 초기화 함수 (전체 날짜 범위로 초기화)
@@ -5248,6 +5389,7 @@ async function initializeSimulator() {
         createEnergyLegend();
 
         debugLog(`✓ 데이터 초기화 완료`);
+        updateCaseLoadInfo();
 
         // 날짜 범위 모드만 사용하므로 단일 날짜 선택 이벤트 리스너는 제거됨
 
@@ -5264,8 +5406,38 @@ async function initializeSimulator() {
         const applyDateRangeBtn = document.getElementById('apply-date-range-btn');
         if (applyDateRangeBtn) {
             applyDateRangeBtn.addEventListener('click', async() => {
-                await applyDateRange();
+                const success = await applyDateRange();
+                // 적용 성공 시 기간 입력값을 시뮬레이션 설정 날짜와 동기화
+                if (success) {
+                    const simStart = document.getElementById('simulation-start-date');
+                    const simEnd = document.getElementById('simulation-end-date');
+                    const startDateInput = document.getElementById('start-date-input');
+                    const endDateInput = document.getElementById('end-date-input');
+                    if (simStart && simEnd && startDateInput && endDateInput) {
+                        simStart.value = startDateInput.value;
+                        simEnd.value = endDateInput.value;
+                    }
+                }
             });
+        }
+
+        // 시뮬레이션 설정 날짜 변경 시 → 기간 입력 동기화 후 적용 (최적화 테이블도 이 기간 기준으로 표시됨)
+        const simulationStartDateEl = document.getElementById('simulation-start-date');
+        const simulationEndDateEl = document.getElementById('simulation-end-date');
+        if (simulationStartDateEl && simulationEndDateEl) {
+            const syncSimulationDatesToPeriod = async() => {
+                const startDateInput = document.getElementById('start-date-input');
+                const endDateInput = document.getElementById('end-date-input');
+                if (!startDateInput || !endDateInput) return;
+                const startVal = simulationStartDateEl.value;
+                const endVal = simulationEndDateEl.value;
+                if (!startVal || !endVal) return;
+                startDateInput.value = startVal;
+                endDateInput.value = endVal;
+                await applyDateRange();
+            };
+            simulationStartDateEl.addEventListener('change', syncSimulationDatesToPeriod);
+            simulationEndDateEl.addEventListener('change', syncSimulationDatesToPeriod);
         }
 
         // 날짜 목록 생성
