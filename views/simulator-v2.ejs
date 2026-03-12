@@ -2753,9 +2753,9 @@
                     <div class="type-manager-select-wrapper">
                         <select class="type-manager-select" id="cooling-type-select">
                             <option value="select">Select</option>
-                            <option value="18">18</option>
-                            <option value="20" selected>20 (default)</option>
-                            <option value="22">22</option>
+                            <option value="24">24</option>
+                            <option value="26" selected>26 (default)</option>
+                            <option value="28">28</option>
                         </select>
                         <span class="type-manager-unit">°C</span>
                         <span class="type-manager-edit-icon" title="편집">✏️</span>
@@ -3464,6 +3464,14 @@
                             element.textContent = value;
                         }
                     }
+                    // 설정온도 변경 시 난방/냉방 hidden input 동기화 → 케이스 매칭에 반영
+                    if (field === 'temperature') {
+                        var refHeat = document.getElementById('ref-heating');
+                        var refCool = document.getElementById('ref-cooling');
+                        if (refHeat) refHeat.value = value;
+                        if (refCool) refCool.value = value;
+                        refreshRefCaseFromSettings();
+                    }
                 } else if (zone === 'TEST_CELL') {
                     const testFields = {
                         'equipment': 'test-equipment-display',
@@ -3496,18 +3504,41 @@
                             }
                         }
                     }
+                    // 설정온도 변경 시 난방/냉방 hidden input 동기화 → 케이스 매칭에 반영
+                    if (field === 'temperature') {
+                        var testHeat = document.getElementById('test-heating');
+                        var testCool = document.getElementById('test-cooling');
+                        if (testHeat) testHeat.value = value;
+                        if (testCool) testCool.value = value;
+                        refreshCaseFromTestCellSettings();
+                    }
                 }
             }
 
+            function syncTestInputsFromDisplay() {
+                var ventD = document.getElementById('test-ventilation-display');
+                var timeD = document.getElementById('test-time-display');
+                var outEl = document.getElementById('test-outdoor');
+                var timeEl = document.getElementById('test-time');
+                if (ventD && outEl) {
+                    var v = parseFloat(ventD.textContent);
+                    if (!isNaN(v)) outEl.value = v;
+                }
+                if (timeD && timeEl) {
+                    var m = String(timeD.textContent).trim().match(/(\d{1,2}):\d{2}-(\d{1,2})/);
+                    if (m) timeEl.value = m[1] + '-' + m[2];
+                }
+            }
             function refreshCaseFromTestCellSettings() {
-                if (typeof loadCaseBySettings !== 'function') return;
-                loadCaseBySettings().then(function() {
-                    if (typeof updateCaseLoadInfo === 'function') updateCaseLoadInfo();
+                syncTestInputsFromDisplay();
+                if (typeof window.loadCaseBySettings !== 'function') return;
+                window.loadCaseBySettings().then(function() {
+                    if (typeof window.updateCaseLoadInfo === 'function') window.updateCaseLoadInfo();
                 });
             }
             function refreshRefCaseFromSettings() {
-                if (typeof applyRefCaseFromSettings !== 'function') return;
-                applyRefCaseFromSettings();
+                if (typeof window.applyRefCaseFromSettings !== 'function') return;
+                window.applyRefCaseFromSettings();
             }
 
             // Zone 정보 팝업 표시 함수 (재사용)
@@ -3785,9 +3816,9 @@
                                 updateSimulationTable('TEST_CELL', 'time', timeDisplay);
                             }
                         }
-                        if (typeof loadCaseBySettings === 'function') {
-                            loadCaseBySettings().then(function() {
-                                if (typeof updateCaseLoadInfo === 'function') updateCaseLoadInfo();
+                        if (typeof window.loadCaseBySettings === 'function') {
+                            window.loadCaseBySettings().then(function() {
+                                if (typeof window.updateCaseLoadInfo === 'function') window.updateCaseLoadInfo();
                             });
                         }
                     }
@@ -4162,9 +4193,11 @@
                                 equipment: electricalValue,
                                 lighting: lightsValue
                             });
-                            refreshCaseFromTestCellSettings();
-                        } else if (currentSelectedZone === 'REF_CELL') {
-                            refreshRefCaseFromSettings();
+                            if (currentSelectedZone === 'TEST_CELL') {
+                                refreshCaseFromTestCellSettings();
+                            } else if (currentSelectedZone === 'REF_CELL') {
+                                refreshRefCaseFromSettings();
+                            }
                         }
                     }
                     if (gainPopup) {

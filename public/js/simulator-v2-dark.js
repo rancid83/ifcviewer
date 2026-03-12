@@ -681,6 +681,8 @@ const dataManager = new SimulationDataManager();
 
 // cases_data.json 캐시 및 Ref 케이스 키 (Case_01 -> case01)
 let casesDataCache = null;
+/** cases_data 기반 매칭용 룩업 (설정값 → caseKey). getCasesData() 로드 후 빌드됨 */
+let casesDataLookup = null;
 let refCaseKeyCache = null; // 'case01' (cases_data 기준 ref-case 또는 첫 L:Ref,OA:Ref,T:R)
 // [DEBUG] TEST_CELL 선택 경로: 'dropdown' | 'settings_match' | null (제거 시 이 변수 삭제)
 let lastTestCellSelectionSource = null;
@@ -692,14 +694,42 @@ function caseNoToKey(caseNo) {
     return m ? 'case' + String(parseInt(m[1], 10)).padStart(2, '0') : null;
 }
 
-/** cases_data.json 로드 (캐시) */
+/** cases_data 한 행의 사용시간을 "07-18" 형식으로 정규화 */
+function normalizeTimeFromCasesData(usageTime) {
+    if (!usageTime || typeof usageTime !== 'string') return '07-18';
+    const s = String(usageTime).replace(/\s*시\s*$/g, '').trim();
+    const m = s.match(/(\d{1,2})-(\d{1,2})/);
+    return m ? `${m[1]}-${m[2]}` : (s || '07-18');
+}
+
+/** cases_data 배열을 설정값 매칭용 룩업으로 변환 */
+function buildCasesDataLookup(casesData) {
+    if (!Array.isArray(casesData) || casesData.length === 0) return [];
+    return casesData.map(row => {
+        const caseKey = caseNoToKey(row['Case No.']);
+        if (!caseKey) return null;
+        return {
+            caseKey,
+            equipment: parseFloat(row['기기발열(kJ/h·m²)']) || 0,
+            lighting: parseFloat(row['조명발열(kJ/h·m²)']) || 0,
+            outdoor: parseFloat(row['외기도입량(m³/m²·h)']) || 0,
+            heating: parseFloat(row['난방 설정온도(°C)']) || 0,
+            cooling: parseFloat(row['냉방 설정온도(°C)']) || 0,
+            time: normalizeTimeFromCasesData(row['사용시간'])
+        };
+    }).filter(Boolean);
+}
+
+/** cases_data.json 로드 (캐시) 및 매칭용 룩업 빌드 */
 async function getCasesData() {
     if (Array.isArray(casesDataCache)) return casesDataCache;
     try {
         const res = await fetch('/data/cases_data.json');
         if (!res.ok) return [];
         casesDataCache = await res.json();
-        return Array.isArray(casesDataCache) ? casesDataCache : [];
+        const data = Array.isArray(casesDataCache) ? casesDataCache : [];
+        casesDataLookup = buildCasesDataLookup(data);
+        return data;
     } catch (e) {
         console.warn('cases_data.json 로드 실패:', e);
         return [];
@@ -752,7 +782,29 @@ function updateCaseLoadInfo() {
     if (refEl) refEl.textContent = refText;
     if (testEl) testEl.textContent = testText;
 
+    const refSettings = typeof getRefCellSettings === 'function' ? getRefCellSettings() : null;
+    const testSettings = typeof getTestCellSettings === 'function' ? getTestCellSettings() : null;
     console.log('[로드된 케이스 (REF / TEST)]', refText, testText);
+    if (refSettings) {
+        console.log('  REF 선택에 사용된 설정:', {
+            '기기발열(kJ/h·m²)': refSettings.equipment,
+            '조명발열(kJ/h·m²)': refSettings.lighting,
+            '외기도입량(m³/m²·h)': refSettings.outdoor,
+            '난방(°C)': refSettings.heating,
+            '냉방(°C)': refSettings.cooling,
+            '사용시간': refSettings.time
+        });
+    }
+    if (testSettings) {
+        console.log('  TEST 선택에 사용된 설정:', {
+            '기기발열(kJ/h·m²)': testSettings.equipment,
+            '조명발열(kJ/h·m²)': testSettings.lighting,
+            '외기도입량(m³/m²·h)': testSettings.outdoor,
+            '난방(°C)': testSettings.heating,
+            '냉방(°C)': testSettings.cooling,
+            '사용시간': testSettings.time
+        });
+    }
 }
 
 // ref 데이터 로드 실패한 경로 재요청 방지 (404 반복 방지)
@@ -3395,57 +3447,79 @@ const simulationCases = {
 };
 
 // ============================================
-// 설정값 기반 케이스 찾기 함수
+// 설정값 기반 케이스 찾기 함수 (cases_data.json 우선, 없으면 simulationCases 폴백)
 // ============================================
-// 설정값으로 케이스를 찾는 함수
-function findCaseBySettings(settings) {
-    const { equipment, lighting, outdoor, heating, cooling, time } = settings;
-
-    // 시간 형식 변환 (07:00-18:00 -> 07-18)
-    let timeKey = time;
+function normalizeTimeForMatch(time) {
+    if (!time || typeof time !== 'string') return '07-18';
     if (time.includes(':')) {
         const timeParts = time.replace(/:/g, '').split('-');
-        if (timeParts.length === 2) {
-            timeKey = `${timeParts[0]}-${timeParts[1]}`;
+        if (timeParts.length === 2) return `${timeParts[0]}-${timeParts[1]}`;
+    }
+    return time.replace(/\s*시\s*$/g, '').trim() || '07-18';
+}
+
+// 케이스 선택 시 기기발열·조명발열·외기도입량 + 시즌별 설정온도만 비교 (사용시간 제외)
+// 여름: 냉방 설정온도만 참조, 겨울: 난방 설정온도만 참조
+function findCaseBySettings(settings) {
+    const { equipment, lighting, outdoor, heating, cooling } = settings;
+    const season = (dataManager && dataManager.currentSeason) || 'summer';
+    const isSummer = season === 'summer';
+    const matchCooling = isSummer;
+    const matchHeating = !isSummer;
+
+    // 1) cases_data.json 기반 룩업
+    if (Array.isArray(casesDataLookup) && casesDataLookup.length > 0) {
+        for (const row of casesDataLookup) {
+            const equipmentOk = Math.abs(row.equipment - equipment) < 0.01;
+            const lightingOk = Math.abs(row.lighting - lighting) < 0.01;
+            const outdoorOk = Math.abs(row.outdoor - outdoor) < 0.01;
+            const heatingOk = !matchHeating || Math.abs(row.heating - heating) < 0.01;
+            const coolingOk = !matchCooling || Math.abs(row.cooling - cooling) < 0.01;
+            if (equipmentOk && lightingOk && outdoorOk && heatingOk && coolingOk) {
+                return row.caseKey;
+            }
         }
+        return null;
     }
 
-    // simulationCases 객체에서 일치하는 케이스 찾기
+    // 2) 폴백: simulationCases (cases_data 미로드 시)
     for (const [caseKey, caseData] of Object.entries(simulationCases)) {
-        if (
-            Math.abs(caseData.equipment - equipment) < 0.01 &&
-            Math.abs(caseData.lighting - lighting) < 0.01 &&
-            Math.abs(caseData.outdoor - outdoor) < 0.01 &&
-            Math.abs(caseData.heating - heating) < 0.01 &&
-            Math.abs(caseData.cooling - cooling) < 0.01 &&
-            caseData.time === timeKey
-        ) {
+        const equipmentOk = Math.abs(caseData.equipment - equipment) < 0.01;
+        const lightingOk = Math.abs(caseData.lighting - lighting) < 0.01;
+        const outdoorOk = Math.abs(caseData.outdoor - outdoor) < 0.01;
+        const heatingOk = !matchHeating || Math.abs(caseData.heating - heating) < 0.01;
+        const coolingOk = !matchCooling || Math.abs(caseData.cooling - cooling) < 0.01;
+        if (equipmentOk && lightingOk && outdoorOk && heatingOk && coolingOk) {
             return caseKey;
         }
     }
 
-    return null; // 일치하는 케이스가 없으면 null 반환
+    return null;
 }
 
-// REF_CELL 설정값 읽기 (로드된 케이스 패널 갱신용)
+// REF_CELL 설정값 읽기 (로드된 케이스 패널 갱신용). 표시된 설정온도(ref-temperature) 있으면 난방/냉방에 반영
 function getRefCellSettings() {
     const refEquip = document.getElementById('ref-equipment');
     const refLight = document.getElementById('ref-lighting');
     const refVent = document.getElementById('ref-ventilation');
     const refHeat = document.getElementById('ref-heating');
     const refCool = document.getElementById('ref-cooling');
+    const refTempD = document.getElementById('ref-temperature');
     const refTimeD = document.getElementById('ref-time-display');
     let timeKey = '07-18';
     if (refTimeD && refTimeD.textContent) {
         const m = String(refTimeD.textContent).trim().match(/(\d{1,2}):\d{2}-(\d{1,2})/);
         if (m) timeKey = m[1] + '-' + m[2];
     }
+    const displayTemp = refTempD && refTempD.textContent ? parseFloat(refTempD.textContent) : NaN;
+    const heating = !isNaN(displayTemp) ? displayTemp : (parseFloat(refHeat && refHeat.value !== '' ? refHeat.value : 0) || 20);
+    const cooling = !isNaN(displayTemp) ? displayTemp : (parseFloat(refCool && refCool.value !== '' ? refCool.value : 0) || 26);
     return {
         equipment: parseFloat(refEquip ? refEquip.textContent : 0) || 0,
         lighting: parseFloat(refLight ? refLight.textContent : 0) || 0,
         outdoor: parseFloat(refVent ? refVent.textContent : 0) || 0,
-        heating: parseFloat(refHeat && refHeat.value !== '' ? refHeat.value : 0) || 20,
-        cooling: parseFloat(refCool && refCool.value !== '' ? refCool.value : 0) || 26,
+        heating,
+        cooling,
         time: timeKey
     };
 }
@@ -3454,11 +3528,17 @@ function getRefCellSettings() {
 function applyRefCaseFromSettings() {
     const settings = getRefCellSettings();
     const key = findCaseBySettings(settings);
-    if (key) refCaseKeyCache = key;
+    if (key) {
+        refCaseKeyCache = key;
+    } else {
+        console.warn(
+            '[REF 케이스 매칭 실패] 기기발열·조명발열·외기도입량·난방·냉방이 일치하는 케이스가 없어 기존 REF 케이스가 유지됩니다.'
+        );
+    }
     updateCaseLoadInfo();
 }
 
-// TEST_CELL 설정값 읽기 함수
+// TEST_CELL 설정값 읽기 함수 (난방/냉방은 hidden input 또는 표시값 사용)
 function getTestCellSettings() {
     const equipmentEl = document.getElementById('test-equipment');
     const lightingEl = document.getElementById('test-lighting');
@@ -3466,13 +3546,17 @@ function getTestCellSettings() {
     const heatingEl = document.getElementById('test-heating');
     const coolingEl = document.getElementById('test-cooling');
     const timeEl = document.getElementById('test-time');
+    const tempDisplayEl = document.getElementById('test-temperature-display');
+    const displayTemp = tempDisplayEl && tempDisplayEl.textContent ? parseFloat(tempDisplayEl.textContent) : NaN;
+    const heating = (heatingEl && heatingEl.value !== '') ? parseFloat(heatingEl.value) : (!isNaN(displayTemp) ? displayTemp : 0);
+    const cooling = (coolingEl && coolingEl.value !== '') ? parseFloat(coolingEl.value) : (!isNaN(displayTemp) ? displayTemp : 0);
 
     return {
         equipment: parseFloat(equipmentEl ? equipmentEl.value : 0) || 0,
         lighting: parseFloat(lightingEl ? lightingEl.value : 0) || 0,
         outdoor: parseFloat(outdoorEl ? outdoorEl.value : 0) || 0,
-        heating: parseFloat(heatingEl ? heatingEl.value : 0) || 0,
-        cooling: parseFloat(coolingEl ? coolingEl.value : 0) || 0,
+        heating: heating || 0,
+        cooling: cooling || 0,
         time: timeEl ? timeEl.value : '07-18'
     };
 }
@@ -3518,6 +3602,9 @@ async function loadCaseBySettings() {
         return matchedCase;
     } else {
         debugLog('⚠️ 설정값과 일치하는 케이스를 찾을 수 없습니다.');
+        console.warn(
+            '[케이스 매칭 실패] 기기발열·조명발열·외기도입량·난방·냉방이 일치하는 케이스가 없어 기존 케이스가 유지됩니다.'
+        );
         return null;
     }
 }
@@ -3527,6 +3614,7 @@ async function loadCaseBySettings() {
 if (typeof window !== 'undefined') {
     window.loadCaseBySettings = loadCaseBySettings;
     window.applyRefCaseFromSettings = applyRefCaseFromSettings;
+    window.updateCaseLoadInfo = updateCaseLoadInfo;
 }
 
 // ============================================
