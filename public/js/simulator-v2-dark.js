@@ -3538,8 +3538,12 @@ function applyRefCaseFromSettings() {
     updateCaseLoadInfo();
 }
 
-// TEST_CELL 설정값 읽기 함수 (난방/냉방은 hidden input 또는 표시값 사용)
+// TEST_CELL 설정값 읽기: 테이블 표시(display) 우선 사용 → 케이스 매칭이 항상 화면과 일치
 function getTestCellSettings() {
+    const equipD = document.getElementById('test-equipment-display');
+    const lightD = document.getElementById('test-lighting-display');
+    const ventD = document.getElementById('test-ventilation-display');
+    const timeD = document.getElementById('test-time-display');
     const equipmentEl = document.getElementById('test-equipment');
     const lightingEl = document.getElementById('test-lighting');
     const outdoorEl = document.getElementById('test-outdoor');
@@ -3547,22 +3551,37 @@ function getTestCellSettings() {
     const coolingEl = document.getElementById('test-cooling');
     const timeEl = document.getElementById('test-time');
     const tempDisplayEl = document.getElementById('test-temperature-display');
+
+    const equipment = (equipD && equipD.textContent) ? parseFloat(equipD.textContent) : (parseFloat(equipmentEl && equipmentEl.value) || 0);
+    const lighting = (lightD && lightD.textContent) ? parseFloat(lightD.textContent) : (parseFloat(lightingEl && lightingEl.value) || 0);
+    const outdoor = (ventD && ventD.textContent) ? parseFloat(ventD.textContent) : (parseFloat(outdoorEl && outdoorEl.value) || 0);
+
+    // REF와 동일: 표시온도 한 칸이 있으면 난방·냉방 둘 다 그 값 사용 → 같은 조건이면 같은 케이스 선택
     const displayTemp = tempDisplayEl && tempDisplayEl.textContent ? parseFloat(tempDisplayEl.textContent) : NaN;
-    const heating = (heatingEl && heatingEl.value !== '') ? parseFloat(heatingEl.value) : (!isNaN(displayTemp) ? displayTemp : 0);
-    const cooling = (coolingEl && coolingEl.value !== '') ? parseFloat(coolingEl.value) : (!isNaN(displayTemp) ? displayTemp : 0);
+    const heating = !isNaN(displayTemp) ? displayTemp : (parseFloat(heatingEl && heatingEl.value !== '' ? heatingEl.value : 0) || 0);
+    const cooling = !isNaN(displayTemp) ? displayTemp : (parseFloat(coolingEl && coolingEl.value !== '' ? coolingEl.value : 0) || 0);
+
+    let time = timeEl ? timeEl.value : '07-18';
+    if (timeD && timeD.textContent) {
+        const m = String(timeD.textContent).trim().match(/(\d{1,2}):\d{2}-(\d{1,2})/);
+        if (m) time = m[1] + '-' + m[2];
+    }
 
     return {
-        equipment: parseFloat(equipmentEl ? equipmentEl.value : 0) || 0,
-        lighting: parseFloat(lightingEl ? lightingEl.value : 0) || 0,
-        outdoor: parseFloat(outdoorEl ? outdoorEl.value : 0) || 0,
+        equipment: equipment || 0,
+        lighting: lighting || 0,
+        outdoor: outdoor || 0,
         heating: heating || 0,
         cooling: cooling || 0,
-        time: timeEl ? timeEl.value : '07-18'
+        time
     };
 }
 
-// 설정값 변경 시 자동으로 케이스 찾기 및 로드
+// 설정값 변경 시 자동으로 케이스 찾기 및 로드 (TEST 테이블 표시 → input 동기화 후 매칭)
 async function loadCaseBySettings() {
+    if (typeof window.syncTestInputsFromDisplay === 'function') {
+        window.syncTestInputsFromDisplay();
+    }
     const settings = getTestCellSettings();
     const matchedCase = findCaseBySettings(settings);
 
