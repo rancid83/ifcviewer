@@ -3510,8 +3510,8 @@
                         if (testHeat) testHeat.value = value;
                         if (testCool) testCool.value = value;
                     }
-                    // TEST 행의 어떤 필드가 바뀌어도 설정값 기반 케이스 재선택 (case01 고정 방지)
-                    refreshCaseFromTestCellSettings();
+                    // TEST 행 DOM 반영 후 다음 틱에 케이스 재선택 (표시값 기준 매칭 보장)
+                    setTimeout(function() { refreshCaseFromTestCellSettings(); }, 0);
                 }
             }
 
@@ -4095,7 +4095,7 @@
                         if (currentSelectedZone === 'TEST_CELL') {
                             var heatingInput = document.getElementById('test-heating');
                             if (heatingInput) heatingInput.value = heatingSelect.value;
-                            refreshCaseFromTestCellSettings();
+                            setTimeout(function() { refreshCaseFromTestCellSettings(); }, 0);
                         } else if (currentSelectedZone === 'REF_CELL') {
                             var refHeatingInput = document.getElementById('ref-heating');
                             if (refHeatingInput) refHeatingInput.value = heatingSelect.value;
@@ -4147,7 +4147,7 @@
                         if (currentSelectedZone === 'TEST_CELL') {
                             var coolingInput = document.getElementById('test-cooling');
                             if (coolingInput) coolingInput.value = coolingSelect.value;
-                            refreshCaseFromTestCellSettings();
+                            setTimeout(function() { refreshCaseFromTestCellSettings(); }, 0);
                         } else if (currentSelectedZone === 'REF_CELL') {
                             var refCoolingInput = document.getElementById('ref-cooling');
                             if (refCoolingInput) refCoolingInput.value = coolingSelect.value;
@@ -4207,7 +4207,7 @@
                                 lighting: lightsValue
                             });
                             if (currentSelectedZone === 'TEST_CELL') {
-                                refreshCaseFromTestCellSettings();
+                                setTimeout(function() { refreshCaseFromTestCellSettings(); }, 0);
                             } else if (currentSelectedZone === 'REF_CELL') {
                                 refreshRefCaseFromSettings();
                             }
@@ -4256,7 +4256,7 @@
                     if (currentSelectedZone && ventilationSelect && ventilationSelect.value !== 'select') {
                         updateSimulationTable(currentSelectedZone, 'ventilation', ventilationSelect.value);
                         if (currentSelectedZone === 'TEST_CELL') {
-                            refreshCaseFromTestCellSettings();
+                            setTimeout(function() { refreshCaseFromTestCellSettings(); }, 0);
                         } else if (currentSelectedZone === 'REF_CELL') {
                             refreshRefCaseFromSettings();
                         }

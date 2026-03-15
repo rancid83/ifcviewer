@@ -804,6 +804,20 @@ function updateCaseLoadInfo() {
             '냉방(°C)': testSettings.cooling,
             '사용시간': testSettings.time
         });
+        const expectedCase = typeof findCaseBySettings === 'function' ? findCaseBySettings(testSettings) : null;
+        if (expectedCase && dataManager.currentCase !== expectedCase) {
+            const now = Date.now();
+            if (!window._lastTestSyncFromLoadInfo || now - window._lastTestSyncFromLoadInfo > 1500) {
+                window._lastTestSyncFromLoadInfo = now;
+                setTimeout(() => {
+                    if (typeof window.loadCaseBySettings === 'function') {
+                        window.loadCaseBySettings().then(() => {
+                            if (typeof window.updateCaseLoadInfo === 'function') window.updateCaseLoadInfo();
+                        });
+                    }
+                }, 0);
+            }
+        }
     }
 }
 
@@ -2613,7 +2627,7 @@ if (testCaseSelect) {
             stopPlayback();
         }
 
-        // Test Zone 파라미터 값 업데이트
+        // Test Zone 파라미터 값 업데이트 (input + 테이블 표시 동기화 → getTestCellSettings와 일치)
         const caseData = simulationCases[selectedCase];
         if (caseData) {
             document.getElementById('test-human').value = caseData.human;
@@ -2623,6 +2637,16 @@ if (testCaseSelect) {
             document.getElementById('test-heating').value = caseData.heating;
             document.getElementById('test-cooling').value = caseData.cooling;
             document.getElementById('test-time').value = caseData.time;
+            const equipD = document.getElementById('test-equipment-display');
+            const lightD = document.getElementById('test-lighting-display');
+            const ventD = document.getElementById('test-ventilation-display');
+            const tempD = document.getElementById('test-temperature-display');
+            const timeD = document.getElementById('test-time-display');
+            if (equipD) equipD.textContent = caseData.equipment;
+            if (lightD) lightD.textContent = caseData.lighting;
+            if (ventD) ventD.textContent = caseData.outdoor;
+            if (tempD) tempD.textContent = caseData.cooling;
+            if (timeD) timeD.textContent = (caseData.time || '07-18').replace(/(\d{2})-(\d{2})/, '$1:00-$2:00');
 
             // 변경된 값에 색상 적용
             updateInputColors(selectedCase);
@@ -2681,8 +2705,9 @@ let settingsChangeTimeout = null;
 
 function debounceSettingsChange() {
     clearTimeout(settingsChangeTimeout);
-    settingsChangeTimeout = setTimeout(() => {
-        loadCaseBySettings();
+    settingsChangeTimeout = setTimeout(async () => {
+        const matched = await loadCaseBySettings();
+        if (typeof window.updateCaseLoadInfo === 'function') window.updateCaseLoadInfo();
     }, 500); // 0.5초 후 실행
 }
 
@@ -3579,42 +3604,33 @@ function getTestCellSettings() {
 
 // 설정값 변경 시 자동으로 케이스 찾기 및 로드 (TEST 테이블 표시 → input 동기화 후 매칭)
 async function loadCaseBySettings() {
+    await new Promise(r => setTimeout(r, 0));
     if (typeof window.syncTestInputsFromDisplay === 'function') {
         window.syncTestInputsFromDisplay();
     }
     const settings = getTestCellSettings();
     const matchedCase = findCaseBySettings(settings);
+    console.log('[loadCaseBySettings] 읽은 설정:', settings, '→ 매칭된 케이스:', matchedCase, '| 현재 currentCase:', dataManager.currentCase);
 
     if (matchedCase) {
         debugLog(`✓ 설정값과 일치하는 케이스 발견: ${matchedCase}`);
         lastTestCellSelectionSource = 'settings_match';
 
-        // 케이스 선택 드롭다운 업데이트
         const testCaseSelect = document.getElementById('test-case');
+        const needUpdate = dataManager.currentCase !== matchedCase;
         if (testCaseSelect && testCaseSelect.value !== matchedCase) {
             testCaseSelect.value = matchedCase;
-
-            // 재생 중이면 정지
-            if (isPlaying) {
-                stopPlayback();
-            }
-
-            // 데이터 매니저 케이스 변경
+        }
+        if (needUpdate) {
+            if (isPlaying) stopPlayback();
             await dataManager.changeCase(matchedCase);
-
             const metadata = dataManager.currentMetadata;
             if (metadata) {
                 totalMinutes = metadata.totalFrames;
-
-                // 전체 재생 모드가 아닐 때만 필터링된 인덱스 재생성
-                if (!playFullRange) {
-                    await buildFilteredIndices();
-                }
+                if (!playFullRange) await buildFilteredIndices();
                 updateSliderRange();
             }
-
-            // 변경된 값에 색상 적용
-            updateInputColors(matchedCase);
+            if (typeof updateInputColors === 'function') updateInputColors(matchedCase);
         }
 
         updateCaseLoadInfo();
