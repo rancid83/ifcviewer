@@ -4336,6 +4336,30 @@
                 if (wrap) wrap.style.display = (obj && (obj.best07_10 || obj.best10_14 || obj.best14_end)) ? 'block' : 'none';
             };
 
+            // labels CSV 파싱 헬퍼 (날짜 → {set1, set2, set3})
+            async function loadLabelsCSV(season) {
+                var fileName = season === 'summer' ? 'labels_summer.csv' : 'labels_winter.csv';
+                try {
+                    var res = await fetch('/data/' + fileName);
+                    if (!res.ok) return {};
+                    var text = await res.text();
+                    var map = {};
+                    var lines = text.split('\n');
+                    for (var i = 1; i < lines.length; i++) {
+                        var line = lines[i].trim();
+                        if (!line) continue;
+                        var parts = line.split(',');
+                        if (parts.length >= 5 && parts[0]) {
+                            map[parts[0]] = { set1: parts[2], set2: parts[3], set3: parts[4] };
+                        }
+                    }
+                    return map;
+                } catch(e) {
+                    console.warn('labels CSV 로드 실패:', e);
+                    return {};
+                }
+            }
+
             if (optimizeTemperatureBtn && optimizationTbody) {
                 optimizeTemperatureBtn.addEventListener('click', async function() {
                     let startStr = startDateInput ? startDateInput.value : '';
@@ -4355,6 +4379,8 @@
                     const loadingSpinner = document.getElementById('loading-spinner');
                     var month = start.getMonth() + 1;
                     var season = (month >= 6 && month <= 9) ? 'summer' : 'winter';
+                    // labels CSV 로드 (set1/set2/set3 온도 데이터)
+                    var labelsMap = await loadLabelsCSV(season);
                     if (loadingPopup && loadingText) {
                         loadingPopup.classList.add('show', 'optimization-loading');
                         loadingText.textContent = '최적화 시나리오 시뮬레이션 중... (1/4)';
@@ -4479,31 +4505,27 @@
                         endDay.setHours(0, 0, 0, 0);
                         while (cur <= endDay) {
                             var dateStr = formatDateYMD(cur);
-                            var dayBest = getBestCaseForDate(dateStr);
                             var cell1, cell2, cell3;
-                            if (dayBest) {
-                                var c = dayBest.case;
-                                var se = dayBest.slotEnergy;
-                                var setpoint = getSetpointFromCasesData(casesDataList, c.caseName, season);
-                                var t1 = (setpoint != null) ? setpoint : '—';
-                                var t2 = t1;
-                                var t3 = t1;
-                                var e1 = (se['07-10'] != null) ? Number(se['07-10']).toFixed(1) : '';
-                                var e2 = (se['10-14'] != null) ? Number(se['10-14']).toFixed(1) : '';
-                                var e3 = (se[slotEndKey] != null || se['14-18'] != null) ? Number(se[slotEndKey] || se['14-18']).toFixed(1) : '';
-                                cell1 = t1;
-                                cell2 = t2;
-                                cell3 = t3;
+                            // labels CSV에 해당 날짜 데이터가 있으면 우선 사용
+                            var csvEntry = labelsMap[dateStr];
+                            if (csvEntry && (csvEntry.set1 || csvEntry.set2 || csvEntry.set3)) {
+                                cell1 = csvEntry.set1 || '—';
+                                cell2 = csvEntry.set2 || '—';
+                                cell3 = csvEntry.set3 || '—';
                             } else {
-                                var setpoint1 = getSetpointFromCasesData(casesDataList, best07_10 && best07_10.caseName, season);
-                                var setpoint2 = getSetpointFromCasesData(casesDataList, best10_14 && best10_14.caseName, season);
-                                var setpoint3 = getSetpointFromCasesData(casesDataList, best14_end && best14_end.caseName, season);
-                                var t1 = (setpoint1 != null) ? setpoint1 : '—';
-                                var t2 = (setpoint2 != null) ? setpoint2 : '—';
-                                var t3 = (setpoint3 != null) ? setpoint3 : '—';
-                                cell1 = t1;
-                                cell2 = t2;
-                                cell3 = t3;
+                                var dayBest = getBestCaseForDate(dateStr);
+                                if (dayBest) {
+                                    var c = dayBest.case;
+                                    var setpoint = getSetpointFromCasesData(casesDataList, c.caseName, season);
+                                    cell1 = cell2 = cell3 = (setpoint != null) ? setpoint : '—';
+                                } else {
+                                    var setpoint1 = getSetpointFromCasesData(casesDataList, best07_10 && best07_10.caseName, season);
+                                    var setpoint2 = getSetpointFromCasesData(casesDataList, best10_14 && best10_14.caseName, season);
+                                    var setpoint3 = getSetpointFromCasesData(casesDataList, best14_end && best14_end.caseName, season);
+                                    cell1 = (setpoint1 != null) ? setpoint1 : '—';
+                                    cell2 = (setpoint2 != null) ? setpoint2 : '—';
+                                    cell3 = (setpoint3 != null) ? setpoint3 : '—';
+                                }
                             }
                             rows.push('<tr><td class="col-date">' + dateStr + '</td><td>' + cell1 + '</td><td>' + cell2 + '</td><td>' + cell3 + '</td></tr>');
                             cur.setDate(cur.getDate() + 1);
