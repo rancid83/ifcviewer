@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+            background: #0f1115;
+            color: #e5e7eb;
+        }
+        .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+        h1 { font-size: 22px; margin: 0 0 4px; }
+        .sub { color: #9ca3af; font-size: 13px; margin-bottom: 20px; }
+        .panel {
+            background: #1a1d23;
+            border: 1px solid #2a2f3a;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .controls { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; align-items: end; }
+        .field label { display: block; font-size: 12px; color: #9ca3af; margin-bottom: 4px; }
+        .field input, .field select {
+            width: 100%;
+            background: #0f1115;
+            border: 1px solid #2a2f3a;
+            color: #e5e7eb;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 14px;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button:hover { background: #1d4ed8; }
+        button.ghost { background: #374151; }
+        button.ghost:hover { background: #4b5563; }
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        .status-bar.ok { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .status-bar.warn { background: rgba(245, 158, 11, 0.12); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .status-bar.err { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .panel h2 { font-size: 14px; margin: 0 0 10px; color: #d1d5db; letter-spacing: 0.02em; }
+        .meta { font-size: 12px; color: #9ca3af; margin-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td {
+            text-align: left;
+            padding: 6px 8px;
+            border-bottom: 1px solid #23262e;
+        }
+        th { color: #9ca3af; font-weight: 500; width: 40%; }
+        td { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+        tr.highlight th, tr.highlight td { background: rgba(37, 99, 235, 0.12); }
+        .compare {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .stat {
+            background: #0f1115;
+            border: 1px solid #2a2f3a;
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+        .stat .lbl { font-size: 11px; color: #9ca3af; }
+        .stat .val { font-size: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin-top: 4px; }
+        .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+        .pill.ok { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+        .pill.no { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .nav-time { display: flex; gap: 6px; margin-top: 6px; }
+        .nav-time button { padding: 4px 10px; font-size: 12px; }
+        a.return { color: #60a5fa; text-decoration: none; font-size: 13px; }
+        a.return:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>데이터 인스펙터</h1>
+        <div class="sub">
+            시뮬레이터가 사용하는 <code>simulation2/&lt;case&gt;/chunk-N.json</code> 값과
+            원본 <code>Result_file2_csv/Case_NN_Season.csv</code>의 같은 시점 행을 나란히 비교합니다.
+            &nbsp;<a class="return" href="/simulator">→ 시뮬레이터로 돌아가기</a>
+        </div>
+
+        <div class="panel">
+            <div class="controls">
+                <div class="field">
+                    <label>케이스</label>
+                    <select id="case-select"></select>
+                </div>
+                <div class="field">
+                    <label>시즌</label>
+                    <select id="season-select">
+                        <option value="summer">여름 (Summer)</option>
+                        <option value="winter">겨울 (Winter)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>날짜</label>
+                    <input type="date" id="date-input">
+                </div>
+                <div class="field">
+                    <label>시간 (HH:MM)</label>
+                    <input type="time" id="time-input" step="60" value="00:01">
+                </div>
+                <div class="field">
+                    <label>또는 분 인덱스 직접</label>
+                    <input type="number" id="minute-input" min="0" value="0">
+                </div>
+                <div class="field">
+                    <button id="load-btn">조회</button>
+                </div>
+            </div>
+            <div class="nav-time">
+                <button class="ghost" data-step="-60">−1h</button>
+                <button class="ghost" data-step="-10">−10m</button>
+                <button class="ghost" data-step="-1">−1m</button>
+                <button class="ghost" data-step="1">+1m</button>
+                <button class="ghost" data-step="10">+10m</button>
+                <button class="ghost" data-step="60">+1h</button>
+                <button class="ghost" data-step="1440">+1d</button>
+            </div>
+        </div>
+
+        <div id="status" class="status-bar warn">조회 버튼을 눌러 검사할 시점을 불러오세요.</div>
+
+        <div id="compare-row" class="panel" style="display:none;">
+            <h2>Q_sens_test_cell 비교</h2>
+            <div class="compare">
+                <div class="stat"><div class="lbl">CSV (원본)</div><div class="val" id="cmp-csv">—</div></div>
+                <div class="stat"><div class="lbl">Chunk (시뮬레이터)</div><div class="val" id="cmp-chunk">—</div></div>
+                <div class="stat"><div class="lbl">절대 차이</div><div class="val" id="cmp-diff">—</div></div>
+                <div class="stat"><div class="lbl">매칭</div><div class="val" id="cmp-match">—</div></div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>① 원본 CSV</h2>
+                <div class="meta" id="csv-meta">—</div>
+                <table id="csv-table"><tbody></tbody></table>
+            </div>
+            <div class="panel">
+                <h2>② 시뮬레이터 chunk JSON</h2>
+                <div class="meta" id="chunk-meta">—</div>
+                <table id="chunk-table"><tbody></tbody></table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CHUNK_SIZE = 1440;
+        const $ = (id) => document.getElementById(id);
+
+        // 시즌 → 시작일자 (chunk 데이터 기준: summer=2025-08-01, winter=2025-01-01)
+        const SEASON_START = { summer: '2025-08-01', winter: '2025-01-01' };
+
+        async function loadCases() {
+            const res = await fetch('/api/inspect/cases');
+            const data = await res.json();
+            const sel = $('case-select');
+            const seen = new Set();
+            data.items.forEach(it => {
+                if (seen.has(it.caseId)) return;
+                seen.add(it.caseId);
+                const opt = document.createElement('option');
+                opt.value = it.caseId;
+                opt.textContent = `Case_${it.caseId}` + (it.csvAvailable ? '' : ' (CSV 미제공)');
+                sel.appendChild(opt);
+            });
+        }
+
+        function dateTimeToMinute(season) {
+            const dateStr = $('date-input').value;
+            const timeStr = $('time-input').value || '00:01';
+            if (!dateStr) return null;
+            const start = new Date(SEASON_START[season] + 'T00:01:00');
+            const target = new Date(dateStr + 'T' + timeStr + ':00');
+            const diffMs = target.getTime() - start.getTime();
+            return Math.max(0, Math.round(diffMs / 60000));
+        }
+
+        function minuteToDateTime(season, minute) {
+            const start = new Date(SEASON_START[season] + 'T00:01:00');
+            const target = new Date(start.getTime() + minute * 60000);
+            const yyyy = target.getFullYear();
+            const mm = String(target.getMonth() + 1).padStart(2, '0');
+            const dd = String(target.getDate()).padStart(2, '0');
+            const hh = String(target.getHours()).padStart(2, '0');
+            const mi = String(target.getMinutes()).padStart(2, '0');
+            return { date: `${yyyy}-${mm}-${dd}`, time: `${hh}:${mi}` };
+        }
+
+        function syncFromDate() {
+            const season = $('season-select').value;
+            const m = dateTimeToMinute(season);
+            if (m != null) $('minute-input').value = m;
+        }
+        function syncFromMinute() {
+            const season = $('season-select').value;
+            const m = Math.max(0, Number($('minute-input').value || 0));
+            const { date, time } = minuteToDateTime(season, m);
+            $('date-input').value = date;
+            $('time-input').value = time;
+        }
+
+        function setStatus(kind, html) {
+            const el = $('status');
+            el.className = 'status-bar ' + kind;
+            el.innerHTML = html;
+        }
+
+        function renderTable(tbody, header, row, highlightCol) {
+            tbody.innerHTML = '';
+            if (!row) return;
+            (header || Object.keys(row)).forEach(h => {
+                if (!h) return;
+                const tr = document.createElement('tr');
+                if (h === highlightCol) tr.className = 'highlight';
+                tr.innerHTML = `<th>${h}</th><td>${row[h] != null ? row[h] : ''}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function loadFrame() {
+            const caseId = $('case-select').value;
+            const season = $('season-select').value;
+            const minute = Math.max(0, Number($('minute-input').value || 0));
+            if (!caseId) { setStatus('err', '케이스를 먼저 선택해 주세요.'); return; }
+            setStatus('warn', '불러오는 중…');
+            try {
+                const url = `/api/inspect/frame?case=${caseId}&season=${season}&minute=${minute}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.error) { setStatus('err', '오류: ' + data.error); return; }
+
+                // chunk panel
+                $('chunk-meta').textContent = data.chunk.available
+                    ? `chunk-${data.chunk.chunkIndex}.json · localIndex ${data.chunk.localIndex}`
+                    : 'chunk 파일 없음';
+                renderTable(
+                    $('chunk-table').querySelector('tbody'),
+                    data.chunk.frame ? Object.keys(data.chunk.frame) : null,
+                    data.chunk.frame,
+                    'Qsens_test'
+                );
+
+                // csv panel
+                $('csv-meta').textContent = data.csv.available
+                    ? `${data.csv.filename} · row ${data.csv.rowIndex} (헤더 제외)`
+                    : (data.csv.note || '—');
+                renderTable(
+                    $('csv-table').querySelector('tbody'),
+                    data.csv.header,
+                    data.csv.row,
+                    'Q_sens_test_cell'
+                );
+
+                // comparison
+                const cmpEl = $('compare-row');
+                if (data.comparison) {
+                    cmpEl.style.display = 'block';
+                    $('cmp-csv').textContent = data.comparison.csvQsens;
+                    $('cmp-chunk').textContent = data.comparison.chunkQsens;
+                    $('cmp-diff').textContent = data.comparison.absDiff.toExponential(3);
+                    $('cmp-match').innerHTML = data.comparison.match
+                        ? '<span class="pill ok">일치</span>'
+                        : '<span class="pill no">불일치</span>';
+                    if (data.comparison.match) {
+                        setStatus('ok', `Case_${data.caseId} ${data.season} · 분 인덱스 ${data.minute} · Q_sens_test_cell 일치 ✓`);
+                    } else {
+                        setStatus('err', `불일치: 차이 ${data.comparison.absDiff}`);
+                    }
+                } else {
+                    cmpEl.style.display = 'none';
+                    if (!data.csv.available) {
+                        setStatus('warn', `chunk 데이터는 표시되지만, 해당 케이스의 CSV가 제공되지 않아 비교 불가입니다. (${data.csv.note || ''})`);
+                    } else {
+                        setStatus('warn', '비교 가능한 데이터가 부족합니다.');
+                    }
+                }
+            } catch (e) {
+                setStatus('err', '요청 실패: ' + e.message);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCases();
+            // 초기 기본값: Case_01, summer, season 시작일 00:01
+            $('case-select').value = '01';
+            $('season-select').value = 'summer';
+            const { date, time } = minuteToDateTime('summer', 0);
+            $('date-input').value = date;
+            $('time-input').value = time;
+            $('minute-input').value = 0;
+
+            $('date-input').addEventListener('change', syncFromDate);
+            $('time-input').addEventListener('change', syncFromDate);
+            $('minute-input').addEventListener('change', syncFromMinute);
+            $('season-select').addEventListener('change', () => {
+                // 시즌 바뀌면 같은 분 인덱스 유지하고 날짜만 다시 동기화
+                syncFromMinute();
+            });
+            $('load-btn').addEventListener('click', loadFrame);
+            document.querySelectorAll('.nav-time button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const step = Number(btn.dataset.step || 0);
+                    const cur = Math.max(0, Number($('minute-input').value || 0));
+                    $('minute-input').value = Math.max(0, cur + step);
+                    syncFromMinute();
+                    loadFrame();
+                });
+            });
+
+            // 자동 1회 조회
+            loadFrame();
+        });
+    </script>
+</body>
+</html>
