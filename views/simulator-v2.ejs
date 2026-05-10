@@ -3105,7 +3105,7 @@
 
             // 체크 버튼 클릭 시 여름/겨울 선택
             if (simulationManagerCheckBtn) {
-                simulationManagerCheckBtn.addEventListener('click', function() {
+                simulationManagerCheckBtn.addEventListener('click', async function() {
                     const selectedValue = simulationManagerSelect.value;
                     const diagramImage = document.getElementById('simulation-diagram-image');
                     const diagramImageLoading = document.getElementById('diagram-image-loading');
@@ -3148,14 +3148,14 @@
 
                     // Heating energy consumption → 겨울 선택 및 Zone 정보 팝업의 heating 버튼 활성화
                     if (selectedValue === 'heating') {
-                        seasonButtons.forEach(function(btn) {
-                            if (btn.dataset.season === 'winter') {
-                                btn.classList.add('active');
-                                btn.click(); // 시뮬레이션 로직도 트리거
-                            } else {
-                                btn.classList.remove('active');
-                            }
-                        });
+                        // 시즌 전환을 await — metadata + availableDates 가 1~2월로 갱신될 때까지 대기
+                        if (typeof window.applySeasonChange === 'function') {
+                            await window.applySeasonChange('winter');
+                        } else {
+                            seasonButtons.forEach(function(btn) {
+                                btn.classList.toggle('active', btn.dataset.season === 'winter');
+                            });
+                        }
 
                         // Zone 정보 팝업의 heating 버튼 활성화, cooling 버튼 비활성화
                         const heatingMenuItem = document.getElementById('zone-menu-heating');
@@ -3179,48 +3179,36 @@
                         const simulationEndDate = document.getElementById('simulation-end-date');
                         if (startDateInput) {
                             startDateInput.value = '2025-01-01';
-                            startDateInput.dispatchEvent(new Event('change', {
-                                bubbles: true
-                            }));
+                            startDateInput.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                         if (endDateInput) {
                             endDateInput.value = '2025-02-28';
-                            endDateInput.dispatchEvent(new Event('change', {
-                                bubbles: true
-                            }));
+                            endDateInput.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                         if (simulationStartDate) {
                             simulationStartDate.value = '2025-01-01';
-                            simulationStartDate.dispatchEvent(new Event('change', {
-                                bubbles: true
-                            }));
+                            simulationStartDate.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                         if (simulationEndDate) {
                             simulationEndDate.value = '2025-02-28';
-                            simulationEndDate.dispatchEvent(new Event('change', {
-                                bubbles: true
-                            }));
+                            simulationEndDate.dispatchEvent(new Event('change', { bubbles: true }));
                         }
 
-                        // 날짜 설정 후 적용 버튼 자동 클릭
-                        setTimeout(function() {
-                            const applyDateRangeBtn = document.getElementById('apply-date-range-btn');
-                            if (applyDateRangeBtn) {
-                                applyDateRangeBtn.click();
-                            }
-                        }, 100);
+                        if (typeof window.applyDateRange === 'function') {
+                            await window.applyDateRange();
+                        }
                     }
 
                     // Cooling energy consumption → 여름 선택 및 Zone 정보 팝업의 cooling 버튼 활성화
                     if (selectedValue === 'cooling') {
-                        seasonButtons.forEach(function(btn) {
-                            if (btn.dataset.season === 'summer') {
-                                btn.classList.add('active');
-                                btn.click(); // 시뮬레이션 로직도 트리거
-                            } else {
-                                btn.classList.remove('active');
-                            }
-                        });
+                        // 시즌 전환을 await — metadata + availableDates 가 8~9월로 갱신될 때까지 대기
+                        if (typeof window.applySeasonChange === 'function') {
+                            await window.applySeasonChange('summer');
+                        } else {
+                            seasonButtons.forEach(function(btn) {
+                                btn.classList.toggle('active', btn.dataset.season === 'summer');
+                            });
+                        }
 
                         // Zone 정보 팝업의 cooling 버튼 활성화, heating 버튼 비활성화
                         const heatingMenuItem = document.getElementById('zone-menu-heating');
@@ -3244,36 +3232,24 @@
                         const simulationEndDate = document.getElementById('simulation-end-date');
                         if (startDateInput) {
                             startDateInput.value = '2025-08-01';
-                            startDateInput.dispatchEvent(new Event('change', {
-                                bubbles: true
-                            }));
+                            startDateInput.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                         if (endDateInput) {
-                            endDateInput.value = '2025-09-30';
-                            endDateInput.dispatchEvent(new Event('change', {
-                                bubbles: true
-                            }));
+                            endDateInput.value = '2025-09-28';
+                            endDateInput.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                         if (simulationStartDate) {
                             simulationStartDate.value = '2025-08-01';
-                            simulationStartDate.dispatchEvent(new Event('change', {
-                                bubbles: true
-                            }));
+                            simulationStartDate.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                         if (simulationEndDate) {
-                            simulationEndDate.value = '2025-09-30';
-                            simulationEndDate.dispatchEvent(new Event('change', {
-                                bubbles: true
-                            }));
+                            simulationEndDate.value = '2025-09-28';
+                            simulationEndDate.dispatchEvent(new Event('change', { bubbles: true }));
                         }
 
-                        // 날짜 설정 후 적용 버튼 자동 클릭
-                        setTimeout(function() {
-                            const applyDateRangeBtn = document.getElementById('apply-date-range-btn');
-                            if (applyDateRangeBtn) {
-                                applyDateRangeBtn.click();
-                            }
-                        }, 100);
+                        if (typeof window.applyDateRange === 'function') {
+                            await window.applyDateRange();
+                        }
                     }
 
                     // 시뮬레이션 선택 시 이미지 표시
@@ -3464,12 +3440,16 @@
                             element.textContent = value;
                         }
                     }
-                    // 설정온도 변경 시 난방/냉방 hidden input 동기화 → 케이스 매칭에 반영
+                    // 설정온도 변경 시 현재 시즌에 해당하는 hidden input만 갱신 → heating/cooling 분리 유지
                     if (field === 'temperature') {
                         var refHeat = document.getElementById('ref-heating');
                         var refCool = document.getElementById('ref-cooling');
-                        if (refHeat) refHeat.value = value;
-                        if (refCool) refCool.value = value;
+                        var curSeason = (window.dataManager && window.dataManager.currentSeason) || (typeof dataManager !== 'undefined' && dataManager.currentSeason) || 'summer';
+                        if (curSeason === 'winter') {
+                            if (refHeat) refHeat.value = value;
+                        } else {
+                            if (refCool) refCool.value = value;
+                        }
                         refreshRefCaseFromSettings();
                     }
                 } else if (zone === 'TEST_CELL') {
@@ -3507,8 +3487,12 @@
                     if (field === 'temperature') {
                         var testHeat = document.getElementById('test-heating');
                         var testCool = document.getElementById('test-cooling');
-                        if (testHeat) testHeat.value = value;
-                        if (testCool) testCool.value = value;
+                        var curSeason = (window.dataManager && window.dataManager.currentSeason) || (typeof dataManager !== 'undefined' && dataManager.currentSeason) || 'summer';
+                        if (curSeason === 'winter') {
+                            if (testHeat) testHeat.value = value;
+                        } else {
+                            if (testCool) testCool.value = value;
+                        }
                     }
                     // TEST 행 DOM 반영 후 다음 틱에 케이스 재선택 (표시값 기준 매칭 보장)
                     setTimeout(function() { refreshCaseFromTestCellSettings(); }, 0);

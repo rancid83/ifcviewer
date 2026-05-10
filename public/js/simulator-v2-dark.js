@@ -1593,62 +1593,82 @@ function createEnergyLegend() {
 // ============================================
 const seasonBtns = document.querySelectorAll('.season-btn');
 
+async function applySeasonChange(newSeason) {
+    if (isPlaying) {
+        stopPlayback();
+    }
+
+    seasonBtns.forEach(b => b.classList.toggle('active', b.dataset.season === newSeason));
+
+    debugLog('Season changed to:', newSeason);
+
+    // 시즌이 바뀌면 이전 시즌 기준으로 산출된 최적화 결과는 무효
+    window._optimizationResultCases = null;
+    _optChunkCache.clear();
+
+    await dataManager.changeSeason(newSeason);
+    await loadRefZoneDefaultData(newSeason, 0);
+
+    const metadata = dataManager.currentMetadata;
+    if (!metadata) return;
+
+    totalMinutes = metadata.totalFrames;
+
+    const testTimeSelect = document.getElementById('test-time');
+    if (testTimeSelect) {
+        timeRangeFilter = testTimeSelect.value;
+        debugLog('시즌 변경 → 재생 범위:', timeRangeFilter);
+    }
+
+    if (!playFullRange) {
+        await buildFilteredIndices();
+    }
+    updateSliderRange();
+
+    if (playFullRange) {
+        currentMinute = 0;
+        await updateVisualization(currentMinute);
+    } else {
+        currentFilteredIndex = 0;
+        if (filteredIndices.length > 0) {
+            currentMinute = filteredIndices[0];
+            await updateVisualization(currentMinute);
+        }
+    }
+
+    await populateDateSelects();
+
+    createEnergyLegend();
+    updateCaseLoadInfo();
+    refreshSetTemperatureDisplay();
+}
+
 seasonBtns.forEach(btn => {
-    btn.addEventListener('click', async() => {
-        // 재생 중이면 정지
-        if (isPlaying) {
-            stopPlayback();
-        }
-
-        seasonBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-
-        const newSeason = btn.dataset.season;
-        debugLog('Season changed to:', newSeason);
-
-        await dataManager.changeSeason(newSeason);
-
-        // Ref zone 기본 데이터 로드 (시즌 변경 시)
-        await loadRefZoneDefaultData(newSeason, 0);
-
-        const metadata = dataManager.currentMetadata;
-        if (metadata) {
-            totalMinutes = metadata.totalFrames;
-
-            // Test Zone의 현재 사용 시간 값 읽기
-            const testTimeSelect = document.getElementById('test-time');
-            if (testTimeSelect) {
-                timeRangeFilter = testTimeSelect.value;
-                debugLog('시즌 변경 → 재생 범위:', timeRangeFilter);
-            }
-
-            // 전체 재생 모드가 아닐 때만 필터링된 인덱스 재생성
-            if (!playFullRange) {
-                await buildFilteredIndices();
-            }
-            updateSliderRange();
-
-            // 첫 프레임으로 이동
-            if (playFullRange) {
-                currentMinute = 0;
-                await updateVisualization(currentMinute);
-            } else {
-                currentFilteredIndex = 0;
-                if (filteredIndices.length > 0) {
-                    currentMinute = filteredIndices[0];
-                    await updateVisualization(currentMinute);
-                }
-            }
-
-            // 날짜 목록 재생성 (시즌이 변경되면 날짜 범위가 달라짐)
-            await populateDateSelects();
-
-            // 레전드 업데이트
-            createEnergyLegend();
-            updateCaseLoadInfo();
-        }
-    });
+    btn.addEventListener('click', () => applySeasonChange(btn.dataset.season));
 });
+
+// 시즌에 맞는 표시 설정온도(ref-temperature, test-temperature-display)를 hidden input에서 다시 그리기
+function refreshSetTemperatureDisplay() {
+    const season = (dataManager && dataManager.currentSeason) || 'summer';
+    const refHeat = document.getElementById('ref-heating');
+    const refCool = document.getElementById('ref-cooling');
+    const refTempD = document.getElementById('ref-temperature');
+    const testHeat = document.getElementById('test-heating');
+    const testCool = document.getElementById('test-cooling');
+    const testTempD = document.getElementById('test-temperature-display');
+
+    const refSrc = season === 'winter' ? refHeat : refCool;
+    const testSrc = season === 'winter' ? testHeat : testCool;
+
+    if (refTempD && refSrc && refSrc.value !== '') refTempD.textContent = refSrc.value;
+    if (testTempD && testSrc && testSrc.value !== '') testTempD.textContent = testSrc.value;
+}
+
+window.dataManager = dataManager;
+window.applySeasonChange = applySeasonChange;
+window.applyDateRange = applyDateRange;
+window.populateDateSelects = populateDateSelects;
+window.refreshSetTemperatureDisplay = refreshSetTemperatureDisplay;
 
 // ============================================
 // 시간 슬라이더
@@ -2645,7 +2665,7 @@ if (testCaseSelect) {
             if (equipD) equipD.textContent = caseData.equipment;
             if (lightD) lightD.textContent = caseData.lighting;
             if (ventD) ventD.textContent = caseData.outdoor;
-            if (tempD) tempD.textContent = caseData.cooling;
+            if (tempD) tempD.textContent = (dataManager.currentSeason === 'winter' ? caseData.heating : caseData.cooling);
             if (timeD) timeD.textContent = (caseData.time || '07-18').replace(/(\d{2})-(\d{2})/, '$1:00-$2:00');
 
             // 변경된 값에 색상 적용
@@ -3755,6 +3775,77 @@ async function performEnergyAnalysis(refCell, testCell, testCaseName) {
 
 
 // ============================================
+// 최적화 모드: 시간대별 최적 케이스의 Qsens_test 를 별도 fetch (chunk 캐시)
+// ============================================
+const _optChunkCache = new Map();
+const _OPT_CHUNK_CACHE_LIMIT = 30;
+
+function parseOptCaseName(caseName) {
+    if (!caseName || typeof caseName !== 'string') return null;
+    const m = caseName.match(/Case0?(\d+)_(Summer|Winter)/i);
+    if (!m) return null;
+    return {
+        caseKey: 'case' + String(parseInt(m[1], 10)).padStart(2, '0'),
+        season: m[2].toLowerCase()
+    };
+}
+
+function getOptimalSlotKey(hour) {
+    if (hour >= 7 && hour < 10) return 'best07_10';
+    if (hour >= 10 && hour < 14) return 'best10_14';
+    if (hour >= 14 && hour < 18) return 'best14_end';
+    return null;
+}
+
+async function fetchOptCaseFrame(caseKey, season, minute) {
+    const dataPath = `${caseKey}-${season}`;
+    const chunkIndex = Math.floor(minute / 1440);
+    const cacheKey = `${dataPath}:${chunkIndex}`;
+    let chunk = _optChunkCache.get(cacheKey);
+    if (!chunk) {
+        try {
+            const res = await fetch(`/data/simulation2/${dataPath}/chunk-${chunkIndex}.json`);
+            if (!res.ok) return null;
+            chunk = await res.json();
+        } catch (e) {
+            return null;
+        }
+        if (_optChunkCache.size >= _OPT_CHUNK_CACHE_LIMIT) {
+            _optChunkCache.delete(_optChunkCache.keys().next().value);
+        }
+        _optChunkCache.set(cacheKey, chunk);
+    }
+    const localIndex = minute % 1440;
+    return chunk && chunk.data ? chunk.data[localIndex] : null;
+}
+
+async function getOptimizedTestEnergy(frameData, minute) {
+    const opt = window._optimizationResultCases;
+    if (!opt) return null;
+
+    let hour = null;
+    if (typeof frameData.time === 'string') {
+        const m = frameData.time.match(/(\d{1,2}):(\d{2})/);
+        if (m) hour = parseInt(m[1], 10);
+    } else if (typeof frameData.time === 'number') {
+        hour = Math.floor(frameData.time);
+    }
+    if (hour === null) return null;
+
+    const slotKey = getOptimalSlotKey(hour);
+    if (!slotKey) return null;
+
+    const optCaseName = opt[slotKey];
+    if (!optCaseName) return null;
+
+    const parsed = parseOptCaseName(optCaseName);
+    if (!parsed) return null;
+
+    const optFrame = await fetchOptCaseFrame(parsed.caseKey, parsed.season, minute);
+    return optFrame && typeof optFrame.Qsens_test === 'number' ? optFrame.Qsens_test : null;
+}
+
+// ============================================
 // 시각화 업데이트 함수
 // ============================================
 async function updateVisualization(minute) {
@@ -3769,16 +3860,26 @@ async function updateVisualization(minute) {
 
     debugLog(`   frameData 로드 완료 - time: ${frameData.time}`);
 
+    // 최적화 결과가 있으면 시간대 매핑된 케이스의 Qsens_test 로 displayFrame 갈아끼움
+    // (frameData 자체는 dataManager 청크 캐시의 reference 라 mutate 금지)
+    let displayFrame = frameData;
+    if (window._optimizationResultCases) {
+        const optEnergy = await getOptimizedTestEnergy(frameData, minute);
+        if (typeof optEnergy === 'number') {
+            displayFrame = Object.assign({}, frameData, { Qsens_test: optEnergy });
+        }
+    }
+
     // Ref zone 기본값 업데이트 (프레임 인덱스에 따라)
     await updateRefZoneDefaultEnergy(minute);
 
-    // IFC 색상 업데이트 (동기 함수로 즉시 실행)
+    // IFC 색상 업데이트 (동기 함수로 즉시 실행) — 색상은 원본 케이스 기준 유지
     updateIFCColors(frameData);
 
-    // UI 정보 업데이트 (배치 처리)
+    // UI 정보 업데이트 (배치 처리) — Test 표시값은 최적 케이스 기준
     scheduleDOMUpdate(() => {
-        updateEnergyDisplay(frameData);
-        updateTimeDisplay(frameData.time, minute);
+        updateEnergyDisplay(displayFrame);
+        updateTimeDisplay(displayFrame.time, minute);
     });
 
     debugLog(`✅ updateVisualization 완료`);
@@ -4068,10 +4169,9 @@ function updateEnergyDisplay(frameData) {
     let energyDiffEl = document.getElementById('energy-diff');
     let energyDiffPercentEl = document.getElementById('energy-diff-percent');
 
-    // 에너지 값을 전체 소수점으로 표시 (정확한 차이 확인)
-    // ref 사용량은 음수여도 양수로 표시
-    if (testEnergyEl) testEnergyEl.textContent = testEnergy.toString();
-    if (refEnergyEl) refEnergyEl.textContent = (typeof refEnergy === 'number' && refEnergy < 0 ? Math.abs(refEnergy) : refEnergy).toString();
+    // 화면 표시값은 항상 절대값으로 (실제 raw 값은 부호 유지). 차이값(diff)은 부호 유지.
+    if (testEnergyEl) testEnergyEl.textContent = (typeof testEnergy === 'number' ? Math.abs(testEnergy) : testEnergy).toString();
+    if (refEnergyEl)  refEnergyEl.textContent  = (typeof refEnergy  === 'number' ? Math.abs(refEnergy)  : refEnergy ).toString();
 
     const diff = testEnergy - refEnergy;
     const diffPercent = refEnergy !== 0 ? (diff / refEnergy * 100).toFixed(2) : '0';
