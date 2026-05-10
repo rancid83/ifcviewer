@@ -1593,6 +1593,21 @@ function createEnergyLegend() {
 // ============================================
 const seasonBtns = document.querySelectorAll('.season-btn');
 
+// 시즌 전환 등 비싼 작업 동안 보여줄 로딩 오버레이 헬퍼
+function setSimLoading(visible, text, progress) {
+    const overlay = document.getElementById('sim-loading-overlay');
+    if (!overlay) return;
+    overlay.style.display = visible ? 'flex' : 'none';
+    if (typeof text === 'string') {
+        const t = document.getElementById('sim-loading-text');
+        if (t) t.textContent = text;
+    }
+    if (typeof progress === 'number') {
+        const bar = document.getElementById('sim-loading-progress');
+        if (bar) bar.style.width = Math.min(100, Math.max(0, progress)) + '%';
+    }
+}
+
 async function applySeasonChange(newSeason) {
     if (isPlaying) {
         stopPlayback();
@@ -1606,12 +1621,15 @@ async function applySeasonChange(newSeason) {
     window._optimizationResultCases = null;
     _optChunkCache.clear();
 
+    setSimLoading(true, '시즌 데이터 로드 중…', 5);
+
     await dataManager.changeSeason(newSeason);
-    await loadRefZoneDefaultData(newSeason, 0);
 
     const metadata = dataManager.currentMetadata;
-    if (!metadata) return;
-
+    if (!metadata) {
+        setSimLoading(false);
+        return;
+    }
     totalMinutes = metadata.totalFrames;
 
     const testTimeSelect = document.getElementById('test-time');
@@ -1620,9 +1638,21 @@ async function applySeasonChange(newSeason) {
         debugLog('시즌 변경 → 재생 범위:', timeRangeFilter);
     }
 
-    if (!playFullRange) {
-        await buildFilteredIndices();
-    }
+    setSimLoading(true, '시간 인덱스 빌드 중…', 15);
+
+    // 독립 작업 병렬 실행: ref 데이터 로드, 시간 필터 인덱스 빌드, 날짜 셀렉트 갱신
+    await Promise.all([
+        loadRefZoneDefaultData(newSeason, 0),
+        playFullRange ? Promise.resolve() : buildFilteredIndices(function(done, total) {
+            // buildFilteredIndices 의 진행률은 15%~85% 구간에 매핑
+            const ratio = total > 0 ? done / total : 1;
+            setSimLoading(true, '시간 인덱스 빌드 중…', 15 + ratio * 70);
+        }),
+        populateDateSelects()
+    ]);
+
+    setSimLoading(true, '뷰 업데이트 중…', 90);
+
     updateSliderRange();
 
     if (playFullRange) {
@@ -1636,11 +1666,12 @@ async function applySeasonChange(newSeason) {
         }
     }
 
-    await populateDateSelects();
-
     createEnergyLegend();
     updateCaseLoadInfo();
     refreshSetTemperatureDisplay();
+
+    setSimLoading(true, '완료', 100);
+    setTimeout(() => setSimLoading(false), 200);
 }
 
 seasonBtns.forEach(btn => {
@@ -2126,8 +2157,21 @@ if (testTimeSelect) {
 }
 
 // 필터링된 인덱스 생성 (병렬 처리 최적화)
-async function buildFilteredIndices() {
+// 시즌+케이스+timeRangeFilter+totalMinutes 별 filteredIndices 결과 캐시 (재토글 시 즉시 반환)
+const filteredIndicesCache = new Map();
+
+async function buildFilteredIndices(onProgress) {
     filteredIndices = [];
+
+    // 캐시 키 — 같은 (시즌, 케이스, 시간필터, 총프레임) 조합이면 결과 동일
+    const cacheKey = `${dataManager.currentSeason}|${dataManager.currentCase}|${timeRangeFilter}|${totalMinutes}`;
+    const cached = filteredIndicesCache.get(cacheKey);
+    if (cached) {
+        filteredIndices = cached.slice();
+        if (typeof onProgress === 'function') onProgress(1, 1);
+        debugLog(`✓ filteredIndices 캐시 적중: ${cacheKey} (${filteredIndices.length})`);
+        return;
+    }
 
     // 시간 범위 파싱
     let startHour = 7;
@@ -2152,6 +2196,8 @@ async function buildFilteredIndices() {
             for (let i = 0; i < totalMinutes; i++) {
                 filteredIndices.push(i);
             }
+            filteredIndicesCache.set(cacheKey, filteredIndices.slice());
+            if (typeof onProgress === 'function') onProgress(1, 1);
             return;
     }
 
@@ -2228,12 +2274,17 @@ async function buildFilteredIndices() {
             debugLog(`   진행: ${Math.min(i + batchSize, numChunks)}/${numChunks} 청크, 처리된 프레임: ${processedFrames.toLocaleString()}, 필터링된 프레임: ${filteredIndices.length.toLocaleString()}`);
         }
 
+        if (typeof onProgress === 'function') {
+            onProgress(Math.min(i + batchSize, numChunks), numChunks);
+        }
+
         // UI 업데이트를 위한 yield (메인 스레드 블로킹 방지)
         await new Promise(resolve => setTimeout(resolve, 0));
     }
 
     debugLog(`   총 처리된 프레임: ${processedFrames.toLocaleString()}`);
     debugLog(`✓ 필터링 완료: ${filteredIndices.length.toLocaleString()} 프레임 (${startHour}:00 ~ ${endHour}:00)`);
+    filteredIndicesCache.set(cacheKey, filteredIndices.slice());
 }
 
 // 슬라이더 범위 업데이트
