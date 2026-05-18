@@ -59,6 +59,13 @@ app.get('/simulator', (req, res) => {
     });
 });
 
+// 최적화 검증 페이지 라우트 (최적화 로직 단독 검증용)
+app.get('/optimization-check', (req, res) => {
+    res.render('optimization-check', {
+        title: '최적화 로직 검증'
+    });
+});
+
 // 시간 슬라이더 테스트 라우트
 app.get('/time-slider', (req, res) => {
     res.render('time-slider', {

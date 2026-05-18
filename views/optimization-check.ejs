@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 24px;
+            background: #0e1320;
+            color: #e6e9f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Malgun Gothic', sans-serif;
+            font-size: 13px;
+        }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        h2 { font-size: 15px; margin: 22px 0 10px; color: #9fb3d1; }
+        .sub { color: #7f8aa3; font-size: 12px; margin-bottom: 18px; }
+        .panel {
+            background: #1a2030;
+            border: 1px solid #2c3548;
+            border-radius: 8px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+        }
+        .field { display: inline-flex; flex-direction: column; margin: 0 14px 10px 0; vertical-align: top; }
+        .field label { font-size: 11px; color: #8b97b3; margin-bottom: 4px; }
+        input, select {
+            background: #0e1320;
+            border: 1px solid #2c3548;
+            color: #e6e9f0;
+            border-radius: 5px;
+            padding: 6px 8px;
+            font-size: 13px;
+        }
+        input[type=number] { width: 90px; }
+        button {
+            background: #4f8cff;
+            color: #fff;
+            border: 0;
+            border-radius: 5px;
+            padding: 8px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover { background: #3d7af0; }
+        button:disabled { background: #3a4256; cursor: not-allowed; }
+        table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+        th, td { border: 1px solid #2c3548; padding: 6px 9px; text-align: center; }
+        th { background: #232b3e; color: #9fb3d1; font-weight: 600; }
+        td.date { text-align: left; white-space: nowrap; color: #b9c4dc; }
+        .best { background: #1f3a2a; color: #6ee7a0; font-weight: 700; }
+        .muted { color: #6b7690; }
+        .progress { color: #9fb3d1; margin: 8px 0; font-size: 12px; }
+        .err { color: #ff7a7a; }
+        .ok { color: #6ee7a0; }
+        .pill {
+            display: inline-block; background: #232b3e; border: 1px solid #2c3548;
+            border-radius: 4px; padding: 2px 8px; margin: 2px 4px 2px 0; font-size: 12px;
+        }
+        .big { font-size: 22px; font-weight: 700; color: #6ee7a0; }
+        code { background: #0e1320; padding: 1px 5px; border-radius: 3px; color: #c9d4ec; }
+        .note { font-size: 11px; color: #7f8aa3; margin-top: 6px; }
+    </style>
+</head>
+<body>
+    <h1>최적화 로직 검증 페이지</h1>
+    <div class="sub">
+        cases_data.json + simulation2 chunk 데이터만으로 시간대별 최적 설정온도를 산출하는 로직을 단독 검증합니다.
+        (메인 시뮬레이터의 <code>computeOptimization</code> 과 동일한 알고리즘)
+    </div>
+
+    <div class="panel">
+        <h2 style="margin-top:0">① TEST 조건 입력</h2>
+        <div class="field"><label>기기발열 (kJ/h·m²)</label><input type="number" id="eq" value="65.5" step="0.1"></div>
+        <div class="field"><label>조명발열 (kJ/h·m²)</label><input type="number" id="li" value="30.4" step="0.1"></div>
+        <div class="field"><label>외기도입량 (m³/m²·h)</label><input type="number" id="oa" value="6" step="1"></div>
+        <div class="field"><label>사용시간</label>
+            <select id="tm"><option>07-18</option><option>07-20</option><option>07-16</option></select>
+        </div>
+        <div class="field"><label>시즌</label>
+            <select id="season"><option value="winter">겨울 (난방)</option><option value="summer">여름 (냉방)</option></select>
+        </div>
+        <div class="field"><label>시작일</label><input type="date" id="start" value="2025-01-01"></div>
+        <div class="field"><label>종료일</label><input type="date" id="end" value="2025-02-28"></div>
+        <div class="field"><label>&nbsp;</label><button id="run">검증 실행</button></div>
+        <div class="progress" id="progress"></div>
+    </div>
+
+    <div class="panel" id="candPanel" style="display:none">
+        <h2 style="margin-top:0">② 후보 케이스 (cases_data.json 매칭)</h2>
+        <div id="candidates"></div>
+        <div class="note">TEST 조건의 기기/조명/외기/사용시간이 일치하고 설정온도만 다른 케이스들입니다. 각 폴더 <code>simulation2/caseNN-{시즌}/</code> 의 Qsens_test 를 비교합니다.</div>
+    </div>
+
+    <div class="panel" id="tablePanel" style="display:none">
+        <h2 style="margin-top:0">③ 날짜 × 시간대별 최적 설정온도</h2>
+        <div id="resultTable"></div>
+        <div class="note">각 칸: <code>설정온도°C (|Qsens 평균|)</code> · 초록색 = 그 시간대 최적(에너지 사용량 최소) · 굵은 설정온도가 표에 표출되는 값입니다.</div>
+    </div>
+
+    <div class="panel">
+        <h2 style="margin-top:0">④ 특정 시점 조회</h2>
+        <div class="field"><label>날짜</label><input type="date" id="qDate" value="2025-02-08"></div>
+        <div class="field"><label>시각 (HH:MM)</label><input type="text" id="qTime" value="13:36" style="width:90px"></div>
+        <div class="field"><label>&nbsp;</label><button id="query">조회</button></div>
+        <div class="progress" id="qProgress"></div>
+        <div id="queryResult"></div>
+        <div class="note">메인 시뮬레이터에서 해당 시점의 좌측 <code>Test(optimize)</code> 값과 대조하세요. 화면 표시값은 절대값입니다.</div>
+    </div>
+
+<script>
+(function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+
+    // ---- 데이터 헬퍼 (메인 로직과 동일) ----
+    var casesDataCache = null;
+    async function loadCasesData() {
+        if (casesDataCache) return casesDataCache;
+        var r = await fetch('/data/cases_data.json');
+        casesDataCache = await r.json();
+        return casesDataCache;
+    }
+    function caseNoToKey(no) {
+        var m = String(no || '').match(/Case_?(\d+)/i);
+        return m ? 'case' + String(parseInt(m[1], 10)).padStart(2, '0') : null;
+    }
+    function normTime(t) {
+        var s = String(t || '').replace(/시/g, '').trim();
+        var m = s.match(/(\d{1,2})-(\d{1,2})/);
+        return m ? m[1] + '-' + m[2] : s;
+    }
+    function slotOf(h) { return h < 10 ? '07-10' : (h < 14 ? '10-14' : '14-end'); }
+
+    var chunkCache = new Map();
+    async function fetchChunk(caseKey, season, ci) {
+        var ck = caseKey + '-' + season + ':' + ci;
+        if (chunkCache.has(ck)) return chunkCache.get(ck);
+        try {
+            var r = await fetch('/data/simulation2/' + caseKey + '-' + season + '/chunk-' + ci + '.json');
+            if (!r.ok) { chunkCache.set(ck, null); return null; }
+            var c = await r.json();
+            chunkCache.set(ck, c);
+            return c;
+        } catch (e) { chunkCache.set(ck, null); return null; }
+    }
+
+    async function getCandidates(eq, li, oa, tm, season) {
+        var cd = await loadCasesData();
+        var field = season === 'summer' ? '냉방 설정온도(°C)' : '난방 설정온도(°C)';
+        var out = [];
+        cd.forEach(function (r) {
+            if (Math.abs((parseFloat(r['기기발열(kJ/h·m²)']) || 0) - eq) > 0.05) return;
+            if (Math.abs((parseFloat(r['조명발열(kJ/h·m²)']) || 0) - li) > 0.05) return;
+            if (Math.abs((parseFloat(r['외기도입량(m³/m²·h)']) || 0) - oa) > 0.05) return;
+            if (normTime(r['사용시간']) !== tm) return;
+            var tset = parseFloat(r[field]);
+            var key = caseNoToKey(r['Case No.']);
+            if (key && !isNaN(tset)) out.push({ tset: tset, caseKey: key, caseNo: r['Case No.'] });
+        });
+        return out;
+    }
+
+    function readInputs() {
+        return {
+            eq: parseFloat($('eq').value) || 0,
+            li: parseFloat($('li').value) || 0,
+            oa: parseFloat($('oa').value) || 0,
+            tm: $('tm').value,
+            season: $('season').value,
+            startYMD: $('start').value,
+            endYMD: $('end').value
+        };
+    }
+
+    // ---- ② + ③ 검증 실행 ----
+    $('run').addEventListener('click', async function () {
+        var inp = readInputs();
+        var btn = $('run');
+        btn.disabled = true;
+        $('progress').textContent = '';
+        $('progress').className = 'progress';
+        try {
+            var cands = await getCandidates(inp.eq, inp.li, inp.oa, inp.tm, inp.season);
+            // 후보 표시
+            $('candPanel').style.display = 'block';
+            if (!cands.length) {
+                $('candidates').innerHTML = '<span class="err">조건에 맞는 후보 케이스가 cases_data.json 에 없습니다.</span>';
+                $('tablePanel').style.display = 'none';
+                return;
+            }
+            $('candidates').innerHTML = cands.map(function (c) {
+                return '<span class="pill">' + c.caseNo + ' → <b>' + c.caseKey + '</b> · 설정온도 <b>' + c.tset + '°C</b></span>';
+            }).join('');
+
+            var endHour = parseInt(inp.tm.split('-')[1], 10) || 18;
+            var numChunks = 58;
+            var agg = {}; // agg[date][slot][caseKey] = {sum,cnt,tset}
+            var done = 0, total = cands.length * numChunks;
+
+            for (var ci2 = 0; ci2 < cands.length; ci2++) {
+                var cand = cands[ci2];
+                for (var ci = 0; ci < numChunks; ci++) {
+                    var chunk = await fetchChunk(cand.caseKey, inp.season, ci);
+                    done++;
+                    $('progress').textContent = '데이터 로드 중... ' + done + '/' + total + ' chunk';
+                    if (!chunk || !chunk.data) continue;
+                    var pastEnd = false;
+                    for (var fi = 0; fi < chunk.data.length; fi++) {
+                        var f = chunk.data[fi];
+                        var dm = String(f.time).match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):/);
+                        if (!dm) continue;
+                        var date = dm[1];
+                        if (date < inp.startYMD) continue;
+                        if (date > inp.endYMD) { pastEnd = true; break; }
+                        var h = parseInt(dm[2], 10);
+                        if (h < 7 || h >= endHour) continue;
+                        var sk = slotOf(h);
+                        var d = agg[date] || (agg[date] = {});
+                        var s = d[sk] || (d[sk] = {});
+                        var e = s[cand.caseKey] || (s[cand.caseKey] = { sum: 0, cnt: 0, tset: cand.tset });
+                        e.sum += (typeof f.Qsens_test === 'number' ? f.Qsens_test : 0);
+                        e.cnt++;
+                    }
+                    if (pastEnd) break;
+                }
+            }
+
+            $('progress').innerHTML = '<span class="ok">완료 — ' + Object.keys(agg).length + '일 산출</span>';
+            renderTable(agg, cands, inp);
+        } catch (err) {
+            $('progress').innerHTML = '<span class="err">오류: ' + (err.message || err) + '</span>';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    function pickBest(slotObj) {
+        // |평균 Qsens| 최소
+        var best = null, bestAbs = Infinity;
+        Object.keys(slotObj || {}).forEach(function (ck) {
+            var e = slotObj[ck];
+            if (!e.cnt) return;
+            var a = Math.abs(e.sum / e.cnt);
+            if (a < bestAbs) { bestAbs = a; best = ck; }
+        });
+        return best;
+    }
+
+    function renderTable(agg, cands, inp) {
+        $('tablePanel').style.display = 'block';
+        var endHour = parseInt(inp.tm.split('-')[1], 10) || 18;
+        var slotKeys = ['07-10', '10-14', '14-end'];
+        var slotLabels = { '07-10': '07~10시', '10-14': '10~14시', '14-end': '14~' + endHour + '시' };
+        var html = '<table><thead><tr><th>일시</th>';
+        slotKeys.forEach(function (sk) { html += '<th>' + slotLabels[sk] + ' [°C]</th>'; });
+        html += '</tr></thead><tbody>';
+
+        Object.keys(agg).sort().forEach(function (date) {
+            html += '<tr><td class="date">' + date + '</td>';
+            slotKeys.forEach(function (sk) {
+                var slotObj = agg[date][sk];
+                if (!slotObj) { html += '<td class="muted">—</td>'; return; }
+                var bestKey = pickBest(slotObj);
+                // 각 후보의 |평균| 모두 표시
+                var parts = cands.map(function (c) {
+                    var e = slotObj[c.caseKey];
+                    if (!e || !e.cnt) return '<span class="muted">' + c.tset + '°:n/a</span>';
+                    var avg = e.sum / e.cnt;
+                    var txt = c.tset + '°: ' + Math.abs(avg).toFixed(1);
+                    return (c.caseKey === bestKey) ? '<b>' + txt + '</b>' : '<span class="muted">' + txt + '</span>';
+                }).join('<br>');
+                var bestTset = bestKey ? slotObj[bestKey].tset : '—';
+                html += '<td class="best"><div style="font-size:15px">' + bestTset + '°C</div>'
+                    + '<div style="font-size:10px;font-weight:400;margin-top:3px">' + parts + '</div></td>';
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        $('resultTable').innerHTML = html;
+    }
+
+    // ---- ④ 특정 시점 조회 ----
+    $('query').addEventListener('click', async function () {
+        var inp = readInputs();
+        var date = $('qDate').value;
+        var tparts = ($('qTime').value || '').trim().match(/(\d{1,2}):(\d{2})/);
+        if (!tparts) { $('queryResult').innerHTML = '<span class="err">시각을 HH:MM 형식으로 입력하세요.</span>'; return; }
+        var hh = parseInt(tparts[1], 10), mm = parseInt(tparts[2], 10);
+        var btn = $('query');
+        btn.disabled = true;
+        $('qProgress').textContent = '';
+        $('queryResult').innerHTML = '';
+        try {
+            var cands = await getCandidates(inp.eq, inp.li, inp.oa, inp.tm, inp.season);
+            if (!cands.length) { $('queryResult').innerHTML = '<span class="err">후보 케이스 없음.</span>'; return; }
+            var endHour = parseInt(inp.tm.split('-')[1], 10) || 18;
+            var sk = slotOf(hh);
+            var prefix = date + ' ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+
+            // 각 후보: 그 시점 Qsens_test + 그 날 그 슬롯 |평균|
+            var numChunks = 58;
+            var rows = [];
+            for (var i = 0; i < cands.length; i++) {
+                var cand = cands[i];
+                var pointQ = null, slotSum = 0, slotCnt = 0;
+                for (var ci = 0; ci < numChunks; ci++) {
+                    var chunk = await fetchChunk(cand.caseKey, inp.season, ci);
+                    $('qProgress').textContent = '조회 중... ' + cand.caseKey + ' chunk ' + ci;
+                    if (!chunk || !chunk.data) continue;
+                    var sawDate = false, pastEnd = false;
+                    for (var fi = 0; fi < chunk.data.length; fi++) {
+                        var f = chunk.data[fi];
+                        var ts = String(f.time);
+                        var dm = ts.match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):/);
+                        if (!dm) continue;
+                        if (dm[1] !== date) { if (sawDate) { pastEnd = true; break; } continue; }
+                        sawDate = true;
+                        var h = parseInt(dm[2], 10);
+                        if (ts.indexOf(prefix) === 0) pointQ = (typeof f.Qsens_test === 'number' ? f.Qsens_test : null);
+                        if (h >= 7 && h < endHour && slotOf(h) === sk) {
+                            slotSum += (typeof f.Qsens_test === 'number' ? f.Qsens_test : 0);
+                            slotCnt++;
+                        }
+                    }
+                    if (pastEnd) break;
+                }
+                rows.push({ cand: cand, pointQ: pointQ, slotAbs: slotCnt ? Math.abs(slotSum / slotCnt) : null });
+            }
+
+            // 최적: 슬롯 |평균| 최소
+            var best = null;
+            rows.forEach(function (r) {
+                if (r.slotAbs == null) return;
+                if (!best || r.slotAbs < best.slotAbs) best = r;
+            });
+
+            var html = '<table><thead><tr><th>설정온도</th><th>케이스</th><th>' + prefix + ' Qsens_test (raw)</th>'
+                + '<th>화면 표시값 (절대값)</th><th>' + sk + ' 슬롯 |평균|</th><th>판정</th></tr></thead><tbody>';
+            rows.forEach(function (r) {
+                var isBest = best && r.cand.caseKey === best.cand.caseKey;
+                html += '<tr' + (isBest ? ' class="best"' : '') + '>'
+                    + '<td><b>' + r.cand.tset + '°C</b></td>'
+                    + '<td>' + r.cand.caseNo + ' (' + r.cand.caseKey + ')</td>'
+                    + '<td>' + (r.pointQ == null ? '<span class="muted">n/a</span>' : r.pointQ.toFixed(4)) + '</td>'
+                    + '<td><b>' + (r.pointQ == null ? '—' : Math.abs(r.pointQ).toFixed(4)) + '</b></td>'
+                    + '<td>' + (r.slotAbs == null ? '—' : r.slotAbs.toFixed(2)) + '</td>'
+                    + '<td>' + (isBest ? '<span class="ok">★ 최적 (표출 대상)</span>' : '') + '</td>'
+                    + '</tr>';
+            });
+            html += '</tbody></table>';
+            if (best) {
+                html += '<div style="margin-top:12px">시간대 <code>' + sk + '</code> 최적 설정온도: '
+                    + '<span class="big">' + best.cand.tset + '°C</span> '
+                    + '(' + best.cand.caseNo + ') &nbsp;→&nbsp; 이 시점 화면 표출값: '
+                    + '<span class="big">' + (best.pointQ == null ? '—' : Math.abs(best.pointQ).toFixed(4)) + '</span> kJ/h</div>';
+            }
+            $('qProgress').innerHTML = '<span class="ok">조회 완료</span>';
+            $('queryResult').innerHTML = html;
+        } catch (err) {
+            $('qProgress').innerHTML = '<span class="err">오류: ' + (err.message || err) + '</span>';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+})();
+</script>
+</body>
+</html>

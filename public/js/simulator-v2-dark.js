@@ -3826,31 +3826,16 @@ async function performEnergyAnalysis(refCell, testCell, testCaseName) {
 
 
 // ============================================
-// 최적화 모드: 시간대별 최적 케이스의 Qsens_test 를 별도 fetch (chunk 캐시)
+// 최적화 모드: cases_data.json + simulation2 만으로 시간대별 최적 케이스 산출
+// (case-summary.json / labels csv 의존 제거)
 // ============================================
 const _optChunkCache = new Map();
-const _OPT_CHUNK_CACHE_LIMIT = 30;
+const _OPT_CHUNK_CACHE_LIMIT = 60;
+const CHUNK_SIZE = 1440;
 
-function parseOptCaseName(caseName) {
-    if (!caseName || typeof caseName !== 'string') return null;
-    const m = caseName.match(/Case0?(\d+)_(Summer|Winter)/i);
-    if (!m) return null;
-    return {
-        caseKey: 'case' + String(parseInt(m[1], 10)).padStart(2, '0'),
-        season: m[2].toLowerCase()
-    };
-}
-
-function getOptimalSlotKey(hour) {
-    if (hour >= 7 && hour < 10) return 'best07_10';
-    if (hour >= 10 && hour < 14) return 'best10_14';
-    if (hour >= 14 && hour < 18) return 'best14_end';
-    return null;
-}
-
-async function fetchOptCaseFrame(caseKey, season, minute) {
+// caseKey-season 폴더의 chunk 전체를 fetch (LRU 캐시)
+async function fetchOptCaseChunk(caseKey, season, chunkIndex) {
     const dataPath = `${caseKey}-${season}`;
-    const chunkIndex = Math.floor(minute / 1440);
     const cacheKey = `${dataPath}:${chunkIndex}`;
     let chunk = _optChunkCache.get(cacheKey);
     if (!chunk) {
@@ -3866,35 +3851,140 @@ async function fetchOptCaseFrame(caseKey, season, minute) {
         }
         _optChunkCache.set(cacheKey, chunk);
     }
-    const localIndex = minute % 1440;
-    return chunk && chunk.data ? chunk.data[localIndex] : null;
+    return chunk;
 }
 
+async function fetchOptCaseFrame(caseKey, season, minute) {
+    const chunk = await fetchOptCaseChunk(caseKey, season, Math.floor(minute / CHUNK_SIZE));
+    return chunk && chunk.data ? chunk.data[minute % CHUNK_SIZE] : null;
+}
+
+// "2025-01-09" → Date(자정)
+function ymdToDate(s) { return new Date(s + 'T00:00:00'); }
+function dateToYMD(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// 시각(hour) → 시간대 슬롯 키
+function optimizationSlotOf(hour) {
+    if (hour < 10) return '07-10';
+    if (hour < 14) return '10-14';
+    return '14-end';
+}
+
+// cases_data.json 에서 TEST 조건(기기/조명/외기/사용시간) 일치 + 설정온도만 다른 후보 케이스
+async function optimizationGetCandidates(testSettings, season) {
+    const casesData = await getCasesData();
+    if (!Array.isArray(casesData)) return [];
+    const tsetField = season === 'summer' ? '냉방 설정온도(°C)' : '난방 설정온도(°C)';
+    const eq = testSettings.equipment, li = testSettings.lighting, oa = testSettings.outdoor;
+    const tm = testSettings.time;
+    const out = [];
+    casesData.forEach(row => {
+        if (Math.abs((parseFloat(row['기기발열(kJ/h·m²)']) || 0) - eq) > 0.05) return;
+        if (Math.abs((parseFloat(row['조명발열(kJ/h·m²)']) || 0) - li) > 0.05) return;
+        if (Math.abs((parseFloat(row['외기도입량(m³/m²·h)']) || 0) - oa) > 0.05) return;
+        if (normalizeTimeFromCasesData(row['사용시간']) !== tm) return;
+        const tset = parseFloat(row[tsetField]);
+        const caseKey = caseNoToKey(row['Case No.']);
+        if (caseKey && !isNaN(tset)) out.push({ tset, caseKey, caseNo: row['Case No.'] });
+    });
+    return out;
+}
+
+// 최적화 산출: 날짜×슬롯별로 후보 케이스 중 |Qsens 평균| 이 가장 작은(에너지 사용량 최소) 케이스 선택
+// chunk 가 자정 정렬이 아니므로 frame.time 으로 날짜·시간대를 판정한다.
+// 반환: { perDate: { 'YYYY-MM-DD': { '07-10': {tset,caseKey}, ... } }, season }
+async function computeOptimization(startStr, endStr, onProgress) {
+    const season = dataManager.currentSeason || 'winter';
+    const testSettings = getTestCellSettings();
+    const candidates = await optimizationGetCandidates(testSettings, season);
+    if (candidates.length === 0) {
+        console.warn('최적화: TEST 조건에 맞는 후보 케이스를 cases_data.json 에서 찾지 못함', testSettings);
+        return null;
+    }
+
+    const startYMD = startStr.split(' ')[0];
+    const endYMD = endStr.split(' ')[0];
+    // 사용시간 종료시각 이후(난방/냉방 미운전)는 슬롯 집계에서 제외
+    const endHour = parseInt((testSettings.time || '07-18').split('-')[1], 10) || 18;
+    const numChunks = (dataManager.currentMetadata && dataManager.currentMetadata.numChunks) || 58;
+
+    // agg[dateStr][slotKey][caseKey] = { sum, cnt, tset }
+    const agg = {};
+    let done = 0;
+    const totalWork = Math.max(1, candidates.length * numChunks);
+
+    for (const cand of candidates) {
+        for (let ci = 0; ci < numChunks; ci++) {
+            const chunk = await fetchOptCaseChunk(cand.caseKey, season, ci);
+            done++;
+            if (typeof onProgress === 'function') onProgress(done, totalWork);
+            if (!chunk || !chunk.data) continue;
+            let pastEnd = false;
+            for (const f of chunk.data) {
+                const dm = String(f.time).match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):/);
+                if (!dm) continue;
+                const dateStr = dm[1];
+                if (dateStr < startYMD) continue;
+                if (dateStr > endYMD) { pastEnd = true; break; }
+                const hour = parseInt(dm[2], 10);
+                if (hour < 7 || hour >= endHour) continue;
+                const sk = optimizationSlotOf(hour);
+                const d = agg[dateStr] || (agg[dateStr] = {});
+                const s = d[sk] || (d[sk] = {});
+                const e = s[cand.caseKey] || (s[cand.caseKey] = { sum: 0, cnt: 0, tset: cand.tset });
+                e.sum += (typeof f.Qsens_test === 'number' ? f.Qsens_test : 0);
+                e.cnt++;
+            }
+            if (pastEnd) break;
+        }
+    }
+
+    // 날짜×슬롯별 최적: |평균 Qsens| 가 최소인 케이스
+    const perDate = {};
+    Object.keys(agg).forEach(dateStr => {
+        perDate[dateStr] = {};
+        ['07-10', '10-14', '14-end'].forEach(sk => {
+            const s = agg[dateStr][sk];
+            if (!s) return;
+            let best = null, bestAbs = Infinity;
+            Object.keys(s).forEach(ck => {
+                const e = s[ck];
+                if (e.cnt === 0) return;
+                const a = Math.abs(e.sum / e.cnt);
+                if (a < bestAbs) { bestAbs = a; best = { tset: e.tset, caseKey: ck }; }
+            });
+            if (best) perDate[dateStr][sk] = best;
+        });
+    });
+    return { perDate, season };
+}
+
+// 최적화 결과가 있으면, 현재 frame 의 날짜·시간대에 해당하는 최적 케이스의 Qsens_test 반환
 async function getOptimizedTestEnergy(frameData, minute) {
     const opt = window._optimizationResultCases;
-    if (!opt) return null;
+    if (!opt || !opt.perDate) return null;
 
-    let hour = null;
-    if (typeof frameData.time === 'string') {
-        const m = frameData.time.match(/(\d{1,2}):(\d{2})/);
-        if (m) hour = parseInt(m[1], 10);
-    } else if (typeof frameData.time === 'number') {
-        hour = Math.floor(frameData.time);
-    }
-    if (hour === null) return null;
+    const t = String(frameData.time);
+    const dm = t.match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):/);
+    if (!dm) return null;
+    const dateStr = dm[1];
+    const hour = parseInt(dm[2], 10);
 
-    const slotKey = getOptimalSlotKey(hour);
-    if (!slotKey) return null;
+    const dayOpt = opt.perDate[dateStr];
+    if (!dayOpt) return null;
+    const slot = dayOpt[optimizationSlotOf(hour)];
+    if (!slot || !slot.caseKey) return null;
 
-    const optCaseName = opt[slotKey];
-    if (!optCaseName) return null;
-
-    const parsed = parseOptCaseName(optCaseName);
-    if (!parsed) return null;
-
-    const optFrame = await fetchOptCaseFrame(parsed.caseKey, parsed.season, minute);
+    const optFrame = await fetchOptCaseFrame(slot.caseKey, opt.season, minute);
     return optFrame && typeof optFrame.Qsens_test === 'number' ? optFrame.Qsens_test : null;
 }
+
+window.computeOptimization = computeOptimization;
+window.refreshVisualization = function() {
+    if (typeof currentMinute === 'number') return updateVisualization(currentMinute);
+};
 
 // ============================================
 // 시각화 업데이트 함수
@@ -4219,6 +4309,12 @@ function updateEnergyDisplay(frameData) {
     let refEnergyEl = document.getElementById('ref-energy');
     let energyDiffEl = document.getElementById('energy-diff');
     let energyDiffPercentEl = document.getElementById('energy-diff-percent');
+
+    // 최적화 모드일 때 Test 라벨을 'Test(optimize):' 로 (해제 시 'Test:')
+    const testEnergyLabel = document.getElementById('test-energy-label');
+    if (testEnergyLabel) {
+        testEnergyLabel.textContent = window._optimizationResultCases ? 'Test(optimize):' : 'Test:';
+    }
 
     // 화면 표시값은 항상 절대값으로 (실제 raw 값은 부호 유지). 차이값(diff)은 부호 유지.
     if (testEnergyEl) testEnergyEl.textContent = (typeof testEnergy === 'number' ? Math.abs(testEnergy) : testEnergy).toString();
