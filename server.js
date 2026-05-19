@@ -77,6 +77,13 @@ app.get('/chunk-editor', (req, res) => {
     });
 });
 
+// 개발/검증 도구 모음 (허브 페이지)
+app.get('/tools', (req, res) => {
+    res.render('tools', {
+        title: '개발/검증 도구 모음'
+    });
+});
+
 // 시간 슬라이더 테스트 라우트
 app.get('/time-slider', (req, res) => {
     res.render('time-slider', {
@@ -161,66 +168,128 @@ function readCsvRow(filePath, targetRowIndex) {
     });
 }
 
-// 데이터 인스펙터 - 단일 시점 비교
+// CSV 에서 Month/Day/Hour 가 일치하는 행을 검색 (스트리밍)
+function readCsvRowByTime(filePath, month, day, hour) {
+    return new Promise((resolve) => {
+        if (!fs.existsSync(filePath)) {
+            return resolve({ available: false, header: null, row: null });
+        }
+        const rl = readline.createInterface({
+            input: fs.createReadStream(filePath, { encoding: 'utf8' }),
+            crlfDelay: Infinity
+        });
+        let header = null, col = {}, dataIdx = 0, resolved = false;
+        rl.on('line', (line) => {
+            if (resolved) return;
+            if (header === null) {
+                header = line.split(',');
+                header.forEach((h, i) => { col[h.trim()] = i; });
+                return;
+            }
+            const cols = line.split(',');
+            const mo = Math.round(parseFloat(cols[col['Month']]));
+            const da = Math.round(parseFloat(cols[col['Day']]));
+            const hr = parseFloat(cols[col['Hour']]);
+            if (mo === month && da === day && Math.abs(hr - hour) < 0.001) {
+                const row = {};
+                header.forEach((h, i) => { row[h] = cols[i]; });
+                resolved = true;
+                rl.close();
+                resolve({ available: true, header, row, rowIndex: dataIdx });
+                return;
+            }
+            dataIdx += 1;
+        });
+        rl.on('close', () => { if (!resolved) resolve({ available: true, header, row: null }); });
+        rl.on('error', () => { if (!resolved) resolve({ available: false, header: null, row: null }); });
+    });
+}
+
+// 데이터 인스펙터 - 단일 시점 비교 (chunk frame 의 실제 시각 기준으로 CSV 를 매칭)
 app.get('/api/inspect/frame', async (req, res) => {
     try {
         const caseId = String(req.query.case || '').padStart(2, '0');
         const season = String(req.query.season || '').toLowerCase();
-        const minute = Math.max(0, Number(req.query.minute || 0));
         if (!/^\d{2}$/.test(caseId) || !['summer', 'winter'].includes(season)) {
             return res.status(400).json({ error: 'invalid case/season' });
         }
-        const CHUNK_SIZE = 1440;
-        const chunkIdx = Math.floor(minute / CHUNK_SIZE);
-        const localIdx = minute % CHUNK_SIZE;
-
-        // chunk JSON 로드
-        const chunkPath = path.join(
-            __dirname, 'public', 'data', 'simulation2',
-            `case${caseId}-${season}`, `chunk-${chunkIdx}.json`
-        );
-        let chunkResult = { available: false, frame: null, chunkIndex: chunkIdx, localIndex: localIdx };
-        if (fs.existsSync(chunkPath)) {
-            const json = JSON.parse(fs.readFileSync(chunkPath, 'utf8'));
-            const frame = (json.data && json.data[localIdx]) || null;
-            chunkResult = {
-                available: true, frame, chunkIndex: chunkIdx, localIndex: localIdx,
-                totalInChunk: (json.data || []).length
-            };
+        const caseDir = path.join(__dirname, 'public', 'data', 'simulation2', `case${caseId}-${season}`);
+        const idxPath = path.join(caseDir, 'index.json');
+        if (!fs.existsSync(idxPath)) {
+            return res.status(404).json({ error: '케이스가 없습니다.' });
         }
+        const meta = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+        const CHUNK_SIZE = 1440;
 
-        // CSV 같은 시점 (CSV 첫 행 = Day=32 무효 행 → chunk 인덱스 + 1)
-        const csvName = `Case_${caseId}_${season[0].toUpperCase() + season.slice(1)}.csv`;
-        const csvPath = path.join(__dirname, 'public', 'data', 'Result_file2_csv', csvName);
-        const csvRowIndex = minute + 1;
-        const csvRead = await readCsvRow(csvPath, csvRowIndex);
-        const csvResult = {
-            available: csvRead.available && csvRead.row != null,
-            filename: csvName,
-            rowIndex: csvRowIndex,
-            row: csvRead.row,
-            header: csvRead.header,
-            note: csvRead.available
-                ? (csvRead.row ? null : 'rowIndex 범위 초과')
-                : 'CSV 파일 없음 (Result_file2_csv 미제공 케이스)'
+        const date = String(req.query.date || '');
+        let timeQ = String(req.query.time || '').trim();
+        if (/^\d{1,2}:\d{2}$/.test(timeQ)) timeQ += ':00';
+
+        // chunk frame 확보: 날짜+시각이 있으면 time 으로 검색, 없으면 minute 인덱스로 직접
+        let chunkFrame = null, chunkIdx = -1, localIdx = -1;
+        if (date && timeQ) {
+            const target = `${date} ${timeQ}`;
+            for (let c = 0; c < meta.numChunks && !chunkFrame; c++) {
+                const cp = path.join(caseDir, `chunk-${c}.json`);
+                if (!fs.existsSync(cp)) continue;
+                const data = (JSON.parse(fs.readFileSync(cp, 'utf8')).data) || [];
+                for (let li = 0; li < data.length; li++) {
+                    if (String(data[li].time) === target) {
+                        chunkFrame = data[li]; chunkIdx = c; localIdx = li; break;
+                    }
+                }
+            }
+        } else {
+            const minute = Math.max(0, Number(req.query.minute || 0));
+            chunkIdx = Math.floor(minute / CHUNK_SIZE);
+            localIdx = minute % CHUNK_SIZE;
+            const cp = path.join(caseDir, `chunk-${chunkIdx}.json`);
+            if (fs.existsSync(cp)) {
+                const data = (JSON.parse(fs.readFileSync(cp, 'utf8')).data) || [];
+                chunkFrame = data[localIdx] || null;
+            }
+        }
+        const chunkResult = {
+            available: !!chunkFrame, frame: chunkFrame,
+            chunkIndex: chunkIdx, localIndex: localIdx
         };
 
-        // 비교
+        // chunk frame 의 실제 시각으로 CSV 의 같은 시각 행을 검색 → 항상 동일 시점끼리 비교
+        const csvName = `Case_${caseId}_${season[0].toUpperCase() + season.slice(1)}.csv`;
+        const csvPath = path.join(__dirname, 'public', 'data', 'Result_file2_csv', csvName);
+        let csvResult = { available: false, filename: csvName, row: null, header: null, note: null };
+        if (chunkFrame) {
+            const m = String(chunkFrame.time).match(/(\d+)-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+            if (m) {
+                const month = parseInt(m[2], 10);
+                const day = parseInt(m[3], 10);
+                const hour = parseInt(m[4], 10) + parseInt(m[5], 10) / 60;
+                const csvRead = await readCsvRowByTime(csvPath, month, day, hour);
+                csvResult = {
+                    available: csvRead.available && csvRead.row != null,
+                    filename: csvName,
+                    rowIndex: csvRead.rowIndex,
+                    row: csvRead.row,
+                    header: csvRead.header,
+                    note: csvRead.available
+                        ? (csvRead.row ? null : '해당 시각의 CSV 행을 찾지 못함')
+                        : 'CSV 파일 없음 (Result_file2_csv 미제공 케이스)'
+                };
+            }
+        }
+
         let comparison = null;
         if (chunkResult.frame && csvResult.row) {
             const csvQ = parseFloat(csvResult.row['Q_sens_test_cell']);
             const chunkQ = chunkResult.frame.Qsens_test;
             const diff = Math.abs(csvQ - chunkQ);
-            comparison = {
-                csvQsens: csvQ,
-                chunkQsens: chunkQ,
-                absDiff: diff,
-                match: diff < 0.01
-            };
+            comparison = { csvQsens: csvQ, chunkQsens: chunkQ, absDiff: diff, match: diff < 0.01 };
         }
 
         res.json({
-            caseId, season, minute,
+            caseId, season,
+            minute: chunkIdx >= 0 ? chunkIdx * CHUNK_SIZE + localIdx : 0,
+            time: chunkFrame ? chunkFrame.time : null,
             chunk: chunkResult,
             csv: csvResult,
             comparison
@@ -436,6 +505,48 @@ app.post('/api/chunk/frame', (req, res) => {
         });
         fs.writeFileSync(cp, JSON.stringify(json, null, 2), 'utf8');
         res.json({ ok: true, before, after: frame });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 케이스 chunk 데이터를 CSV 로 내보내기 (다운로드 → 수정 → 재업로드 용)
+app.get('/api/chunk/export', (req, res) => {
+    try {
+        const caseId = String(req.query.case || '').padStart(2, '0');
+        const season = String(req.query.season || '').toLowerCase();
+        if (!/^\d{2}$/.test(caseId) || !['summer', 'winter'].includes(season)) {
+            return res.status(400).json({ error: 'invalid case/season' });
+        }
+        const caseDir = path.join(__dirname, 'public', 'data', 'simulation2', `case${caseId}-${season}`);
+        const idxPath = path.join(caseDir, 'index.json');
+        if (!fs.existsSync(idxPath)) return res.status(404).json({ error: '케이스가 없습니다.' });
+        const meta = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+        const from = String(req.query.from || '');
+        const to = String(req.query.to || '');
+
+        const lines = ['TIME,OA,T_air_test_cell,Qsol,Sign,Q_sens_test_cell,T_h_set,T_c_set,Month,Day,Hour'];
+        let n = 0, done = false;
+        for (let ci = 0; ci < meta.numChunks && !done; ci++) {
+            const cp = path.join(caseDir, `chunk-${ci}.json`);
+            if (!fs.existsSync(cp)) continue;
+            const data = (JSON.parse(fs.readFileSync(cp, 'utf8')).data) || [];
+            for (const f of data) {
+                const date = String(f.time).slice(0, 10);
+                if (from && date < from) continue;
+                if (to && date > to) { done = true; break; }
+                lines.push([
+                    (n / 60).toFixed(6), f.T_external, f.T_air_test_cell, 0, 1,
+                    f.Qsens_test, f.T_h_set, f.T_c_set, f.Month, f.Day, f.Hour
+                ].join(','));
+                n++;
+            }
+        }
+        const suffix = (from || to) ? `_${from || 'start'}_${to || 'end'}` : '';
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition',
+            `attachment; filename="sample_case${caseId}_${season}${suffix}.csv"`);
+        res.send(lines.join('\n'));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -247,7 +247,11 @@
             if (!caseId) { setStatus('err', '케이스를 먼저 선택해 주세요.'); return; }
             setStatus('warn', '불러오는 중…');
             try {
-                const url = `/api/inspect/frame?case=${caseId}&season=${season}&minute=${minute}`;
+                const date = $('date-input').value || '';
+                const time = $('time-input').value || '';
+                // 날짜+시각을 우선 사용 (minute 인덱스는 누락 시각 때문에 실제 시각과 어긋날 수 있음)
+                const url = `/api/inspect/frame?case=${caseId}&season=${season}`
+                    + `&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&minute=${minute}`;
                 const res = await fetch(url);
                 const data = await res.json();
                 if (data.error) { setStatus('err', '오류: ' + data.error); return; }

@@ -54,20 +54,29 @@
         모든 변경은 자동 백업됩니다. &nbsp;→ <a href="/optimization-check" style="color:#6aa5ff">최적화 검증 페이지</a>
     </div>
 
-    <!-- ① CSV 업로드 → chunk 재생성 -->
+    <!-- ① CSV 다운로드 / 업로드 재생성 -->
     <div class="panel">
-        <h2>① CSV/txt 업로드 → 케이스 chunk 재생성</h2>
+        <h2>① 케이스 데이터 CSV 내보내기 / 업로드 재생성</h2>
         <div class="field"><label>케이스 번호 (01~81)</label><input type="text" id="rbCase" value="31" style="width:90px"></div>
         <div class="field"><label>시즌</label>
             <select id="rbSeason"><option value="winter">겨울 (winter)</option><option value="summer">여름 (summer)</option></select>
         </div>
+
+        <div style="margin:6px 0 14px; padding:12px; background:#141a28; border:1px solid #2c3548; border-radius:6px">
+            <div style="font-size:12px; color:#9fb3d1; margin-bottom:8px">샘플 다운로드 — 현재 케이스 데이터를 CSV 로 받아 수정 후 다시 업로드할 수 있습니다.</div>
+            <div class="field"><label>시작일 (선택, 비우면 전체)</label><input type="date" id="dlFrom" value="2025-01-01"></div>
+            <div class="field"><label>종료일 (선택)</label><input type="date" id="dlTo" value="2025-01-03"></div>
+            <div class="field"><label>&nbsp;</label><button id="dlBtn">샘플 CSV 다운로드</button></div>
+        </div>
+
         <div class="field"><label>CSV / txt 파일</label><input type="file" id="rbFile" accept=".csv,.txt"></div>
         <div class="field"><label>&nbsp;</label><button id="rbRun">업로드 &amp; 재생성</button></div>
         <div class="msg" id="rbMsg"></div>
         <div class="note">
             업로드 파일은 헤더에 <code>Month</code>, <code>Day</code>, <code>Hour</code>, <code>Q_sens_test_cell</code> 컬럼이 있어야 합니다
             (선택: <code>OA</code>, <code>T_air_test_cell</code>, <code>T_h_set</code>, <code>T_c_set</code>). 콤마·탭 구분 모두 지원.
-            데이터는 시간순으로 자동 정렬되고 중복 시각은 제거됩니다. 재생성 전 케이스 폴더가 <code>.bak-타임스탬프</code> 로 백업됩니다.
+            데이터는 시간순으로 자동 정렬되고 중복 시각은 제거됩니다. 재생성 전 케이스 폴더가 <code>.bak-타임스탬프</code> 로 백업됩니다.<br>
+            <b>주의:</b> 일부 기간만 담긴 CSV 를 업로드하면 그 케이스가 해당 기간만 남도록 재생성됩니다. 테스트 후에는 <code>git checkout</code> 또는 <code>.bak</code> 폴더로 복원하세요.
         </div>
     </div>
 
@@ -89,6 +98,21 @@
 (function () {
     'use strict';
     var $ = function (id) { return document.getElementById(id); };
+
+    // ---- ① 샘플 CSV 다운로드 ----
+    $('dlBtn').addEventListener('click', function () {
+        var caseId = ($('rbCase').value || '').trim();
+        var season = $('rbSeason').value;
+        var msg = $('rbMsg');
+        if (!/^\d{1,2}$/.test(caseId)) { msg.innerHTML = '<span class="err">케이스 번호를 숫자로 입력하세요.</span>'; return; }
+        caseId = caseId.padStart(2, '0');
+        var from = $('dlFrom').value || '';
+        var to = $('dlTo').value || '';
+        var url = '/api/chunk/export?case=' + caseId + '&season=' + season
+            + '&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
+        msg.innerHTML = '<span class="muted">다운로드를 시작합니다…</span>';
+        window.location.href = url;
+    });
 
     // ---- ① 재생성 ----
     $('rbRun').addEventListener('click', function () {

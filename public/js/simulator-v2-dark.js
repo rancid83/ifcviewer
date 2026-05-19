@@ -97,8 +97,13 @@ const subsetCache = new Map();
 // 바닥 그리드 추가 여부 플래그
 let floorGridAdded = false;
 
-// 디버그 모드 (프로덕션에서는 false로 설정)
-const DEBUG = false;
+// 디버그 모드 — URL 파라미터 ?debug=1 일 때 활성 (개발/검증 도구에서 접속 시)
+const DEBUG = (() => {
+    try {
+        const v = new URLSearchParams(location.search).get('debug');
+        return v === '1' || v === 'true';
+    } catch (e) { return false; }
+})();
 
 // 렌더링 최적화 변수
 let needsRender = true;
@@ -775,7 +780,11 @@ function updateCaseLoadInfo() {
         : lastTestCellSelectionSource === 'dropdown'
             ? '선택 기준: 드롭다운(케이스) 선택'
             : '선택 기준: 초기/기타';
-    const testText = `TEST_CELL: ${testPath} (${src})`;
+    let testText = `TEST_CELL: ${testPath} (${src})`;
+    // 최적화 모드일 때는 currentCase 와 무관하게 시간대별 최적 케이스 값이 표시됨을 명시
+    if (window._optimizationResultCases && window._optimizationResultCases.perDate) {
+        testText += ' ⚙ [최적화 모드 활성] 화면 Test(optimize) 값은 이 케이스가 아니라 시간대별 최적 케이스 기준으로 표시됩니다.';
+    }
 
     const refEl = document.getElementById('case-load-info-ref');
     const testEl = document.getElementById('case-load-info-test');
@@ -4003,7 +4012,53 @@ async function applyOptimizationToFrame(frame, minute) {
         : frame;
 }
 
+// 뷰어 좌하단 케이스/파일 정보 로그 갱신 — 디버그 모드(?debug=1)에서만 표시
+function updateCaseInfoOverlay(frameData) {
+    const el = document.getElementById('case-info-overlay');
+    if (!el) return;
+    if (!DEBUG) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+
+    const season = dataManager.currentSeason || '-';
+    const refKey = refCaseKeyCache || '-';
+    const testKey = dataManager.currentCase || '-';
+
+    // 파라미터 라인
+    let line0 = '';
+    const ts = (typeof getTestCellSettings === 'function') ? getTestCellSettings() : null;
+    if (ts) {
+        const setT = season === 'winter' ? ts.heating : ts.cooling;
+        line0 = `TEST 파라미터  기기 ${ts.equipment} · 조명 ${ts.lighting} · 외기 ${ts.outdoor} · 설정온도 ${setT}°C · ${ts.time}`;
+    }
+    const line1 = `REF  ${refKey}-${season}    ·    TEST  ${testKey}-${season}`;
+
+    let line2 = '';
+    const opt = window._optimizationResultCases;
+    if (opt && opt.perDate && frameData && frameData.time) {
+        const m = String(frameData.time).match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})/);
+        if (m) {
+            const dayOpt = opt.perDate[m[1]];
+            const slotKey = optimizationSlotOf(parseInt(m[2], 10));
+            const slot = dayOpt && dayOpt[slotKey];
+            if (slot) {
+                line2 = `⚙ 최적화 적용  ${m[2]}:${m[3]} [${slotKey}]  →  ${slot.caseKey}-${opt.season} (${slot.tset}°C)`
+                    + `   ·   /data/simulation2/${slot.caseKey}-${opt.season}/`;
+            }
+        }
+    }
+
+    const lines = [];
+    if (line0) lines.push(line0);
+    lines.push(line1);
+    let html = lines.join('\n');
+    if (line2) html += '\n<span class="opt">' + line2 + '</span>';
+    el.innerHTML = html;
+}
+
 window.computeOptimization = computeOptimization;
+window.getOptimizedTestEnergy = getOptimizedTestEnergy;
+window.applyOptimizationToFrame = applyOptimizationToFrame;
+window.updateCaseInfoOverlay = updateCaseInfoOverlay;
 window.refreshVisualization = function() {
     if (typeof currentMinute === 'number') return updateVisualization(currentMinute);
 };
@@ -4037,6 +4092,7 @@ async function updateVisualization(minute) {
     scheduleDOMUpdate(() => {
         updateEnergyDisplay(displayFrame);
         updateTimeDisplay(displayFrame.time, minute);
+        updateCaseInfoOverlay(frameData);
     });
 
     debugLog(`✅ updateVisualization 완료`);
@@ -5156,6 +5212,7 @@ async function updateDailyDisplay(minuteOffset) {
         updateIFCColors(frame);
         // 최적화 모드면 Test 표시값을 최적 케이스 값으로 교체
         updateEnergyDisplay(await applyOptimizationToFrame(frame, globalIdx));
+        updateCaseInfoOverlay(frame);
     }
 }
 

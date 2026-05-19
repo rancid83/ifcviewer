@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 32px;
+            background: #0e1320; color: #e6e9f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Malgun Gothic', sans-serif;
+        }
+        h1 { font-size: 22px; margin: 0 0 6px; }
+        .sub { color: #7f8aa3; font-size: 13px; margin-bottom: 26px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            display: block;
+            background: #1a2030;
+            border: 1px solid #2c3548;
+            border-radius: 10px;
+            padding: 20px;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color .15s, transform .1s;
+        }
+        .card:hover { border-color: #4f8cff; transform: translateY(-2px); }
+        .card .ico { font-size: 26px; margin-bottom: 10px; }
+        .card .name { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: #e6e9f0; }
+        .card .desc { font-size: 12.5px; color: #8b97b3; line-height: 1.55; }
+        .card .path { font-size: 11px; color: #5f6b86; margin-top: 10px; font-family: monospace; }
+        .footer { margin-top: 28px; font-size: 11px; color: #5f6b86; }
+    </style>
+</head>
+<body>
+    <h1>⚙️ 개발 / 검증 도구 모음</h1>
+    <div class="sub">T-Lab Digital Twin System — 시뮬레이터 및 데이터 검증·보정 도구</div>
+
+    <div class="grid">
+        <a class="card" href="/simulator" target="_blank">
+            <div class="ico">🏢</div>
+            <div class="name">에너지 시뮬레이터</div>
+            <div class="desc">BIM 모델 + 에너지 시뮬레이션 메인 화면. 분석하기·최적화하기 실행.</div>
+            <div class="path">/simulator</div>
+        </a>
+
+        <a class="card" href="/simulator?debug=1" target="_blank">
+            <div class="ico">🐞</div>
+            <div class="name">에너지 시뮬레이터 (디버그 모드)</div>
+            <div class="desc">시뮬레이터를 디버그 모드로 엽니다. 뷰어 좌하단에 현재 적용 케이스·파라미터·파일 경로가 표시되고 콘솔 디버그 로그가 활성화됩니다.</div>
+            <div class="path">/simulator?debug=1</div>
+        </a>
+
+        <a class="card" href="/optimization-check" target="_blank">
+            <div class="ico">📊</div>
+            <div class="name">최적화 로직 검증</div>
+            <div class="desc">TEST 조건 입력 → 후보 케이스, 날짜·시간대별 최적 설정온도, 특정 시점 값을 표로 확인. 시뮬레이터 결과와 교차 검증.</div>
+            <div class="path">/optimization-check</div>
+        </a>
+
+        <a class="card" href="/chunk-editor" target="_blank">
+            <div class="ico">🛠️</div>
+            <div class="name">데이터 보정 도구 (CSV 업로드)</div>
+            <div class="desc">케이스 데이터를 CSV로 내려받아 수정 후 재업로드해 chunk 재생성. 특정 시점 frame 값 직접 편집. 변경 시 자동 백업.</div>
+            <div class="path">/chunk-editor</div>
+        </a>
+
+        <a class="card" href="/data-inspector" target="_blank">
+            <div class="ico">🔍</div>
+            <div class="name">데이터 인스펙터</div>
+            <div class="desc">시뮬레이터가 사용하는 chunk JSON 값과 원본 CSV의 같은 시점 행을 나란히 비교.</div>
+            <div class="path">/data-inspector</div>
+        </a>
+    </div>
+
+    <div class="footer">각 카드를 클릭하면 새 탭에서 열립니다.</div>
+</body>
+</html>
