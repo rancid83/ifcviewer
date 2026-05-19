@@ -10,6 +10,10 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// 요청 본문 파서 (chunk 편집 API용)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.text({ limit: '150mb', type: ['text/plain', 'text/csv', 'application/csv'] }));
+
 // 정적 파일 서빙
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -63,6 +67,13 @@ app.get('/simulator', (req, res) => {
 app.get('/optimization-check', (req, res) => {
     res.render('optimization-check', {
         title: '최적화 로직 검증'
+    });
+});
+
+// 데이터 보정 도구 (CSV 업로드 → chunk 재생성 / frame 직접 편집)
+app.get('/chunk-editor', (req, res) => {
+    res.render('chunk-editor', {
+        title: '데이터 보정 도구'
     });
 });
 
@@ -214,6 +225,217 @@ app.get('/api/inspect/frame', async (req, res) => {
             csv: csvResult,
             comparison
         });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ============================================
+// 데이터 보정 도구 (chunk 재생성 / frame 편집)
+// ============================================
+
+// 0~24 소수 시각 → "HH:MM:SS"
+function hourToTimeStr(hourDecimal) {
+    let totalSec = Math.max(0, Math.min(86400 - 1, Math.round(hourDecimal * 3600)));
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// CSV/txt 텍스트 → chunk record 배열 (헤더 컬럼명 기반 매핑, 시간순 정렬 + 중복 제거)
+function parseSourceToRecords(text, season, year) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+    if (lines.length < 2) return { records: [], error: '데이터 행이 없습니다.' };
+    const delim = lines[0].indexOf('\t') !== -1 ? '\t' : ',';
+    const header = lines[0].split(delim).map(h => h.trim());
+    const col = {};
+    header.forEach((h, i) => { col[h] = i; });
+    const need = ['Month', 'Day', 'Hour', 'Q_sens_test_cell'];
+    const missing = need.filter(n => col[n] == null);
+    if (missing.length) return { records: [], error: '헤더에 다음 컬럼이 필요합니다: ' + missing.join(', ') };
+
+    const gv = (parts, name) => {
+        const i = col[name];
+        if (i == null) return NaN;
+        return parseFloat(String(parts[i]).trim());
+    };
+    const r4 = x => (isNaN(x) ? 0 : Math.round(x * 10000) / 10000);
+    const records = [];
+    for (let li = 1; li < lines.length; li++) {
+        const parts = lines[li].split(delim);
+        const month = Math.round(gv(parts, 'Month'));
+        const day = Math.round(gv(parts, 'Day'));
+        const hour = gv(parts, 'Hour');
+        if (!(month >= 1 && month <= 12) || !(day >= 1 && day <= 31) || isNaN(hour)) continue;
+        const tCell = gv(parts, 'T_air_test_cell');
+        const tH = gv(parts, 'T_h_set');
+        const tC = gv(parts, 'T_c_set');
+        records.push({
+            time: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${hourToTimeStr(hour)}`,
+            T_external: r4(gv(parts, 'OA')),
+            T_air_test: r4(tCell),
+            T_air_ref: r4(tCell),
+            Qsens_test: r4(gv(parts, 'Q_sens_test_cell')),
+            Qsens_ref: 0.0,
+            Tset: r4(season === 'summer' ? tC : tH),
+            T_air_test_cell: r4(tCell),
+            T_h_set: r4(tH),
+            T_c_set: r4(tC),
+            Month: month,
+            Day: day,
+            Hour: r4(hour)
+        });
+    }
+    records.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+    const out = [];
+    let seen = null, dup = 0;
+    for (const r of records) {
+        if (r.time === seen) { dup++; continue; }
+        seen = r.time;
+        out.push(r);
+    }
+    return { records: out, dup };
+}
+
+// records → chunk-*.json + index.json 쓰기
+function writeChunkFiles(caseDir, records, season) {
+    const CHUNK = 1440;
+    fs.readdirSync(caseDir)
+        .filter(n => /^chunk-\d+\.json$/.test(n))
+        .forEach(n => fs.unlinkSync(path.join(caseDir, n)));
+    const numChunks = Math.ceil(records.length / CHUNK) || 0;
+    for (let ci = 0; ci < numChunks; ci++) {
+        const data = records.slice(ci * CHUNK, ci * CHUNK + CHUNK);
+        fs.writeFileSync(path.join(caseDir, `chunk-${ci}.json`),
+            JSON.stringify({ data }, null, 2), 'utf8');
+    }
+    let mn = Infinity, mx = -Infinity, sum = 0;
+    for (const r of records) {
+        const q = r.Qsens_test || 0;
+        if (q < mn) mn = q;
+        if (q > mx) mx = q;
+        sum += q;
+    }
+    if (!records.length) { mn = 0; mx = 0; }
+    const avg = records.length ? sum / records.length : 0;
+    const m = path.basename(caseDir).match(/^case(\d+)-(summer|winter)$/);
+    const index = {
+        sheetName: `Case${m[1]}_${season[0].toUpperCase() + season.slice(1)}`,
+        totalFrames: records.length,
+        numChunks,
+        chunkSize: CHUNK,
+        startTime: records.length ? records[0].time : '',
+        endTime: records.length ? records[records.length - 1].time : '',
+        minEnergyTest: mn, maxEnergyTest: mx, avgEnergyTest: avg,
+        minEnergyRef: mn, maxEnergyRef: mx, avgEnergyRef: avg,
+        season,
+        startDate: records.length ? records[0].time.split(' ')[0] : ''
+    };
+    fs.writeFileSync(path.join(caseDir, 'index.json'), JSON.stringify(index, null, 2), 'utf8');
+    return index;
+}
+
+// CSV/txt 업로드 → 케이스 chunk 전체 재생성
+app.post('/api/chunk/rebuild', (req, res) => {
+    try {
+        const caseId = String(req.query.case || '').padStart(2, '0');
+        const season = String(req.query.season || '').toLowerCase();
+        if (!/^\d{2}$/.test(caseId) || !['summer', 'winter'].includes(season)) {
+            return res.status(400).json({ error: 'invalid case/season' });
+        }
+        const text = typeof req.body === 'string' ? req.body : '';
+        if (!text.trim()) return res.status(400).json({ error: 'CSV 본문이 비어 있습니다.' });
+        const caseDir = path.join(__dirname, 'public', 'data', 'simulation2', `case${caseId}-${season}`);
+        if (!fs.existsSync(caseDir)) return res.status(404).json({ error: '케이스 폴더가 없습니다.' });
+
+        const parsed = parseSourceToRecords(text, season, 2025);
+        if (parsed.error) return res.status(400).json({ error: parsed.error });
+        if (!parsed.records.length) return res.status(400).json({ error: '유효한 데이터 행이 없습니다.' });
+
+        // 백업: 케이스 폴더 전체 복사
+        const backupDir = caseDir + '.bak-' + Date.now();
+        fs.mkdirSync(backupDir);
+        fs.readdirSync(caseDir).forEach(n => {
+            const src = path.join(caseDir, n);
+            if (fs.statSync(src).isFile()) fs.copyFileSync(src, path.join(backupDir, n));
+        });
+
+        const index = writeChunkFiles(caseDir, parsed.records, season);
+        res.json({ ok: true, index, duplicatesRemoved: parsed.dup || 0, backup: path.basename(backupDir) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// frame 조회 (날짜+시각으로 정확 매칭)
+app.get('/api/chunk/frame', (req, res) => {
+    try {
+        const caseId = String(req.query.case || '').padStart(2, '0');
+        const season = String(req.query.season || '').toLowerCase();
+        if (!/^\d{2}$/.test(caseId) || !['summer', 'winter'].includes(season)) {
+            return res.status(400).json({ error: 'invalid case/season' });
+        }
+        const caseDir = path.join(__dirname, 'public', 'data', 'simulation2', `case${caseId}-${season}`);
+        const idxPath = path.join(caseDir, 'index.json');
+        if (!fs.existsSync(idxPath)) return res.status(404).json({ error: '케이스가 없습니다.' });
+        const meta = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+        const date = String(req.query.date || '');
+        let time = String(req.query.time || '').trim();
+        if (/^\d{1,2}:\d{2}$/.test(time)) time += ':00';
+        if (!date || !time) return res.status(400).json({ error: '날짜와 시각을 입력하세요.' });
+        const target = `${date} ${time}`;
+        for (let ci = 0; ci < meta.numChunks; ci++) {
+            const cp = path.join(caseDir, `chunk-${ci}.json`);
+            if (!fs.existsSync(cp)) continue;
+            const data = (JSON.parse(fs.readFileSync(cp, 'utf8')).data) || [];
+            for (let li = 0; li < data.length; li++) {
+                if (String(data[li].time) === target) {
+                    return res.json({ ok: true, found: true, chunkIndex: ci, localIndex: li, frame: data[li] });
+                }
+            }
+        }
+        res.json({ ok: true, found: false });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// frame 1개 값 수정
+app.post('/api/chunk/frame', (req, res) => {
+    try {
+        const b = req.body || {};
+        const caseId = String(b.case || '').padStart(2, '0');
+        const season = String(b.season || '').toLowerCase();
+        const chunkIndex = Number(b.chunkIndex);
+        const localIndex = Number(b.localIndex);
+        const updates = b.updates || {};
+        if (!/^\d{2}$/.test(caseId) || !['summer', 'winter'].includes(season)) {
+            return res.status(400).json({ error: 'invalid case/season' });
+        }
+        if (!Number.isInteger(chunkIndex) || !Number.isInteger(localIndex)) {
+            return res.status(400).json({ error: 'chunkIndex/localIndex 가 필요합니다.' });
+        }
+        const cp = path.join(__dirname, 'public', 'data', 'simulation2',
+            `case${caseId}-${season}`, `chunk-${chunkIndex}.json`);
+        if (!fs.existsSync(cp)) return res.status(404).json({ error: 'chunk 파일이 없습니다.' });
+        const json = JSON.parse(fs.readFileSync(cp, 'utf8'));
+        if (!json.data || !json.data[localIndex]) {
+            return res.status(400).json({ error: 'localIndex 범위를 벗어났습니다.' });
+        }
+        // 백업: 해당 chunk 파일
+        fs.copyFileSync(cp, cp + '.bak-' + Date.now());
+        const frame = json.data[localIndex];
+        const before = Object.assign({}, frame);
+        Object.keys(updates).forEach(k => {
+            if (k === 'time') return; // time 키는 변경 금지
+            if (k in frame) {
+                const num = parseFloat(updates[k]);
+                frame[k] = isNaN(num) ? updates[k] : num;
+            }
+        });
+        fs.writeFileSync(cp, JSON.stringify(json, null, 2), 'utf8');
+        res.json({ ok: true, before, after: frame });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

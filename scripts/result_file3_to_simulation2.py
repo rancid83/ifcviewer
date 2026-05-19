@@ -105,6 +105,25 @@ def convert_file(txt_path: Path) -> tuple[list[dict], str, str] | None:
 
     if not records:
         return None
+
+    # 원본 txt 의 행 순서가 시간순이 아니므로 time 기준으로 재정렬한다.
+    # (정렬하지 않으면 chunk 의 minute 인덱스와 실제 시각이 어긋난다)
+    records.sort(key=lambda r: r["time"])
+
+    # 같은 시각이 중복으로 들어온 경우 첫 레코드만 유지
+    deduped = []
+    seen = None
+    dup = 0
+    for r in records:
+        if r["time"] == seen:
+            dup += 1
+            continue
+        seen = r["time"]
+        deduped.append(r)
+    if dup:
+        print(f"    {name}: 중복 시각 {dup}개 제거")
+    records = deduped
+
     case_key = f"case{int(case_num):02d}-{season}"
     return (records, case_key, season)
 
@@ -129,6 +148,10 @@ def write_case(records: list[dict], case_key: str, season: str, out_root: Path) 
     """레코드를 chunk 단위로 나누어 case 폴더에 저장."""
     folder = out_root / case_key
     folder.mkdir(parents=True, exist_ok=True)
+
+    # 기존 chunk 파일 제거 (재생성 시 frame 수가 줄어 옛 chunk 가 남는 것 방지)
+    for old in folder.glob("chunk-*.json"):
+        old.unlink()
 
     bounds = compute_energy_bounds(records)
     start_time = records[0]["time"] if records else ""

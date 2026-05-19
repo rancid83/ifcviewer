@@ -3854,11 +3854,6 @@ async function fetchOptCaseChunk(caseKey, season, chunkIndex) {
     return chunk;
 }
 
-async function fetchOptCaseFrame(caseKey, season, minute) {
-    const chunk = await fetchOptCaseChunk(caseKey, season, Math.floor(minute / CHUNK_SIZE));
-    return chunk && chunk.data ? chunk.data[minute % CHUNK_SIZE] : null;
-}
-
 // "2025-01-09" → Date(자정)
 function ymdToDate(s) { return new Date(s + 'T00:00:00'); }
 function dateToYMD(d) {
@@ -3961,6 +3956,23 @@ async function computeOptimization(startStr, endStr, onProgress) {
     return { perDate, season };
 }
 
+// 케이스 폴더에서 특정 시각(time 문자열)에 정확히 일치하는 frame 을 찾는다.
+// (chunk 가 자정 정렬이 아니고 케이스별 인덱스가 미세하게 다를 수 있어 minute 인덱스 대신 time 으로 매칭)
+async function fetchOptCaseFrameByTime(caseKey, season, timeStr, minuteHint) {
+    const base = Math.max(0, Math.floor((minuteHint || 0) / CHUNK_SIZE));
+    const order = [base, base + 1, base - 1, base + 2, base - 2];
+    for (let oi = 0; oi < order.length; oi++) {
+        const ci = order[oi];
+        if (ci < 0) continue;
+        const chunk = await fetchOptCaseChunk(caseKey, season, ci);
+        if (!chunk || !chunk.data) continue;
+        for (let i = 0; i < chunk.data.length; i++) {
+            if (String(chunk.data[i].time) === timeStr) return chunk.data[i];
+        }
+    }
+    return null;
+}
+
 // 최적화 결과가 있으면, 현재 frame 의 날짜·시간대에 해당하는 최적 케이스의 Qsens_test 반환
 async function getOptimizedTestEnergy(frameData, minute) {
     const opt = window._optimizationResultCases;
@@ -3977,8 +3989,18 @@ async function getOptimizedTestEnergy(frameData, minute) {
     const slot = dayOpt[optimizationSlotOf(hour)];
     if (!slot || !slot.caseKey) return null;
 
-    const optFrame = await fetchOptCaseFrame(slot.caseKey, opt.season, minute);
+    // 같은 시각(t)의 최적 케이스 frame 을 time 문자열로 정확 매칭
+    const optFrame = await fetchOptCaseFrameByTime(slot.caseKey, opt.season, t, minute);
     return optFrame && typeof optFrame.Qsens_test === 'number' ? optFrame.Qsens_test : null;
+}
+
+// 최적화 모드면 frame 의 Qsens_test 를 최적 케이스 값으로 교체한 사본 반환 (아니면 원본)
+async function applyOptimizationToFrame(frame, minute) {
+    if (!frame || !window._optimizationResultCases) return frame;
+    const optEnergy = await getOptimizedTestEnergy(frame, minute);
+    return (typeof optEnergy === 'number')
+        ? Object.assign({}, frame, { Qsens_test: optEnergy })
+        : frame;
 }
 
 window.computeOptimization = computeOptimization;
@@ -4003,13 +4025,7 @@ async function updateVisualization(minute) {
 
     // 최적화 결과가 있으면 시간대 매핑된 케이스의 Qsens_test 로 displayFrame 갈아끼움
     // (frameData 자체는 dataManager 청크 캐시의 reference 라 mutate 금지)
-    let displayFrame = frameData;
-    if (window._optimizationResultCases) {
-        const optEnergy = await getOptimizedTestEnergy(frameData, minute);
-        if (typeof optEnergy === 'number') {
-            displayFrame = Object.assign({}, frameData, { Qsens_test: optEnergy });
-        }
-    }
+    const displayFrame = await applyOptimizationToFrame(frameData, minute);
 
     // Ref zone 기본값 업데이트 (프레임 인덱스에 따라)
     await updateRefZoneDefaultEnergy(minute);
@@ -5136,9 +5152,10 @@ async function updateDailyDisplay(minuteOffset) {
             updateBackgroundByTime(currentHour, currentMinute);
         }
 
-        // IFC 뷰어 색상 업데이트
+        // IFC 뷰어 색상 업데이트 (색상은 원본 케이스 기준)
         updateIFCColors(frame);
-        updateEnergyDisplay(frame);
+        // 최적화 모드면 Test 표시값을 최적 케이스 값으로 교체
+        updateEnergyDisplay(await applyOptimizationToFrame(frame, globalIdx));
     }
 }
 

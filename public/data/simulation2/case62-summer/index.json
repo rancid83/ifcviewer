@@ -4,7 +4,7 @@
   "numChunks": 58,
   "chunkSize": 1440,
   "startTime": "2025-08-01 00:01:00",
-  "endTime": "2025-09-28 00:00:00",
+  "endTime": "2025-09-28 23:59:00",
   "minEnergyTest": -24889.7661,
   "maxEnergyTest": 10776.7309,
   "avgEnergyTest": 584.2063170189303,

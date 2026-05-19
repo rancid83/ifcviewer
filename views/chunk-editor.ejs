@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 24px;
+            background: #0e1320; color: #e6e9f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Malgun Gothic', sans-serif;
+            font-size: 13px;
+        }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        h2 { font-size: 15px; margin: 0 0 12px; color: #9fb3d1; }
+        .sub { color: #7f8aa3; font-size: 12px; margin-bottom: 18px; }
+        .panel {
+            background: #1a2030; border: 1px solid #2c3548; border-radius: 8px;
+            padding: 18px; margin-bottom: 16px;
+        }
+        .field { display: inline-flex; flex-direction: column; margin: 0 14px 12px 0; vertical-align: top; }
+        .field label { font-size: 11px; color: #8b97b3; margin-bottom: 4px; }
+        input, select {
+            background: #0e1320; border: 1px solid #2c3548; color: #e6e9f0;
+            border-radius: 5px; padding: 6px 8px; font-size: 13px;
+        }
+        input[type=file] { padding: 4px; }
+        button {
+            background: #4f8cff; color: #fff; border: 0; border-radius: 5px;
+            padding: 8px 16px; font-size: 13px; cursor: pointer; font-weight: 600;
+        }
+        button:hover { background: #3d7af0; }
+        button:disabled { background: #3a4256; cursor: not-allowed; }
+        button.danger { background: #c0504d; }
+        button.danger:hover { background: #a83f3c; }
+        table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+        th, td { border: 1px solid #2c3548; padding: 6px 9px; text-align: left; }
+        th { background: #232b3e; color: #9fb3d1; }
+        .msg { margin: 10px 0; font-size: 12px; }
+        .ok { color: #6ee7a0; }
+        .err { color: #ff7a7a; }
+        .muted { color: #6b7690; }
+        code { background: #0e1320; padding: 1px 5px; border-radius: 3px; color: #c9d4ec; }
+        .note { font-size: 11px; color: #7f8aa3; margin-top: 8px; line-height: 1.5; }
+        .frame-field input { width: 220px; }
+        .changed { outline: 1px solid #4f8cff; }
+    </style>
+</head>
+<body>
+    <h1>데이터 보정 도구</h1>
+    <div class="sub">
+        CSV/txt 를 업로드해 케이스의 chunk 데이터를 재생성하거나, 특정 시점 frame 값을 직접 수정합니다.
+        모든 변경은 자동 백업됩니다. &nbsp;→ <a href="/optimization-check" style="color:#6aa5ff">최적화 검증 페이지</a>
+    </div>
+
+    <!-- ① CSV 업로드 → chunk 재생성 -->
+    <div class="panel">
+        <h2>① CSV/txt 업로드 → 케이스 chunk 재생성</h2>
+        <div class="field"><label>케이스 번호 (01~81)</label><input type="text" id="rbCase" value="31" style="width:90px"></div>
+        <div class="field"><label>시즌</label>
+            <select id="rbSeason"><option value="winter">겨울 (winter)</option><option value="summer">여름 (summer)</option></select>
+        </div>
+        <div class="field"><label>CSV / txt 파일</label><input type="file" id="rbFile" accept=".csv,.txt"></div>
+        <div class="field"><label>&nbsp;</label><button id="rbRun">업로드 &amp; 재생성</button></div>
+        <div class="msg" id="rbMsg"></div>
+        <div class="note">
+            업로드 파일은 헤더에 <code>Month</code>, <code>Day</code>, <code>Hour</code>, <code>Q_sens_test_cell</code> 컬럼이 있어야 합니다
+            (선택: <code>OA</code>, <code>T_air_test_cell</code>, <code>T_h_set</code>, <code>T_c_set</code>). 콤마·탭 구분 모두 지원.
+            데이터는 시간순으로 자동 정렬되고 중복 시각은 제거됩니다. 재생성 전 케이스 폴더가 <code>.bak-타임스탬프</code> 로 백업됩니다.
+        </div>
+    </div>
+
+    <!-- ② frame 직접 편집 -->
+    <div class="panel">
+        <h2>② chunk frame 직접 조회 / 수정</h2>
+        <div class="field"><label>케이스 번호</label><input type="text" id="edCase" value="31" style="width:90px"></div>
+        <div class="field"><label>시즌</label>
+            <select id="edSeason"><option value="winter">겨울 (winter)</option><option value="summer">여름 (summer)</option></select>
+        </div>
+        <div class="field"><label>날짜</label><input type="date" id="edDate" value="2025-02-08"></div>
+        <div class="field"><label>시각 (HH:MM)</label><input type="text" id="edTime" value="13:36" style="width:90px"></div>
+        <div class="field"><label>&nbsp;</label><button id="edLoad">조회</button></div>
+        <div class="msg" id="edMsg"></div>
+        <div id="edFrameBox"></div>
+    </div>
+
+<script>
+(function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+
+    // ---- ① 재생성 ----
+    $('rbRun').addEventListener('click', function () {
+        var caseId = ($('rbCase').value || '').trim();
+        var season = $('rbSeason').value;
+        var file = $('rbFile').files[0];
+        var msg = $('rbMsg');
+        if (!/^\d{1,2}$/.test(caseId)) { msg.innerHTML = '<span class="err">케이스 번호를 숫자로 입력하세요.</span>'; return; }
+        if (!file) { msg.innerHTML = '<span class="err">CSV/txt 파일을 선택하세요.</span>'; return; }
+        caseId = caseId.padStart(2, '0');
+
+        msg.innerHTML = '<span class="muted">파일 읽는 중…</span>';
+        var reader = new FileReader();
+        reader.onload = async function () {
+            $('rbRun').disabled = true;
+            msg.innerHTML = '<span class="muted">서버 전송 및 재생성 중… (수십 초 소요될 수 있습니다)</span>';
+            try {
+                var resp = await fetch('/api/chunk/rebuild?case=' + caseId + '&season=' + season, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/csv' },
+                    body: reader.result
+                });
+                var data = await resp.json();
+                if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status));
+                var idx = data.index;
+                msg.innerHTML = '<span class="ok">✓ 재생성 완료</span><br>'
+                    + '<table><tr><th>총 frame</th><td>' + idx.totalFrames + '</td></tr>'
+                    + '<tr><th>chunk 수</th><td>' + idx.numChunks + '</td></tr>'
+                    + '<tr><th>시작</th><td>' + idx.startTime + '</td></tr>'
+                    + '<tr><th>종료</th><td>' + idx.endTime + '</td></tr>'
+                    + '<tr><th>중복 제거</th><td>' + (data.duplicatesRemoved || 0) + '개</td></tr>'
+                    + '<tr><th>백업 폴더</th><td><code>' + data.backup + '</code></td></tr></table>';
+            } catch (e) {
+                msg.innerHTML = '<span class="err">오류: ' + (e.message || e) + '</span>';
+            } finally {
+                $('rbRun').disabled = false;
+            }
+        };
+        reader.onerror = function () { msg.innerHTML = '<span class="err">파일 읽기 실패</span>'; };
+        reader.readAsText(file);
+    });
+
+    // ---- ② frame 조회/수정 ----
+    var loadedFrame = null;   // { chunkIndex, localIndex, frame, case, season }
+    var EDITABLE = ['T_external','T_air_test','T_air_ref','Qsens_test','Qsens_ref','Tset','T_air_test_cell','T_h_set','T_c_set','Month','Day','Hour'];
+
+    $('edLoad').addEventListener('click', async function () {
+        var caseId = ($('edCase').value || '').trim();
+        var season = $('edSeason').value;
+        var date = $('edDate').value;
+        var time = ($('edTime').value || '').trim();
+        var msg = $('edMsg');
+        $('edFrameBox').innerHTML = '';
+        if (!/^\d{1,2}$/.test(caseId)) { msg.innerHTML = '<span class="err">케이스 번호를 숫자로 입력하세요.</span>'; return; }
+        caseId = caseId.padStart(2, '0');
+        msg.innerHTML = '<span class="muted">조회 중…</span>';
+        try {
+            var resp = await fetch('/api/chunk/frame?case=' + caseId + '&season=' + season
+                + '&date=' + encodeURIComponent(date) + '&time=' + encodeURIComponent(time));
+            var data = await resp.json();
+            if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status));
+            if (!data.found) { msg.innerHTML = '<span class="err">해당 시점 frame 을 찾지 못했습니다.</span>'; return; }
+            loadedFrame = { chunkIndex: data.chunkIndex, localIndex: data.localIndex, frame: data.frame, caseId: caseId, season: season };
+            msg.innerHTML = '<span class="ok">✓ 조회 완료</span> &nbsp;<span class="muted">chunk-'
+                + data.chunkIndex + '.json · localIndex ' + data.localIndex + '</span>';
+            renderFrame(data.frame);
+        } catch (e) {
+            msg.innerHTML = '<span class="err">오류: ' + (e.message || e) + '</span>';
+        }
+    });
+
+    function renderFrame(frame) {
+        var html = '<table><thead><tr><th>필드</th><th>값</th></tr></thead><tbody>';
+        html += '<tr><td>time</td><td class="muted">' + frame.time + ' (수정 불가)</td></tr>';
+        EDITABLE.forEach(function (k) {
+            var v = (k in frame) ? frame[k] : '';
+            html += '<tr><td>' + k + '</td><td class="frame-field">'
+                + '<input data-key="' + k + '" value="' + v + '"></td></tr>';
+        });
+        html += '</tbody></table>'
+            + '<div style="margin-top:12px"><button id="edSave">변경 저장</button> '
+            + '<span class="note" style="display:inline">변경된 필드만 저장됩니다. 저장 시 해당 chunk 파일이 자동 백업됩니다.</span></div>';
+        $('edFrameBox').innerHTML = html;
+
+        // 변경 감지 표시
+        $('edFrameBox').querySelectorAll('input[data-key]').forEach(function (inp) {
+            var orig = inp.value;
+            inp.addEventListener('input', function () {
+                inp.classList.toggle('changed', inp.value !== orig);
+            });
+        });
+        $('edSave').addEventListener('click', saveFrame);
+    }
+
+    async function saveFrame() {
+        if (!loadedFrame) return;
+        var updates = {};
+        $('edFrameBox').querySelectorAll('input[data-key]').forEach(function (inp) {
+            if (inp.classList.contains('changed')) updates[inp.dataset.key] = inp.value;
+        });
+        var msg = $('edMsg');
+        if (!Object.keys(updates).length) { msg.innerHTML = '<span class="err">변경된 필드가 없습니다.</span>'; return; }
+        $('edSave').disabled = true;
+        msg.innerHTML = '<span class="muted">저장 중…</span>';
+        try {
+            var resp = await fetch('/api/chunk/frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    case: loadedFrame.caseId, season: loadedFrame.season,
+                    chunkIndex: loadedFrame.chunkIndex, localIndex: loadedFrame.localIndex,
+                    updates: updates
+                })
+            });
+            var data = await resp.json();
+            if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status));
+            msg.innerHTML = '<span class="ok">✓ 저장 완료 (' + Object.keys(updates).join(', ') + ')</span>';
+            loadedFrame.frame = data.after;
+            renderFrame(data.after);
+        } catch (e) {
+            msg.innerHTML = '<span class="err">오류: ' + (e.message || e) + '</span>';
+        } finally {
+            var btn = $('edSave');
+            if (btn) btn.disabled = false;
+        }
+    }
+})();
+</script>
+</body>
+</html>
